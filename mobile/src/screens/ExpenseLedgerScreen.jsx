@@ -1,0 +1,566 @@
+import React, { useEffect, useState, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+  StatusBar,
+  Modal,
+  TextInput,
+  SafeAreaView,
+} from 'react-native';
+import { expenseApi } from '../shared/api/expense';
+import { useAuthStore } from '../shared/store/authStore';
+function getInitials(name) {
+  return name
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+}
+function formatCurrency(amount) {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+export default function ExpenseLedgerScreen({ navigation }) {
+  const user = useAuthStore((s) => s.user);
+  const [ledger, setLedger] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Settlement modal
+  const [showSettleModal, setShowSettleModal] = useState(false);
+  const [settleFrom, setSettleFrom] = useState('');
+  const [settleTo, setSettleTo] = useState('');
+  const [settleAmount, setSettleAmount] = useState('');
+  const [saving, setSaving] = useState(false);
+  const loadLedger = useCallback(async (refresh = false) => {
+    if (refresh) setRefreshing(true);
+    else setLoading(true);
+    setError(null);
+    try {
+      const data = await expenseApi.getLedger();
+      setLedger(data);
+    } catch (e) {
+      setError(e?.response?.data?.message || 'Failed to load ledger');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+  useEffect(() => {
+    loadLedger();
+  }, [loadLedger]);
+  const handleSettle = useCallback(async () => {
+    const amt = parseFloat(settleAmount);
+    if (!settleFrom || !settleTo || isNaN(amt) || amt <= 0) {
+      Alert.alert('Required', 'Select users and enter a valid amount');
+      return;
+    }
+    setSaving(true);
+    try {
+      const body = {
+        fromUserId: settleFrom,
+        toUserId: settleTo,
+        amount: amt,
+      };
+      await expenseApi.recordSettlement(body);
+      setShowSettleModal(false);
+      Alert.alert('Settled', 'Settlement recorded successfully');
+      loadLedger(true);
+    } catch (e) {
+      Alert.alert('Error', e?.response?.data?.message || 'Could not record settlement');
+    } finally {
+      setSaving(false);
+    }
+  }, [settleFrom, settleTo, settleAmount, loadLedger]);
+  const handleQuickSettle = useCallback((entry) => {
+    setSettleFrom(entry.fromUserId);
+    setSettleTo(entry.toUserId);
+    setSettleAmount(entry.amount.toString());
+    setShowSettleModal(true);
+  }, []);
+  const handleOpenCustomSettle = useCallback(() => {
+    const members = Array.from(new Set(ledger.flatMap((e) => [e.fromUserId, e.toUserId])));
+    if (members.length > 0) {
+      setSettleFrom(user?.id || members[0]);
+      setSettleTo(members.find((m) => m !== (user?.id || members[0])) || members[1] || members[0]);
+    }
+    setSettleAmount('');
+    setShowSettleModal(true);
+  }, [ledger, user]);
+  const renderItem = useCallback(
+    ({ item }) => (
+      <View style={styles.entryCard}>
+        <View style={styles.entryRow}>
+          <View style={styles.userChip}>
+            <Text style={styles.userInitials}>{getInitials(item.fromUserName)}</Text>
+            <Text style={styles.userName}>{item.fromUserName}</Text>
+          </View>
+          <Text style={styles.arrowText}>→</Text>
+          <View style={styles.userChip}>
+            <Text style={styles.userInitials}>{getInitials(item.toUserName)}</Text>
+            <Text style={styles.userName}>{item.toUserName}</Text>
+          </View>
+        </View>
+        <View style={styles.entryFooter}>
+          <Text style={styles.amountText}>{formatCurrency(item.amount)}</Text>
+          <TouchableOpacity
+            style={styles.settleButton}
+            onPress={() => handleQuickSettle(item)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.settleButtonText}>Settle</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    ),
+    [handleQuickSettle],
+  );
+  const renderEmpty = useCallback(
+    () => (
+      <View style={styles.empty}>
+        <Text style={styles.emptyIcon}>💰</Text>
+        <Text style={styles.emptyTitle}>All settled up</Text>
+        <Text style={styles.emptySubtitle}>No outstanding balances between members</Text>
+      </View>
+    ),
+    [],
+  );
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+        <ActivityIndicator size="large" color="#D4A017" style={styles.loading} />
+      </SafeAreaView>
+    );
+  }
+  return (
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Text style={styles.backText}>‹ Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Ledger</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.customSettleButton}
+          onPress={handleOpenCustomSettle}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.customSettleText}>+ Settle</Text>
+        </TouchableOpacity>
+      </View>
+
+      {error && (
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      )}
+
+      {ledger.length > 0 && (
+        <View style={styles.summary}>
+          <Text style={styles.summaryText}>
+            {ledger.length} outstanding {ledger.length === 1 ? 'balance' : 'balances'}
+          </Text>
+        </View>
+      )}
+
+      <FlatList
+        data={ledger}
+        renderItem={renderItem}
+        keyExtractor={(item, index) => `${item.fromUserId}-${item.toUserId}-${index}`}
+        refreshing={refreshing}
+        onRefresh={() => loadLedger(true)}
+        ListEmptyComponent={renderEmpty}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+      />
+
+      {/* Settlement Modal */}
+      <Modal
+        visible={showSettleModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowSettleModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Record Settlement</Text>
+              <TouchableOpacity onPress={() => setShowSettleModal(false)}>
+                <Text style={styles.modalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalContent}>
+              <Text style={styles.fieldLabel}>From</Text>
+              <View style={styles.userRow}>
+                {Array.from(new Set(ledger.flatMap((e) => [e.fromUserId, e.toUserId]))).map(
+                  (memberId) => {
+                    const member = ledger.find(
+                      (e) => e.fromUserId === memberId || e.toUserId === memberId,
+                    );
+                    const name =
+                      member?.fromUserId === memberId
+                        ? member.fromUserName
+                        : member?.toUserName || 'Unknown';
+                    return (
+                      <TouchableOpacity
+                        key={memberId}
+                        style={[
+                          styles.userOption,
+                          settleFrom === memberId && styles.userOptionActive,
+                        ]}
+                        onPress={() => setSettleFrom(memberId)}
+                      >
+                        <Text
+                          style={[
+                            styles.userOptionText,
+                            settleFrom === memberId && styles.userOptionTextActive,
+                          ]}
+                        >
+                          {getInitials(name)}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  },
+                )}
+              </View>
+
+              <Text style={styles.fieldLabel}>To</Text>
+              <View style={styles.userRow}>
+                {Array.from(new Set(ledger.flatMap((e) => [e.fromUserId, e.toUserId]))).map(
+                  (memberId) => {
+                    const member = ledger.find(
+                      (e) => e.fromUserId === memberId || e.toUserId === memberId,
+                    );
+                    const name =
+                      member?.fromUserId === memberId
+                        ? member.fromUserName
+                        : member?.toUserName || 'Unknown';
+                    return (
+                      <TouchableOpacity
+                        key={memberId}
+                        style={[
+                          styles.userOption,
+                          settleTo === memberId && styles.userOptionActive,
+                        ]}
+                        onPress={() => setSettleTo(memberId)}
+                      >
+                        <Text
+                          style={[
+                            styles.userOptionText,
+                            settleTo === memberId && styles.userOptionTextActive,
+                          ]}
+                        >
+                          {getInitials(name)}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  },
+                )}
+              </View>
+
+              <TextInput
+                style={styles.input}
+                placeholder="Amount (₹)"
+                value={settleAmount}
+                onChangeText={setSettleAmount}
+                keyboardType="numeric"
+              />
+
+              <TouchableOpacity
+                style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+                onPress={handleSettle}
+                disabled={saving}
+              >
+                <Text style={styles.saveButtonText}>
+                  {saving ? 'Recording...' : 'Record Settlement'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
+  );
+}
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  loading: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(13,13,26,0.08)',
+  },
+  headerLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  backButton: {
+    paddingVertical: 4,
+  },
+  backText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#D4A017',
+  },
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#1A1A2A',
+  },
+  customSettleButton: {
+    backgroundColor: 'rgba(212,160,23,0.08)',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+  },
+  customSettleText: {
+    color: '#D4A017',
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  errorBanner: {
+    backgroundColor: 'rgba(220,53,69,0.08)',
+    padding: 12,
+    marginHorizontal: 16,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  errorText: {
+    color: '#DC3545',
+    fontSize: 13,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  summary: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  summaryText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: 'rgba(13,13,26,0.35)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  listContent: {
+    padding: 16,
+    paddingBottom: 100,
+  },
+  entryCard: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(13,13,26,0.06)',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  entryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  userChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(13,13,26,0.04)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 6,
+  },
+  userInitials: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#D4A017',
+    width: 18,
+    textAlign: 'center',
+  },
+  userName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1A1A2A',
+  },
+  arrowText: {
+    fontSize: 18,
+    color: 'rgba(13,13,26,0.25)',
+    fontWeight: '300',
+  },
+  entryFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(13,13,26,0.05)',
+  },
+  amountText: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#D4A017',
+  },
+  settleButton: {
+    backgroundColor: '#D4A017',
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  settleButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  empty: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+    paddingTop: 60,
+  },
+  emptyIcon: {
+    fontSize: 56,
+    marginBottom: 12,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1A1A2A',
+    marginBottom: 6,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: 'rgba(13,13,26,0.5)',
+    textAlign: 'center',
+  },
+  // Settlement modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 32,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(13,13,26,0.08)',
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#1A1A2A',
+  },
+  modalClose: {
+    fontSize: 22,
+    color: 'rgba(13,13,26,0.35)',
+  },
+  modalContent: {
+    padding: 16,
+  },
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: 'rgba(13,13,26,0.35)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+    marginTop: 12,
+  },
+  userRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  userOption: {
+    backgroundColor: '#F7F7FA',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(13,13,26,0.08)',
+  },
+  userOptionActive: {
+    backgroundColor: 'rgba(212,160,23,0.12)',
+    borderColor: '#D4A017',
+  },
+  userOptionText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'rgba(13,13,26,0.5)',
+  },
+  userOptionTextActive: {
+    color: '#D4A017',
+  },
+  input: {
+    backgroundColor: '#F7F7FA',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: '#1A1A2A',
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(13,13,26,0.08)',
+  },
+  saveButton: {
+    backgroundColor: '#D4A017',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  saveButtonDisabled: {
+    opacity: 0.6,
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+});

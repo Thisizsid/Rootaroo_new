@@ -1,0 +1,412 @@
+import React, { useState, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  SectionList,
+  TouchableOpacity,
+  RefreshControl,
+  Alert,
+  StatusBar,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
+import { SvgXml } from 'react-native-svg';
+import { taskApi } from '../shared/api/task';
+import { useAuthStore } from '../shared/store/authStore';
+import { colors, spacing, fonts } from '../shared/theme';
+import EmptyState from '../components/EmptyState';
+import LoadingSkeleton from '../components/LoadingSkeleton';
+import OfflineBanner from '../components/OfflineBanner';
+const CHECK_SVG =
+  '<svg width="28" height="28" viewBox="0 0 24 24" fill="none">' +
+  '<path d="M5 13l4 4L19 7" stroke="#45566B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>' +
+  '</svg>';
+const FILTER_TABS = [
+  {
+    key: 'ALL',
+    label: 'All',
+  },
+  {
+    key: 'MINE',
+    label: 'Mine',
+  },
+  {
+    key: 'OVERDUE',
+    label: 'Overdue',
+  },
+];
+const SECTION_META = {
+  overdue: {
+    title: 'Overdue',
+    statusColor: colors.danger,
+  },
+  pending: {
+    title: 'Pending',
+    statusColor: colors.goldDeep,
+  },
+  completedToday: {
+    title: 'Completed Today',
+    statusColor: colors.success,
+  },
+};
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+/** Secondary line for a task row: assignee (+ due date). */
+function rowMeta(task) {
+  const person = task.assignees[0]?.displayName || task.createdBy?.displayName || '';
+  const due = formatDate(task.dueDate);
+  return [person, due].filter(Boolean).join(' · ');
+}
+
+/** Right-aligned status label for a task row. */
+function rowStatus(task, key) {
+  if (key === 'overdue') return 'Overdue';
+  if (key === 'completedToday') return 'Done';
+  const due = formatDate(task.dueDate);
+  return due ? `Due ${due}` : 'No date';
+}
+export default function TaskListScreen({ navigation }) {
+  const [grouped, setGrouped] = useState({
+    overdue: [],
+    pending: [],
+    completedToday: [],
+  });
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [filter, setFilter] = useState('ALL');
+  const user = useAuthStore((s) => s.user);
+  const insets = useSafeAreaInsets();
+  const canCreateTask = user?.role === 'admin' || user?.role === 'member';
+  const loadTasks = useCallback(async () => {
+    try {
+      const data = await taskApi.list({
+        group: 'status',
+      });
+      setGrouped(data);
+    } catch {
+      Alert.alert('Error', 'Could not load tasks');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadTasks();
+    }, [loadTasks]),
+  );
+  const handleRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadTasks();
+  }, [loadTasks]);
+  const applyFilter = useCallback(
+    (tasks) => {
+      if (filter === 'MINE') {
+        return tasks.filter(
+          (t) => t.assignees.some((a) => a.id === user?.id) || t.createdBy.id === user?.id,
+        );
+      }
+      return tasks;
+    },
+    [filter, user],
+  );
+  const sections = ['overdue', 'pending', 'completedToday']
+    .map((key) => {
+      let data = applyFilter(grouped[key]);
+      if (filter === 'OVERDUE' && key !== 'overdue') data = [];
+      return {
+        ...SECTION_META[key],
+        key,
+        data,
+      };
+    })
+    .filter((s) => s.data.length > 0);
+  const totalCount =
+    grouped.overdue.length + grouped.pending.length + grouped.completedToday.length;
+  const renderSectionHeader = ({ section }) => (
+    <View style={styles.sectionHeader}>
+      <View
+        style={[
+          styles.sectionDot,
+          {
+            backgroundColor: section.statusColor,
+          },
+        ]}
+      />
+      <Text
+        style={[
+          styles.sectionTitle,
+          {
+            color: section.statusColor,
+          },
+        ]}
+      >
+        {section.title.toUpperCase()}
+      </Text>
+      <Text
+        style={[
+          styles.sectionCount,
+          {
+            color: section.statusColor,
+          },
+        ]}
+      >
+        {section.data.length}
+      </Text>
+    </View>
+  );
+  const renderTask = ({ item, section }) => (
+    <TouchableOpacity
+      style={styles.taskRow}
+      onPress={() =>
+        navigation.navigate('TaskDetail', {
+          taskId: item.id,
+        })
+      }
+      activeOpacity={0.6}
+    >
+      <View style={styles.taskRowLeft}>
+        <Text style={styles.taskTitle} numberOfLines={1}>
+          {item.title}
+        </Text>
+        <Text style={styles.taskMeta} numberOfLines={1}>
+          {rowMeta(item)}
+        </Text>
+      </View>
+      <Text
+        style={[
+          styles.taskStatus,
+          {
+            color: section.statusColor,
+          },
+        ]}
+      >
+        {rowStatus(item, section.key)}
+      </Text>
+    </TouchableOpacity>
+  );
+  if (loading) {
+    return <LoadingSkeleton variant="list" />;
+  }
+  return (
+    <View
+      style={[
+        styles.container,
+        {
+          paddingTop: insets.top,
+        },
+      ]}
+    >
+      <StatusBar barStyle="dark-content" backgroundColor={colors.canvas} />
+
+      {/* ── Header: title + add task link (SCREEN 16) ── */}
+      <View style={styles.header}>
+        <Text style={styles.screenTitle}>Tasks</Text>
+        {canCreateTask && (
+          <TouchableOpacity
+            onPress={() => navigation.navigate('CreateTask')}
+            hitSlop={8}
+            activeOpacity={0.6}
+          >
+            <Text style={styles.addTaskLink}>Add task</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* ── Filter tabs: text row (SCREEN 16) ── */}
+      <View style={styles.filterRow}>
+        {FILTER_TABS.map((tab) => {
+          const active = filter === tab.key;
+          return (
+            <TouchableOpacity key={tab.key} onPress={() => setFilter(tab.key)} activeOpacity={0.6}>
+              <Text style={[styles.filterTab, active && styles.filterTabActive]}>{tab.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* Offline banner */}
+      <View style={styles.bannerWrap}>
+        <OfflineBanner onRetry={handleRefresh} />
+      </View>
+
+      {/* ── Grouped task list (flat rows) ── */}
+      <SectionList
+        sections={sections}
+        keyExtractor={(item) => item.id}
+        renderItem={renderTask}
+        renderSectionHeader={renderSectionHeader}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.gold}
+            colors={[colors.gold]}
+          />
+        }
+        ListEmptyComponent={
+          <EmptyState
+            icon={<SvgXml xml={CHECK_SVG} width={28} height={28} />}
+            title="All caught up"
+            subtitle="No tasks assigned to the household right now."
+            actionLabel="Add a task"
+            onAction={() => navigation.navigate('CreateTask')}
+          />
+        }
+        contentContainerStyle={totalCount === 0 ? styles.emptyContainer : styles.listContent}
+        stickySectionHeadersEnabled={false}
+        showsVerticalScrollIndicator={false}
+      />
+    </View>
+  );
+}
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.canvas,
+    marginTop: 20,
+    marginBottom: 90,
+    paddingHorizontal: 8,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.canvas,
+  },
+  // Header
+  header: {
+    height: 60,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.xxl,
+  },
+  screenTitle: {
+    fontSize: 19,
+    fontWeight: '700',
+    fontFamily: fonts.displayBold,
+    color: colors.ink,
+  },
+  addTaskLink: {
+    fontSize: 14,
+    fontWeight: '500',
+    fontFamily: fonts.bodyMedium,
+    color: colors.goldDeep,
+  },
+  // Filter tabs
+  filterRow: {
+    flexDirection: 'row',
+    gap: 26,
+    paddingHorizontal: spacing.xxl,
+    paddingTop: 4,
+    paddingBottom: 16,
+  },
+  filterTab: {
+    fontSize: 14,
+    fontWeight: '400',
+    fontFamily: fonts.body,
+    color: colors.textMuted,
+  },
+  filterTabActive: {
+    fontWeight: '600',
+    fontFamily: fonts.bodySemiBold,
+    color: colors.ink,
+  },
+  // Section headers
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: spacing.xxl,
+    paddingTop: spacing.xxl,
+    paddingBottom: 6,
+  },
+  sectionDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    fontFamily: fonts.bodyBold,
+    letterSpacing: 1.4,
+  },
+  sectionCount: {
+    fontSize: 11,
+    fontWeight: '700',
+    fontFamily: fonts.bodyBold,
+    opacity: 0.7,
+  },
+  // Task rows
+  taskRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingVertical: 18,
+    marginHorizontal: spacing.xxl,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  taskRowLeft: {
+    flex: 1,
+  },
+  taskTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: fonts.displayBold,
+    color: colors.ink,
+    marginBottom: 6,
+  },
+  taskMeta: {
+    fontSize: 13,
+    fontFamily: fonts.body,
+    color: colors.textSecondary,
+  },
+  taskStatus: {
+    fontSize: 13,
+    fontWeight: '600',
+    fontFamily: fonts.bodySemiBold,
+  },
+  // Empty
+  listContent: {
+    paddingBottom: 110,
+  },
+  emptyContainer: {
+    flexGrow: 1,
+    justifyContent: 'center',
+  },
+  bannerWrap: {
+    paddingHorizontal: spacing.xxl,
+    paddingTop: 4,
+    paddingBottom: 8,
+  },
+  empty: {
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    fontFamily: fonts.display,
+    color: colors.ink,
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    fontFamily: fonts.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+});

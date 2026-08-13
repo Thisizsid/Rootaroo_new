@@ -1,0 +1,37 @@
+import multer from 'multer';
+
+const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.avi', '.webm', '.mkv'];
+const ALLOWED = [...IMAGE_EXTENSIONS, ...VIDEO_EXTENSIONS];
+
+const imageFilter: multer.Options['fileFilter'] = (_req, file, cb) => {
+  const ext = file.originalname.toLowerCase().match(/\.[^.]+$/)?.[0] || '';
+  if (IMAGE_EXTENSIONS.includes(ext)) {
+    cb(null, true);
+  } else {
+    cb(new Error(`Only images (${IMAGE_EXTENSIONS.join(', ')}) are allowed.`));
+  }
+};
+
+const mediaFilter: multer.Options['fileFilter'] = (_req, file, cb) => {
+  const ext = file.originalname.toLowerCase().match(/\.[^.]+$/)?.[0] || '';
+  if (ALLOWED.includes(ext)) {
+    cb(null, true);
+  } else {
+    cb(new Error(`Only images and videos (${ALLOWED.join(', ')}) are allowed.`));
+  }
+};
+
+const memory = multer.memoryStorage();
+
+export const uploadAvatar = multer({
+  storage: memory,
+  fileFilter: imageFilter,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+}).single('avatar');
+
+export const uploadFeedMedia = multer({
+  storage: memory,
+  fileFilter: mediaFilter,
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB (covers max 2min 720p video)
+});

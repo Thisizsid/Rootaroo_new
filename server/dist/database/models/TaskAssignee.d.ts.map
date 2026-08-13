@@ -1,0 +1,1 @@
+{"version":3,"file":"TaskAssignee.d.ts","sourceRoot":"","sources":["../../../src/database/models/TaskAssignee.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,KAAK,EAAa,gBAAgB,EAAE,MAAM,WAAW,CAAC;AAG/D,cAAM,YAAa,SAAQ,KAAK;IACtB,EAAE,EAAE,gBAAgB,CAAC,MAAM,CAAC,CAAC;IAC7B,MAAM,EAAE,MAAM,CAAC;IACf,MAAM,EAAE,MAAM,CAAC;IACf,SAAS,EAAE,gBAAgB,CAAC,IAAI,CAAC,CAAC;CAC3C;AAgCD,eAAe,YAAY,CAAC"}

@@ -1,0 +1,21 @@
+import { Request, Response, NextFunction } from 'express';
+export declare function register(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function login(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function refresh(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function logout(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function me(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function updateProfile(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function googleAuth(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function sendVerification(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function verifyEmail(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function forgotPassword(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function resetPassword(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function scheduleDeletion(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function cancelDeletion(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function confirmDeletion(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function uploadAvatarCtrl(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function cancelPendingRegistration(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function registerPhone(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function sendPhoneOtp(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function verifyPhoneOtp(req: Request, res: Response, next: NextFunction): Promise<void>;
+//# sourceMappingURL=controller.d.ts.map

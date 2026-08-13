@@ -1,0 +1,35 @@
+export interface CreateTodoBody {
+    title: string;
+    dueDate?: string;
+    assignedTo?: string;
+}
+export interface UpdateTodoBody {
+    title?: string;
+    dueDate?: string | null;
+    assignedTo?: string | null;
+}
+export interface TodoResponse {
+    id: string;
+    title: string;
+    dueDate: string | null;
+    assignedTo: TodoAssignee | null;
+    isCompleted: boolean;
+    completedAt: string | null;
+    createdAt: string;
+}
+export interface TodoAssignee {
+    id: string;
+    displayName: string;
+    avatarUrl: string | null;
+    avatarEmoji: string | null;
+}
+export interface GroupedTodosResponse {
+    pending: TodoResponse[];
+    completed: TodoResponse[];
+}
+export type TodoFilter = 'all' | 'assigned-to-me' | 'completed';
+export interface TodoSummaryResponse {
+    pending: number;
+    completedToday: number;
+}
+//# sourceMappingURL=types.d.ts.map

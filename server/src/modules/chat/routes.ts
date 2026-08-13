@@ -1,0 +1,45 @@
+import { Router } from 'express';
+import { authenticate } from '../../shared/middleware/auth';
+import { validate } from '../../shared/middleware/validate';
+import * as ctrl from './controller';
+import {
+  createMessageSchema,
+  updateMessageSchema,
+  reactionSchema,
+  deleteReactionSchema,
+  messageQuerySchema,
+  messageIdParamSchema,
+  typingSchema,
+  createConversationSchema,
+  conversationIdParamSchema,
+  addParticipantSchema,
+  removeParticipantSchema,
+} from './validation';
+
+const router = Router();
+
+router.use(authenticate);
+
+// Conversations — must be registered before /:id so "conversations" is not treated as a message id
+router.post('/conversations', validate(createConversationSchema), ctrl.createConversationCtrl);
+router.get('/conversations', ctrl.getUserConversationsCtrl);
+router.delete('/conversations/:id', validate(conversationIdParamSchema), ctrl.deleteConversationCtrl);
+router.post('/conversations/:id/participants', validate(addParticipantSchema), ctrl.addParticipantCtrl);
+router.delete('/conversations/:id/participants/:userId', validate(removeParticipantSchema), ctrl.removeParticipantCtrl);
+router.post('/conversations/:id/invite', validate(addParticipantSchema), ctrl.inviteParticipantCtrl);
+
+// Typing indicator — before /:id
+router.post('/typing', validate(typingSchema), ctrl.typingCtrl);                                   // FR-149
+
+// Chat CRUD
+router.post('/', validate(createMessageSchema), ctrl.sendMessageCtrl);                     // FR-140/143/144
+router.get('/', validate(messageQuerySchema), ctrl.listMessagesCtrl);                       // FR-140
+router.get('/:id', validate(messageIdParamSchema), ctrl.getMessageByIdCtrl);
+router.patch('/:id', validate(updateMessageSchema), ctrl.updateMessageCtrl);                // FR-150
+router.delete('/:id', validate(messageIdParamSchema), ctrl.deleteMessageCtrl);               // FR-145/146
+
+// Reactions
+router.post('/:id/reactions', validate(reactionSchema), ctrl.addReactionCtrl);              // FR-148
+router.delete('/:id/reactions/:emoji', validate(deleteReactionSchema), ctrl.removeReactionCtrl);
+
+export default router;

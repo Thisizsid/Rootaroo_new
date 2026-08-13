@@ -1,0 +1,133 @@
+import express from 'express';
+import helmet from 'helmet';
+import cors from 'cors';
+import morgan from 'morgan';
+import rateLimit from 'express-rate-limit';
+import { RedisStore } from 'rate-limit-redis';
+import redis from './config/redis';
+import { env } from './config/env';
+import { errorHandler } from './shared/middleware/errorHandler';
+import path from 'path';
+import authRouter from './modules/auth/routes';
+import householdRouter from './modules/household/routes';
+import feedRouter from './modules/feed/routes';
+import taskRouter from './modules/task/routes';
+import groceryRouter from './modules/grocery/routes';
+import todoRouter from './modules/todo/routes';
+import notificationRouter from './modules/notification/routes';
+import dashboardRouter from './modules/dashboard/routes';
+import expenseRouter from './modules/expense/routes';
+import vaultRouter from './modules/vault/routes';
+import chatRouter from './modules/chat/routes';
+import eventRouter from './modules/calendar/routes';
+import checkInRouter from './modules/checkin/routes';
+import pingRouter from './modules/ping/routes';
+import placeRouter from './modules/place/routes';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './config/swagger';
+import logger from './shared/utils/logger';
+
+const app = express();
+
+// ── Security Middleware ──
+app.use(helmet());
+app.use(cors({
+  origin: env.corsOrigins,
+  credentials: true,
+}));
+
+// ── Rate Limiting ──
+// Backed by Redis so limits survive restarts/deploys and are shared across
+// instances, instead of the default in-memory store resetting on every boot.
+//
+// Fails OPEN, not closed: rate-limit-redis awaits a `SCRIPT LOAD` result on
+// every check, so if Redis is unreachable that check rejects and would
+// otherwise 500 every single API request. Rate limiting is a defense-in-depth
+// measure, not core correctness — better to let requests through
+// unthrottled during a Redis outage than to take the whole API down with it.
+// `redisRateLimiter()` below only delegates to the Redis-backed limiter once
+// `redis.status === 'ready'`; otherwise it skips straight to `next()`.
+function redisRateLimiter(limiter: ReturnType<typeof rateLimit>) {
+  return (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (redis.status !== 'ready') return next();
+    limiter(req, res, next);
+  };
+}
+
+const generalLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many requests, please try again later.' },
+  store: new RedisStore({
+    prefix: 'rl:general:',
+    sendCommand: (...args: string[]) => (redis as any).call(...args),
+  }),
+});
+app.use('/api/', redisRateLimiter(generalLimiter));
+
+// Strict rate limit on auth endpoints
+const authLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many auth attempts, please try again later.' },
+  store: new RedisStore({
+    prefix: 'rl:auth:',
+    sendCommand: (...args: string[]) => (redis as any).call(...args),
+  }),
+});
+app.use('/api/v1/auth/', redisRateLimiter(authLimiter));
+
+// ── Body Parsing ──
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
+
+// ── Request Logging ──
+app.use(morgan(env.nodeEnv === 'development' ? 'dev' : 'combined', {
+  stream: { write: (message: string) => logger.info(message.trim()) },
+}));
+
+// ── Health Check ──
+app.get('/health', (_req, res) => {
+  res.json({ success: true, data: { status: 'ok', timestamp: new Date().toISOString() } });
+});
+
+// ── Static files (uploaded media) ──
+app.use('/uploads', express.static(path.resolve(env.uploadDir || './uploads')));
+
+// ── API Routes ──
+app.use('/api/v1/auth', authRouter);
+app.use('/api/v1/households', householdRouter);
+app.use('/api/v1/feed', feedRouter);
+app.use('/api/v1/tasks', taskRouter);
+app.use('/api/v1/groceries', groceryRouter);
+app.use('/api/v1/todos', todoRouter);
+app.use('/api/v1/expenses', expenseRouter);
+app.use('/api/v1/vault', vaultRouter);
+app.use('/api/v1/notifications', notificationRouter);
+app.use('/api/v1/dashboard', dashboardRouter);
+app.use('/api/v1/events', eventRouter);
+app.use('/api/v1/chat', chatRouter);
+app.use('/api/v1/checkins', checkInRouter);
+app.use('/api/v1/pings', pingRouter);
+app.use('/api/v1/places', placeRouter);
+
+// ── Swagger Docs ──
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+app.get('/api-docs.json', (_req, res) => {
+  res.json(swaggerSpec);
+});
+
+// ── 404 Handler ──
+app.use((_req, res) => {
+  res.status(404).json({ success: false, error: 'Route not found', message: 'Route not found' });
+});
+
+// ── Global Error Handler ──
+app.use(errorHandler);
+
+export default app;
