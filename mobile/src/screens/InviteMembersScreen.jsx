@@ -16,7 +16,7 @@ import { householdApi } from '../shared/api/household';
 import { updateSignupProgress } from '../shared/store/signupProgress';
 import { colors, fonts } from '../shared/theme';
 // Soft pastel colours for initials avatars
-const AVATAR_COLORS = ['#E8C97A', '#F4A0A0', '#A8C8A0', '#A0B8D4', '#C4A0D4'];
+const AVATAR_COLORS = [colors.avatarGold2, colors.avatarBlush, colors.avatarSage, colors.avatarSky, colors.avatarLilac];
 function initials(name) {
   return name
     .split(' ')
@@ -30,7 +30,7 @@ function initials(name) {
 function QRCode() {
   return (
     <Svg width="96" height="96" viewBox="0 0 100 100">
-      <Rect width="100" height="100" fill="#FFFFFF" />
+      <Rect width="100" height="100" fill={colors.surface} />
       {[
         [8, 8],
         [18, 8],
@@ -197,7 +197,7 @@ export default function InviteMembersScreen({ navigation }) {
 }
 const styles = StyleSheet.create({
   inviteCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     borderWidth: 1.5,
     borderColor: colors.fieldBorder,
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1.5,
     borderColor: colors.fieldBorder,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
   pillBtnText: {
     fontFamily: fonts.bodySemiBold,
@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
   memberAvatarText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.surface,
   },
   joinName: {
     fontFamily: fonts.bodyMedium,

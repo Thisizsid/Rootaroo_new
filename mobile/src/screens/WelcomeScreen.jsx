@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import Svg, { Path, Circle, Ellipse, Rect, G } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, fonts, radius } from '../shared/theme';
+import { colors, fonts, radius, withAlpha } from '../shared/theme';
 const { width: W } = Dimensions.get('window');
 const BREATHE_DURATION = 3600; // mockup: breathe 3.6s
 const PULSE_DURATION = 2200; // mockup: softPulse 2.2s
@@ -115,7 +115,7 @@ function KangarooHero() {
       }}
     >
       <Svg width="100%" height="100%" viewBox="0 0 300 210">
-        <Ellipse cx="130" cy="195" rx="60" ry="9" fill="rgba(42,46,51,0.07)" />
+        <Ellipse cx="130" cy="195" rx="60" ry="9" fill={withAlpha(colors.ink, 0.07)} />
         {/* Joey */}
         <Path
           d="M172 195 Q210 200 206 160 Q204 145 188 153 Q196 172 180 189 Z"
@@ -134,7 +134,7 @@ function KangarooHero() {
           cy="168"
           rx="34"
           ry="24"
-          fill="#F1EEE7"
+          fill={colors.canvasIvory}
           stroke={colors.ink}
           strokeWidth="2"
         />
@@ -143,7 +143,7 @@ function KangarooHero() {
         <Ellipse cx="150" cy="52" rx="10" ry="18" rotation={16} fill={colors.gold} />
         {/* Head */}
         <Circle cx="131" cy="86" r="33" fill={colors.gold} />
-        <Ellipse cx="131" cy="98" rx="14" ry="11" fill="#F1EEE7" />
+        <Ellipse cx="131" cy="98" rx="14" ry="11" fill={colors.canvasIvory} />
         <Circle cx="122" cy="82" r="2.8" fill={colors.ink} />
         <Circle cx="140" cy="82" r="2.8" fill={colors.ink} />
         <Path
@@ -157,7 +157,7 @@ function KangarooHero() {
         <G transform="translate(232,150)">
           <Path
             d="M-22 0l22-19 22 19"
-            stroke="#45566B"
+            stroke={colors.inkMuted}
             strokeWidth="2.4"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -165,18 +165,18 @@ function KangarooHero() {
           />
           <Path
             d="M-16 -3v33h32v-33"
-            stroke="#45566B"
+            stroke={colors.inkMuted}
             strokeWidth="2.4"
             strokeLinejoin="round"
-            fill="#E1E6EA"
+            fill={colors.borderCool}
           />
-          <Rect x="-5" y="12" width="10" height="18" fill="#45566B" opacity="0.5" />
+          <Rect x="-5" y="12" width="10" height="18" fill={colors.inkMuted} opacity="0.5" />
         </G>
       </Svg>
       {/* Chest dots — pulsing */}
-      <PulsingDot xPct={118} yPct={166} r={3} color="#F5E6C8" />
-      <PulsingDot xPct={130} yPct={162} r={3} color="#F5E6C8" delay={300} />
-      <PulsingDot xPct={140} yPct={167} r={3} color="#F5E6C8" delay={600} />
+      <PulsingDot xPct={118} yPct={166} r={3} color={colors.goldLight} />
+      <PulsingDot xPct={130} yPct={162} r={3} color={colors.goldLight} delay={300} />
+      <PulsingDot xPct={140} yPct={167} r={3} color={colors.goldLight} delay={600} />
     </Animated.View>
   );
 }
@@ -200,7 +200,7 @@ function OrganizeHero() {
     >
       <Svg width="100%" height="100%" viewBox="0 0 300 210">
         {/* Ground shadow */}
-        <Ellipse cx="150" cy="192" rx="80" ry="9" fill="rgba(42,46,51,0.07)" />
+        <Ellipse cx="150" cy="192" rx="80" ry="9" fill={withAlpha(colors.ink, 0.07)} />
         {/* Checklist card */}
         <Rect
           x="78"
@@ -218,7 +218,7 @@ function OrganizeHero() {
         <Circle cx="104" cy="106" r="10" fill={colors.gold} />
         <Path
           d="M99 106 l4 4 l8 -8"
-          stroke="#FFFFFF"
+          stroke={colors.surface}
           strokeWidth="2.4"
           fill="none"
           strokeLinecap="round"
@@ -332,7 +332,7 @@ function SecurityHero() {
       >
         <Svg width="100%" height="100%" viewBox="0 0 300 210">
           {/* Ground shadow */}
-          <Ellipse cx="150" cy="192" rx="64" ry="9" fill="rgba(42,46,51,0.07)" />
+          <Ellipse cx="150" cy="192" rx="64" ry="9" fill={withAlpha(colors.ink, 0.07)} />
           {/* Shield */}
           <Path d="M150 42 L212 66 V118 Q212 164 150 186 Q88 164 88 118 V66 Z" fill={colors.gold} />
           <Path
@@ -733,7 +733,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodySemiBold,
     fontSize: 15,
     lineHeight: 15,
-    color: '#FFFFFF',
+    color: colors.surface,
   },
   existingLink: {
     fontFamily: fonts.bodyMedium,

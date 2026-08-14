@@ -15,8 +15,8 @@ import { useNavigation } from '@react-navigation/native';
 import { chatApi } from '../shared/api/chat';
 import { householdApi } from '../shared/api/household';
 import { useAuthStore } from '../shared/store/authStore';
-import { colors, radius, spacing } from '../shared/theme';
-const AVATAR_COLORS = [colors.gold, '#D4B896', '#C4A0D4', '#A8C8A0', '#A0B8D4'];
+import { colors, radius, spacing, withAlpha } from '../shared/theme';
+const AVATAR_COLORS = [colors.gold, colors.avatarTan, colors.avatarLilac, colors.avatarSage, colors.avatarSky];
 function initials(name) {
   const parts = name.trim().split(/\s+/);
   if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
@@ -214,7 +214,7 @@ export default function GroupMembersScreen({ route }) {
             activeOpacity={0.7}
           >
             {busy ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color={colors.surface} />
             ) : (
               <Text style={styles.addBtnText}>Add</Text>
             )}
@@ -378,7 +378,7 @@ export default function GroupMembersScreen({ route }) {
                         activeOpacity={0.7}
                       >
                         {busy ? (
-                          <ActivityIndicator size="small" color="#fff" />
+                          <ActivityIndicator size="small" color={colors.surface} />
                         ) : (
                           <Text style={styles.addBtnText}>Add</Text>
                         )}
@@ -499,7 +499,7 @@ const styles = StyleSheet.create({
   },
   modalBackdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: withAlpha(colors.black, 0.4),
   },
   modalSheet: {
     backgroundColor: colors.canvas,
@@ -643,7 +643,7 @@ const styles = StyleSheet.create({
   addBtnText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.surface,
   },
   removeBtn: {
     backgroundColor: colors.surfaceWarm,

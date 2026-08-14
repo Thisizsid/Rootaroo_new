@@ -201,7 +201,7 @@ export default function SignUpScreen({ navigation }) {
             disabled={!canContinue}
           >
             {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ActivityIndicator color={colors.surface} />
             ) : (
               <Text style={[styles.ctaText, !canContinue && styles.ctaTextDisabled]}>Continue</Text>
             )}
@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
   },
   input: {
     height: 52,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 14,
     paddingHorizontal: 16,
     fontSize: 16,
@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
   },
   inputRow: {
     height: 52,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 14,
     borderWidth: 1.5,
     borderColor: colors.fieldBorder,
@@ -340,7 +340,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 16,
     letterSpacing: 0.2,
-    color: '#FFFFFF',
+    color: colors.surface,
   },
   ctaTextDisabled: {
     color: colors.btnDisabledText,

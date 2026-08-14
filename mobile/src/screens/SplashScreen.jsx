@@ -187,7 +187,7 @@ export default function SplashScreen() {
   useEffect(() => {
     NavigationBar.setBackgroundColorAsync(colors.splashBg);
     return () => {
-      NavigationBar.setBackgroundColorAsync('#FFFFFF');
+      NavigationBar.setBackgroundColorAsync(colors.surface);
     };
   }, []);
   useEffect(() => {
@@ -357,7 +357,7 @@ const styles = StyleSheet.create({
     lineHeight: 34,
     letterSpacing: -0.02,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: colors.surface,
     textAlign: 'center',
   },
   tagline: {

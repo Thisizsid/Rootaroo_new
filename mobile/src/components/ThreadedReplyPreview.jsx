@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { colors } from '../shared/theme';
 
 export default function ThreadedReplyPreview({ senderName, content, onDismiss }) {
   return (
@@ -29,9 +30,9 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.canvasGray,
     borderLeftWidth: 3,
-    borderLeftColor: '#D4A017',
+    borderLeftColor: colors.legacyGold,
     paddingHorizontal: 12,
     paddingVertical: 8,
     marginHorizontal: 8,
@@ -39,9 +40,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   content: { flex: 1, marginRight: 8 },
-  label: { fontSize: 12, color: '#6b7280' },
-  name: { fontWeight: '700', color: '#D4A017' },
-  preview: { fontSize: 13, color: '#374151', marginTop: 2 },
+  label: { fontSize: 12, color: colors.grayMuted },
+  name: { fontWeight: '700', color: colors.legacyGold },
+  preview: { fontSize: 13, color: colors.grayDeep, marginTop: 2 },
   dismissBtn: { padding: 4 },
-  dismissText: { fontSize: 14, color: '#9ca3af' },
+  dismissText: { fontSize: 14, color: colors.grayCool },
 });

@@ -29,7 +29,7 @@ import { useAuthStore } from '../shared/store/authStore';
 import { vaultApi } from '../shared/api/vault';
 import { getPrivateKey } from '../shared/crypto/secureKeyStore';
 import { formatFileSize, formatDate } from '../shared/utils/format';
-import { colors, fonts } from '../shared/theme';
+import { colors, fonts, withAlpha } from '../shared/theme';
 import EmptyState from '../components/EmptyState';
 import ErrorState from '../components/ErrorState';
 import LoadingSkeleton from '../components/LoadingSkeleton';
@@ -39,9 +39,9 @@ const AUTO_LOCK_SECONDS = 300; // 5 minutes (mock: "Auto-locks in 4:52")
 
 const VAULT_SVG =
   '<svg width="26" height="26" viewBox="0 0 24 24" fill="none">' +
-  '<rect x="3" y="7" width="18" height="13" rx="2" stroke="#B88A3E" stroke-width="1.5"></rect>' +
-  '<path d="M8 7l1.5-3h5L16 7" stroke="#B88A3E" stroke-width="1.5" stroke-linejoin="round"></path>' +
-  '<circle cx="12" cy="13.5" r="3.5" stroke="#B88A3E" stroke-width="1.5"></circle>' +
+  `<rect x="3" y="7" width="18" height="13" rx="2" stroke="${colors.gold}" stroke-width="1.5"></rect>` +
+  `<path d="M8 7l1.5-3h5L16 7" stroke="${colors.gold}" stroke-width="1.5" stroke-linejoin="round"></path>` +
+  `<circle cx="12" cy="13.5" r="3.5" stroke="${colors.gold}" stroke-width="1.5"></circle>` +
   '</svg>';
 
 /** Coarse type label shown on the top of each card (mock {{ d.type }}). */
@@ -374,7 +374,7 @@ export default function VaultListScreen({ navigation }) {
             activeOpacity={0.85}
           >
             {unlockLoading ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color={colors.surface} />
             ) : (
               <Text style={styles.unlockButtonText}>Unlock vault</Text>
             )}
@@ -646,7 +646,7 @@ const styles = StyleSheet.create({
     fontSize: 25,
     lineHeight: 33,
     fontFamily: fonts.displayBold,
-    color: '#fff',
+    color: colors.surface,
     textAlign: 'center',
     marginBottom: 12,
   },
@@ -678,7 +678,7 @@ const styles = StyleSheet.create({
   unlockButtonText: {
     fontSize: 15,
     fontFamily: fonts.displayBold,
-    color: '#fff',
+    color: colors.surface,
   },
   // ── Header (shared: locked back-only row + unlocked title row) ──
   header: {
@@ -697,14 +697,14 @@ const styles = StyleSheet.create({
   backIcon: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.surface,
     lineHeight: 20,
   },
   headerTitle: {
     flex: 1,
     fontSize: 17,
     fontFamily: fonts.displayBold,
-    color: '#fff',
+    color: colors.surface,
   },
   lockCountdown: {
     fontSize: 12,
@@ -739,7 +739,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 19,
     fontFamily: fonts.displayBold,
-    color: '#fff',
+    color: colors.surface,
   },
   cardMeta: {
     fontSize: 11,
@@ -772,7 +772,7 @@ const styles = StyleSheet.create({
   fabText: {
     fontSize: 24,
     fontFamily: fonts.displayBold,
-    color: '#fff',
+    color: colors.surface,
     lineHeight: 28,
   },
   // Empty
@@ -789,7 +789,7 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontFamily: fonts.displayBold,
-    color: '#fff',
+    color: colors.surface,
     marginBottom: 6,
   },
   emptySubtitle: {
@@ -806,7 +806,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   emptyAddButtonText: {
-    color: '#fff',
+    color: colors.surface,
     fontSize: 15,
     fontFamily: fonts.displayBold,
   },
@@ -817,7 +817,7 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(27,30,36,0.55)',
+    backgroundColor: withAlpha(colors.inkDeep, 0.55),
   },
   sheet: {
     backgroundColor: colors.surface,
@@ -866,7 +866,7 @@ const styles = StyleSheet.create({
   // ── Rename modal ──
   renameOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(27,30,36,0.55)',
+    backgroundColor: withAlpha(colors.inkDeep, 0.55),
     justifyContent: 'center',
     paddingHorizontal: 32,
   },
@@ -916,7 +916,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gold,
   },
   renameSaveText: {
-    color: '#fff',
+    color: colors.surface,
     fontSize: 14,
     fontFamily: fonts.displayBold,
   },

@@ -22,7 +22,7 @@ import { householdApi } from '../shared/api/household';
 import { useAuthStore } from '../shared/store/authStore';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { format, addDays } from 'date-fns';
-import { colors, radius, fonts } from '../shared/theme';
+import { colors, radius, fonts, withAlpha } from '../shared/theme';
 import ConfirmSheet from '../components/ConfirmSheet';
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
@@ -762,7 +762,7 @@ export default function GroceryListScreen({ navigation }) {
               activeOpacity={0.85}
             >
               {saving ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator size="small" color={colors.surface} />
               ) : (
                 <Text style={styles.saveBtnText}>Save changes</Text>
               )}
@@ -1018,7 +1018,7 @@ const styles = StyleSheet.create({
   checkmark: {
     fontSize: 11,
     fontWeight: '900',
-    color: '#fff',
+    color: colors.surface,
     lineHeight: 13,
   },
   itemContent: {
@@ -1178,7 +1178,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     fontFamily: fonts.displayBold,
-    color: '#fff',
+    color: colors.surface,
   },
   removeLink: {
     alignItems: 'center',
@@ -1202,7 +1202,7 @@ const sheet = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(27,30,36,0.55)',
+    backgroundColor: withAlpha(colors.inkDeep, 0.55),
   },
   box: {
     backgroundColor: colors.surface,

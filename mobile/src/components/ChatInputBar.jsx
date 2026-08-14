@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   sendIconActive: {
-    color: '#FFFFFF',
+    color: colors.surface,
   },
   sendIconDisabled: {
     color: colors.textMuted,

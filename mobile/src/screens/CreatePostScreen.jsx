@@ -27,17 +27,18 @@ import apiClient from '../shared/api/client';
 import * as ImagePicker from 'expo-image-picker';
 import { useFeedStore } from '../shared/store/feedStore';
 import { useAuthStore } from '../shared/store/authStore';
+import { colors, withAlpha } from '../shared/theme';
 const MAX_CHARS = 10000;
 const MAX_MEDIA = 10;
 const ATTACH_SVG =
   '<svg width="22" height="22" viewBox="0 0 24 24" fill="none">' +
-  '<rect x="3" y="5" width="18" height="14" rx="2" stroke="#757A80" stroke-width="1.5"></rect>' +
-  '<circle cx="8.5" cy="10" r="1.5" stroke="#757A80" stroke-width="1.5"></circle>' +
-  '<path d="M21 16l-5-5-9 9" stroke="#757A80" stroke-width="1.5"></path>' +
+  `<rect x="3" y="5" width="18" height="14" rx="2" stroke="${colors.textSecondary}" stroke-width="1.5"></rect>` +
+  `<circle cx="8.5" cy="10" r="1.5" stroke="${colors.textSecondary}" stroke-width="1.5"></circle>` +
+  `<path d="M21 16l-5-5-9 9" stroke="${colors.textSecondary}" stroke-width="1.5"></path>` +
   '</svg>';
 const CLOSE_SVG =
   '<svg width="16" height="16" viewBox="0 0 24 24" fill="none">' +
-  '<path d="M6 6l12 12M18 6L6 18" stroke="#2A2E33" stroke-width="2.2" stroke-linecap="round"></path>' +
+  `<path d="M6 6l12 12M18 6L6 18" stroke="${colors.ink}" stroke-width="2.2" stroke-linecap="round"></path>` +
   '</svg>';
 const MOODS = [
   {
@@ -443,7 +444,7 @@ export default function CreatePostScreen({ navigation, route }) {
           <TextInput
             style={styles.input}
             placeholder="What's going on?"
-            placeholderTextColor="#A6ABB0"
+            placeholderTextColor={colors.textMuted}
             value={content}
             onChangeText={setContent}
             multiline
@@ -492,7 +493,7 @@ export default function CreatePostScreen({ navigation, route }) {
                   )}
                   {item.uploading && (
                     <View style={styles.mediaOverlay}>
-                      <ActivityIndicator size="small" color="#fff" />
+                      <ActivityIndicator size="small" color={colors.surface} />
                       <Text style={styles.uploadLabel}>Uploading</Text>
                     </View>
                   )}
@@ -607,7 +608,7 @@ export default function CreatePostScreen({ navigation, route }) {
               }}
             >
               {posting ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
+                <ActivityIndicator size="small" color={colors.surface} />
               ) : (
                 <Text style={styles.postButtonText}>Post</Text>
               )}
@@ -765,7 +766,7 @@ export default function CreatePostScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'rgba(27,30,36,0.55)', // backdrop
+    backgroundColor: withAlpha(colors.inkDeep, 0.55), // backdrop
   },
   sheet: {
     position: 'absolute',
@@ -773,10 +774,10 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     // stretch from animated top all the way down, like the mock
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
-    shadowColor: '#1B1E24',
+    shadowColor: colors.inkDeep,
     shadowOffset: {
       width: 0,
       height: -8,
@@ -788,7 +789,7 @@ const styles = StyleSheet.create({
   handleBar: {
     width: 40,
     height: 4,
-    backgroundColor: '#E3E1DB',
+    backgroundColor: colors.surfaceDark,
     borderRadius: 2,
     alignSelf: 'center',
     marginBottom: 22,
@@ -803,7 +804,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#2A2E33',
+    color: colors.ink,
     fontFamily: 'PlusJakartaSans_600SemiBold',
   },
   titleCentered: {
@@ -819,11 +820,11 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#F1EFEA',
+    backgroundColor: colors.canvasWarm,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(42,46,51,0.1)',
+    borderColor: withAlpha(colors.ink, 0.1),
   },
   userInfo: {
     flexDirection: 'row',
@@ -842,27 +843,27 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   avatarCircle: {
-    backgroundColor: '#E1E6EA',
+    backgroundColor: colors.borderCool,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarInitials: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#45566B',
+    color: colors.inkMuted,
     fontFamily: 'Inter_600SemiBold',
   },
   userInfoName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#2A2E33',
+    color: colors.ink,
     fontFamily: 'PlusJakartaSans_600SemiBold',
   },
   moodPill: {
     flexDirection: 'row',
     alignItems: 'center',
     maxWidth: 150,
-    backgroundColor: 'rgba(212,160,23,0.14)',
+    backgroundColor: withAlpha(colors.legacyGold, 0.14),
     borderRadius: 14,
     paddingLeft: 10,
     paddingRight: 4,
@@ -872,7 +873,7 @@ const styles = StyleSheet.create({
   moodPillText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#8A6A0A',
+    color: colors.legacyGoldDark,
     flexShrink: 1,
   },
   moodClear: {
@@ -883,7 +884,7 @@ const styles = StyleSheet.create({
   },
   moodClearText: {
     fontSize: 16,
-    color: '#8A6A0A',
+    color: colors.legacyGoldDark,
     fontWeight: '600',
     lineHeight: 18,
   },
@@ -895,14 +896,14 @@ const styles = StyleSheet.create({
   input: {
     fontSize: 15,
     lineHeight: 22.5,
-    color: '#2A2E33',
+    color: colors.ink,
     fontFamily: 'Inter_400Regular',
     paddingVertical: 0,
     minHeight: 120,
   },
   activityPill: {
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(212,160,23,0.14)',
+    backgroundColor: withAlpha(colors.legacyGold, 0.14),
     borderRadius: 12,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -911,7 +912,7 @@ const styles = StyleSheet.create({
   activityPillText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#8A6A0A',
+    color: colors.legacyGoldDark,
   },
   mediaStrip: {
     flexDirection: 'row',
@@ -925,7 +926,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     position: 'relative',
     overflow: 'hidden',
-    backgroundColor: '#F3F1EC',
+    backgroundColor: colors.canvas,
   },
   mediaThumb: {
     width: '100%',
@@ -945,18 +946,18 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: withAlpha(colors.black, 0.45),
     alignItems: 'center',
     justifyContent: 'center',
   },
   playBadgeText: {
-    color: '#fff',
+    color: colors.surface,
     fontSize: 12,
     marginLeft: 2,
   },
   mediaOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(15,23,43,0.55)',
+    backgroundColor: withAlpha(colors.overlayInk, 0.55),
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
@@ -965,17 +966,17 @@ const styles = StyleSheet.create({
   uploadLabel: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.surface,
   },
   errorLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.surface,
   },
   retryLabel: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#D4A017',
+    color: colors.legacyGold,
     marginTop: 2,
   },
   mediaRemove: {
@@ -985,12 +986,12 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: 'rgba(13,13,26,0.72)',
+    backgroundColor: withAlpha(colors.legacyNavy, 0.72),
     alignItems: 'center',
     justifyContent: 'center',
   },
   mediaRemoveText: {
-    color: '#fff',
+    color: colors.surface,
     fontSize: 14,
     fontWeight: '600',
     lineHeight: 16,
@@ -998,7 +999,7 @@ const styles = StyleSheet.create({
   },
   addMore: {
     borderWidth: 1.5,
-    borderColor: 'rgba(13,13,26,0.12)',
+    borderColor: withAlpha(colors.legacyNavy, 0.12),
     borderStyle: 'dashed',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1006,13 +1007,13 @@ const styles = StyleSheet.create({
   },
   addMorePlus: {
     fontSize: 24,
-    color: 'rgba(13,13,26,0.35)',
+    color: withAlpha(colors.legacyNavy, 0.35),
     fontWeight: '300',
   },
   addMoreLabel: {
     fontSize: 11,
     fontWeight: '600',
-    color: 'rgba(13,13,26,0.4)',
+    color: withAlpha(colors.legacyNavy, 0.4),
   },
   toolbar: {
     flexDirection: 'row',
@@ -1020,7 +1021,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: '#ECEAE5',
+    borderTopColor: colors.canvasElevated,
     gap: 8,
   },
   tools: {
@@ -1038,14 +1039,14 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   toolActive: {
-    backgroundColor: 'rgba(212,160,23,0.12)',
+    backgroundColor: withAlpha(colors.legacyGold, 0.12),
   },
   camBody: {
     width: 18,
     height: 13,
     borderRadius: 3,
     borderWidth: 1.5,
-    borderColor: 'rgba(13,13,26,0.55)',
+    borderColor: withAlpha(colors.legacyNavy, 0.55),
   },
   glyph: {
     fontSize: 15,
@@ -1054,23 +1055,23 @@ const styles = StyleSheet.create({
   toolText: {
     fontSize: 12,
     fontWeight: '600',
-    color: 'rgba(13,13,26,0.5)',
+    color: withAlpha(colors.legacyNavy, 0.5),
   },
   toolTextActive: {
-    color: '#8A6A0A',
+    color: colors.legacyGoldDark,
   },
   toolBadge: {
     width: 7,
     height: 7,
     borderRadius: 3.5,
-    backgroundColor: '#D4A017',
+    backgroundColor: colors.legacyGold,
     marginLeft: 1,
   },
   toolBadgeCount: {
     minWidth: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: '#D4A017',
+    backgroundColor: colors.legacyGold,
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 1,
@@ -1079,10 +1080,10 @@ const styles = StyleSheet.create({
   toolBadgeCountText: {
     fontSize: 9,
     fontWeight: '700',
-    color: '#1A1A2A',
+    color: colors.legacyNavySoft,
   },
   postButton: {
-    backgroundColor: '#B88A3E',
+    backgroundColor: colors.gold,
     paddingVertical: 12,
     paddingHorizontal: 28,
     borderRadius: 9999,
@@ -1096,29 +1097,29 @@ const styles = StyleSheet.create({
   postButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.surface,
     fontFamily: 'PlusJakartaSans_600SemiBold',
   },
   chars: {
     fontSize: 11,
     fontWeight: '600',
-    color: 'rgba(13,13,26,0.3)',
+    color: withAlpha(colors.legacyNavy, 0.3),
     textAlign: 'right',
     marginTop: 6,
   },
   charsWarn: {
-    color: '#B91C1C',
+    color: colors.dangerDeep2,
   },
   pickerSheet: {
     position: 'absolute',
     left: 24,
     right: 24,
-    backgroundColor: '#F9F8F5',
+    backgroundColor: colors.canvasBright,
     borderRadius: 18,
     padding: 16,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(13,13,26,0.08)',
-    shadowColor: '#1B1E24',
+    borderColor: withAlpha(colors.legacyNavy, 0.08),
+    shadowColor: colors.inkDeep,
     shadowOffset: {
       width: 0,
       height: -4,
@@ -1139,12 +1140,12 @@ const styles = StyleSheet.create({
   pickerSheetTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#0D0D1A',
+    color: colors.legacyNavy,
   },
   pickerSheetClose: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#D4A017',
+    color: colors.legacyGold,
   },
   pickerGrid: {
     flexDirection: 'row',
@@ -1158,10 +1159,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderRadius: 14,
-    backgroundColor: '#F3F1EC',
+    backgroundColor: colors.canvas,
   },
   pickerCellOn: {
-    backgroundColor: 'rgba(212,160,23,0.18)',
+    backgroundColor: withAlpha(colors.legacyGold, 0.18),
   },
   pickerEmoji: {
     fontSize: 22,
@@ -1170,21 +1171,21 @@ const styles = StyleSheet.create({
   pickerLabel: {
     fontSize: 11,
     fontWeight: '600',
-    color: 'rgba(13,13,26,0.5)',
+    color: withAlpha(colors.legacyNavy, 0.5),
   },
   pickerLabelOn: {
-    color: '#8A6A0A',
+    color: colors.legacyGoldDark,
   },
   tagModalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: withAlpha(colors.black, 0.35),
   },
   tagModalBackdrop: {
     ...StyleSheet.absoluteFillObject,
   },
   tagModalContent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '70%',
@@ -1196,17 +1197,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(13,13,26,0.1)',
+    borderBottomColor: withAlpha(colors.legacyNavy, 0.1),
   },
   tagModalTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#0D0D1A',
+    color: colors.legacyNavy,
   },
   tagModalClose: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#D4A017',
+    color: colors.legacyGold,
   },
   tagRow: {
     flexDirection: 'row',
@@ -1215,36 +1216,36 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(13,13,26,0.06)',
+    borderBottomColor: withAlpha(colors.legacyNavy, 0.06),
   },
   tagRowName: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#0D0D1A',
+    color: colors.legacyNavy,
   },
   tagCheckbox: {
     width: 22,
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
-    borderColor: 'rgba(13,13,26,0.2)',
+    borderColor: withAlpha(colors.legacyNavy, 0.2),
     alignItems: 'center',
     justifyContent: 'center',
   },
   tagCheckboxOn: {
-    backgroundColor: '#D4A017',
-    borderColor: '#D4A017',
+    backgroundColor: colors.legacyGold,
+    borderColor: colors.legacyGold,
   },
   tagCheckMark: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#1A1A2A',
+    color: colors.legacyNavySoft,
   },
   tagEmpty: {
     textAlign: 'center',
     paddingVertical: 30,
     fontSize: 14,
     fontWeight: '500',
-    color: 'rgba(13,13,26,0.35)',
+    color: withAlpha(colors.legacyNavy, 0.35),
   },
 });

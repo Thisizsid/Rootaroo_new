@@ -94,7 +94,7 @@ export default function SignupWizardShell({
               activeOpacity={0.85}
             >
               {loading ? (
-                <ActivityIndicator color="#FFFFFF" />
+                <ActivityIndicator color={colors.surface} />
               ) : (
                 <Text style={[styles.ctaText, (continueDisabled || loading) && styles.ctaTextOff]}>
                   {continueLabel}
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     fontWeight: '700',
     letterSpacing: 0.2,
-    color: '#FFFFFF',
+    color: colors.surface,
   },
 
   ctaTextOff: {

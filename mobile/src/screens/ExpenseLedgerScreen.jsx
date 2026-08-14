@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { expenseApi } from '../shared/api/expense';
 import { useAuthStore } from '../shared/store/authStore';
+import { colors, withAlpha } from '../shared/theme';
 function getInitials(name) {
   return name
     .split(' ')
@@ -139,14 +140,14 @@ export default function ExpenseLedgerScreen({ navigation }) {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-        <ActivityIndicator size="large" color="#D4A017" style={styles.loading} />
+        <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
+        <ActivityIndicator size="large" color={colors.legacyGold} style={styles.loading} />
       </SafeAreaView>
     );
   }
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
 
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -301,7 +302,7 @@ export default function ExpenseLedgerScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
   },
   loading: {
     flex: 1,
@@ -315,7 +316,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(13,13,26,0.08)',
+    borderBottomColor: withAlpha(colors.legacyNavy, 0.08),
   },
   headerLeft: {
     flex: 1,
@@ -329,33 +330,33 @@ const styles = StyleSheet.create({
   backText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#D4A017',
+    color: colors.legacyGold,
   },
   headerTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#1A1A2A',
+    color: colors.legacyNavySoft,
   },
   customSettleButton: {
-    backgroundColor: 'rgba(212,160,23,0.08)',
+    backgroundColor: withAlpha(colors.legacyGold, 0.08),
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 20,
   },
   customSettleText: {
-    color: '#D4A017',
+    color: colors.legacyGold,
     fontWeight: '600',
     fontSize: 13,
   },
   errorBanner: {
-    backgroundColor: 'rgba(220,53,69,0.08)',
+    backgroundColor: withAlpha(colors.dangerBright, 0.08),
     padding: 12,
     marginHorizontal: 16,
     borderRadius: 8,
     marginTop: 8,
   },
   errorText: {
-    color: '#DC3545',
+    color: colors.dangerBright,
     fontSize: 13,
     textAlign: 'center',
     fontWeight: '500',
@@ -367,7 +368,7 @@ const styles = StyleSheet.create({
   summaryText: {
     fontSize: 12,
     fontWeight: '700',
-    color: 'rgba(13,13,26,0.35)',
+    color: withAlpha(colors.legacyNavy, 0.35),
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -376,13 +377,13 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   entryCard: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 14,
     padding: 14,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: 'rgba(13,13,26,0.06)',
-    shadowColor: '#000',
+    borderColor: withAlpha(colors.legacyNavy, 0.06),
+    shadowColor: colors.black,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -401,7 +402,7 @@ const styles = StyleSheet.create({
   userChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(13,13,26,0.04)',
+    backgroundColor: withAlpha(colors.legacyNavy, 0.04),
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 12,
@@ -410,18 +411,18 @@ const styles = StyleSheet.create({
   userInitials: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#D4A017',
+    color: colors.legacyGold,
     width: 18,
     textAlign: 'center',
   },
   userName: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#1A1A2A',
+    color: colors.legacyNavySoft,
   },
   arrowText: {
     fontSize: 18,
-    color: 'rgba(13,13,26,0.25)',
+    color: withAlpha(colors.legacyNavy, 0.25),
     fontWeight: '300',
   },
   entryFooter: {
@@ -430,21 +431,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(13,13,26,0.05)',
+    borderTopColor: withAlpha(colors.legacyNavy, 0.05),
   },
   amountText: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#D4A017',
+    color: colors.legacyGold,
   },
   settleButton: {
-    backgroundColor: '#D4A017',
+    backgroundColor: colors.legacyGold,
     paddingHorizontal: 18,
     paddingVertical: 8,
     borderRadius: 20,
   },
   settleButtonText: {
-    color: '#fff',
+    color: colors.surface,
     fontSize: 13,
     fontWeight: '700',
   },
@@ -462,22 +463,22 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1A1A2A',
+    color: colors.legacyNavySoft,
     marginBottom: 6,
   },
   emptySubtitle: {
     fontSize: 14,
-    color: 'rgba(13,13,26,0.5)',
+    color: withAlpha(colors.legacyNavy, 0.5),
     textAlign: 'center',
   },
   // Settlement modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: withAlpha(colors.black, 0.4),
     justifyContent: 'flex-end',
   },
   modalSheet: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingBottom: 32,
@@ -489,16 +490,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(13,13,26,0.08)',
+    borderBottomColor: withAlpha(colors.legacyNavy, 0.08),
   },
   modalTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#1A1A2A',
+    color: colors.legacyNavySoft,
   },
   modalClose: {
     fontSize: 22,
-    color: 'rgba(13,13,26,0.35)',
+    color: withAlpha(colors.legacyNavy, 0.35),
   },
   modalContent: {
     padding: 16,
@@ -506,7 +507,7 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: 'rgba(13,13,26,0.35)',
+    color: withAlpha(colors.legacyNavy, 0.35),
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 8,
@@ -518,38 +519,38 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   userOption: {
-    backgroundColor: '#F7F7FA',
+    backgroundColor: colors.canvasCool,
     borderRadius: 10,
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: 'rgba(13,13,26,0.08)',
+    borderColor: withAlpha(colors.legacyNavy, 0.08),
   },
   userOptionActive: {
-    backgroundColor: 'rgba(212,160,23,0.12)',
-    borderColor: '#D4A017',
+    backgroundColor: withAlpha(colors.legacyGold, 0.12),
+    borderColor: colors.legacyGold,
   },
   userOptionText: {
     fontSize: 13,
     fontWeight: '600',
-    color: 'rgba(13,13,26,0.5)',
+    color: withAlpha(colors.legacyNavy, 0.5),
   },
   userOptionTextActive: {
-    color: '#D4A017',
+    color: colors.legacyGold,
   },
   input: {
-    backgroundColor: '#F7F7FA',
+    backgroundColor: colors.canvasCool,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
-    color: '#1A1A2A',
+    color: colors.legacyNavySoft,
     marginTop: 12,
     borderWidth: 1,
-    borderColor: 'rgba(13,13,26,0.08)',
+    borderColor: withAlpha(colors.legacyNavy, 0.08),
   },
   saveButton: {
-    backgroundColor: '#D4A017',
+    backgroundColor: colors.legacyGold,
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
@@ -559,7 +560,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   saveButtonText: {
-    color: '#fff',
+    color: colors.surface,
     fontSize: 15,
     fontWeight: '700',
   },

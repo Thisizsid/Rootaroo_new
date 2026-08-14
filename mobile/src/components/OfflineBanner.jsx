@@ -4,10 +4,13 @@ import { SvgXml } from 'react-native-svg';
 import { colors, fonts, radius } from '../shared/theme';
 import { useNetworkStatus } from '../shared/hooks/useNetworkStatus';
 
+// Placeholder stroke color below is a literal string target for the runtime
+// `.replace()` swap in the render below — do not tokenize it directly.
+const INFO_SVG_STROKE_PLACEHOLDER = '#45566B';
 const INFO_SVG =
   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none">' +
-  '<path d="M12 9v4M12 17h.01" stroke="#45566B" stroke-width="2" stroke-linecap="round"></path>' +
-  '<circle cx="12" cy="12" r="9" stroke="#45566B" stroke-width="1.5"></circle>' +
+  `<path d="M12 9v4M12 17h.01" stroke="${INFO_SVG_STROKE_PLACEHOLDER}" stroke-width="2" stroke-linecap="round"></path>` +
+  `<circle cx="12" cy="12" r="9" stroke="${INFO_SVG_STROKE_PLACEHOLDER}" stroke-width="1.5"></circle>` +
   '</svg>';
 
 /**
@@ -18,7 +21,7 @@ export default function OfflineBanner({ onRetry, dark }) {
   const { isOffline } = useNetworkStatus();
   if (!isOffline) return null;
 
-  const stroke = dark ? '#A6ABB0' : '#45566B';
+  const stroke = dark ? colors.textMuted : colors.inkMuted;
   return (
     <View style={[styles.banner, dark && styles.bannerDark]}>
       <SvgXml xml={INFO_SVG.replace(/#45566B/g, stroke)} width={18} height={18} />

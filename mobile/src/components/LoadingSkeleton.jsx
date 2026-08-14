@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { spacing } from '../shared/theme';
+import { colors, spacing } from '../shared/theme';
 
 /**
  * Animated loading skeleton (design: 09-States-Errors — Loading Skeleton).
@@ -63,8 +63,8 @@ function ShimmerBlock({ height, width, dark, style }) {
   }, [opacity]);
 
   const gradient = dark
-    ? ['#242830', '#2C313C', '#242830']
-    : ['#E5DECF', '#EFE9DD', '#E5DECF'];
+    ? [colors.inkSoft, colors.inkCool, colors.inkSoft]
+    : [colors.sandLight, colors.sandPale, colors.sandLight];
 
   return (
     <Animated.View style={[{ width, height, borderRadius: 18, overflow: 'hidden', opacity }, style]}>
@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
   // feed cards
   feedWrap: { paddingHorizontal: 4, paddingTop: 4, gap: 16 },
   feedCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 18,
     overflow: 'hidden',
     marginBottom: 4,

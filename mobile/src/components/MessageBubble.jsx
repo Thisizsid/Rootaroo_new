@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
     lineHeight: 21,
   },
   textOwn: {
-    color: '#FFFFFF',
+    color: colors.surface,
   },
   textOther: {
     color: colors.ink,

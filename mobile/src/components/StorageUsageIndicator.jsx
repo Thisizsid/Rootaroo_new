@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { formatFileSize } from '../shared/utils/format';
+import { colors, withAlpha } from '../shared/theme';
 
 export default function StorageUsageIndicator({
   usedBytes,
@@ -34,35 +35,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: '#F7F7FA',
+    backgroundColor: colors.canvasCool,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(13,13,26,0.05)',
+    borderBottomColor: withAlpha(colors.legacyNavy, 0.05),
   },
   label: {
     fontSize: 12,
-    color: 'rgba(13,13,26,0.5)',
+    color: withAlpha(colors.legacyNavy, 0.5),
     fontWeight: '500',
     marginRight: 8,
   },
   progressBar: {
     flex: 1,
     height: 6,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: colors.canvasFlat,
     borderRadius: 3,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#D4A017',
+    backgroundColor: colors.legacyGold,
     borderRadius: 3,
   },
   progressDanger: {
-    backgroundColor: '#DC3545',
+    backgroundColor: colors.dangerBright,
   },
   text: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#D4A017',
+    color: colors.legacyGold,
     marginLeft: 8,
   },
 });

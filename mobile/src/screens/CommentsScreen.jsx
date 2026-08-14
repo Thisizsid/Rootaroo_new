@@ -18,23 +18,24 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { SvgXml } from 'react-native-svg';
 import { feedApi } from '../shared/api/feed';
-const INK = '#2A2E33';
-const MUTED = '#A6ABB0';
-const CANVAS = '#F3F1EC';
-const GOLD = '#B88A3E';
-const GLYPH_BG = '#E1E6EA';
-const GLYPH_FG = '#45566B';
+import { colors, withAlpha } from '../shared/theme';
+const INK = colors.ink;
+const MUTED = colors.textMuted;
+const CANVAS = colors.canvas;
+const GOLD = colors.gold;
+const GLYPH_BG = colors.borderCool;
+const GLYPH_FG = colors.inkMuted;
 const REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
 const BACK_SVG =
   '<svg width="20" height="20" viewBox="0 0 24 24" fill="none">' +
-  '<path d="M15 5l-7 7 7 7" stroke="#2A2E33" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>' +
+  `<path d="M15 5l-7 7 7 7" stroke="${colors.ink}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>` +
   '</svg>';
 const SEND_SVG =
   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none">' +
-  '<path d="M4 12l16-7-6 16-2-7-8-2z" fill="#FFFFFF"></path>' +
+  `<path d="M4 12l16-7-6 16-2-7-8-2z" fill="${colors.surface}"></path>` +
   '</svg>';
 const DOTS_SVG =
-  '<svg width="18" height="18" viewBox="0 0 24 24" fill="#757A80">' +
+  `<svg width="18" height="18" viewBox="0 0 24 24" fill="${colors.textSecondary}">` +
   '<circle cx="5" cy="12" r="1.7"></circle>' +
   '<circle cx="12" cy="12" r="1.7"></circle>' +
   '<circle cx="19" cy="12" r="1.7"></circle>' +
@@ -480,7 +481,7 @@ export default function CommentsScreen() {
               disabled={sending || !input.trim()}
             >
               {sending ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator size="small" color={colors.surface} />
               ) : (
                 <SvgXml xml={SEND_SVG} width={18} height={18} />
               )}
@@ -595,7 +596,7 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     width: 2,
-    backgroundColor: '#E1E6EA',
+    backgroundColor: colors.borderCool,
     borderRadius: 1,
   },
   avatar: {
@@ -638,7 +639,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     color: GOLD,
-    backgroundColor: 'rgba(212,160,23,0.14)',
+    backgroundColor: withAlpha(colors.legacyGold, 0.14),
     borderRadius: 8,
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -699,7 +700,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#F0EDE6',
+    backgroundColor: colors.canvasSoft,
     paddingHorizontal: 24,
     paddingVertical: 8,
   },
@@ -715,9 +716,9 @@ const styles = StyleSheet.create({
     paddingLeft: 8,
   },
   inputBarWrap: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#ECEAE5',
+    borderTopColor: colors.canvasElevated,
     paddingTop: 14,
     paddingHorizontal: 24,
   },
@@ -751,16 +752,16 @@ const styles = StyleSheet.create({
   },
   menuBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(27,30,36,0.25)',
+    backgroundColor: withAlpha(colors.inkDeep, 0.25),
   },
   menuDropdown: {
     position: 'absolute',
     width: 200,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 14,
     paddingVertical: 6,
     paddingHorizontal: 14,
-    shadowColor: '#1B1E24',
+    shadowColor: colors.inkDeep,
     shadowOffset: {
       width: 0,
       height: 6,
@@ -782,7 +783,7 @@ const styles = StyleSheet.create({
   menuItemTextDanger: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#D0342C',
+    color: colors.dangerVivid,
     fontFamily: 'Inter_500Medium',
   },
 });

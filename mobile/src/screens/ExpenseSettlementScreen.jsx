@@ -11,6 +11,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { expenseApi } from '../shared/api/expense';
+import { colors, withAlpha } from '../shared/theme';
 function getInitials(name) {
   return name
     .split(' ')
@@ -128,19 +129,19 @@ export default function ExpenseSettlementScreen({ navigation }) {
   );
   const renderFooter = useCallback(() => {
     if (!loadingMore) return null;
-    return <ActivityIndicator size="small" color="#D4A017" style={styles.footerLoader} />;
+    return <ActivityIndicator size="small" color={colors.legacyGold} style={styles.footerLoader} />;
   }, [loadingMore]);
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-        <ActivityIndicator size="large" color="#D4A017" style={styles.loading} />
+        <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
+        <ActivityIndicator size="large" color={colors.legacyGold} style={styles.loading} />
       </SafeAreaView>
     );
   }
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
 
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -171,7 +172,7 @@ export default function ExpenseSettlementScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
   },
   loading: {
     flex: 1,
@@ -185,7 +186,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(13,13,26,0.08)',
+    borderBottomColor: withAlpha(colors.legacyNavy, 0.08),
   },
   headerLeft: {
     flex: 1,
@@ -199,30 +200,30 @@ const styles = StyleSheet.create({
   backText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#D4A017',
+    color: colors.legacyGold,
   },
   headerTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#1A1A2A',
+    color: colors.legacyNavySoft,
   },
   countText: {
     fontSize: 13,
     fontWeight: '700',
-    color: 'rgba(13,13,26,0.35)',
+    color: withAlpha(colors.legacyNavy, 0.35),
   },
   listContent: {
     padding: 16,
     paddingBottom: 100,
   },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 14,
     padding: 14,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: 'rgba(13,13,26,0.06)',
-    shadowColor: '#000',
+    borderColor: withAlpha(colors.legacyNavy, 0.06),
+    shadowColor: colors.black,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -246,7 +247,7 @@ const styles = StyleSheet.create({
   userChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(13,13,26,0.04)',
+    backgroundColor: withAlpha(colors.legacyNavy, 0.04),
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 10,
@@ -255,34 +256,34 @@ const styles = StyleSheet.create({
   userInitials: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#D4A017',
+    color: colors.legacyGold,
     width: 16,
     textAlign: 'center',
   },
   userName: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#1A1A2A',
+    color: colors.legacyNavySoft,
   },
   arrow: {
     fontSize: 14,
-    color: 'rgba(13,13,26,0.25)',
+    color: withAlpha(colors.legacyNavy, 0.25),
     fontWeight: '300',
   },
   amount: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#D4A017',
+    color: colors.legacyGold,
     marginLeft: 8,
   },
   cardFooter: {
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(13,13,26,0.05)',
+    borderTopColor: withAlpha(colors.legacyNavy, 0.05),
   },
   dateText: {
     fontSize: 11,
-    color: 'rgba(13,13,26,0.35)',
+    color: withAlpha(colors.legacyNavy, 0.35),
   },
   empty: {
     flex: 1,
@@ -298,12 +299,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1A1A2A',
+    color: colors.legacyNavySoft,
     marginBottom: 6,
   },
   emptySubtitle: {
     fontSize: 14,
-    color: 'rgba(13,13,26,0.5)',
+    color: withAlpha(colors.legacyNavy, 0.5),
     textAlign: 'center',
   },
   footerLoader: {

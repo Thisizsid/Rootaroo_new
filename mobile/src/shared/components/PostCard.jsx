@@ -15,9 +15,10 @@ import {
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import apiClient from '../api/client';
+import { colors, withAlpha } from '../theme';
 
 const { width: SCREEN_W } = Dimensions.get('window');
-const AVATAR_FALLBACKS = ['#C4A574', '#8FA88A', '#7A93A8', '#A888A0', '#D4A017'];
+const AVATAR_FALLBACKS = [colors.avatarBronze, colors.avatarMoss, colors.avatarSlate, colors.avatarMauve, colors.legacyGold];
 
 /* ── Helpers ─────────────────────────────────── */
 
@@ -110,7 +111,7 @@ export function AuthorAvatar({
 
 function HeartIcon({ filled, size = 24 }) {
   return (
-    <Text style={{ fontSize: size, color: filled ? '#C0392B' : '#0D0D1A', lineHeight: size + 2 }}>
+    <Text style={{ fontSize: size, color: filled ? colors.dangerHeart : colors.legacyNavy, lineHeight: size + 2 }}>
       {filled ? '♥' : '♡'}
     </Text>
   );
@@ -127,7 +128,7 @@ function CommentIcon({ size = 22 }) {
           height: size * 0.7,
           borderRadius: size * 0.28,
           borderWidth: 1.6,
-          borderColor: '#0D0D1A',
+          borderColor: colors.legacyNavy,
         }}
       />
       <View
@@ -142,7 +143,7 @@ function CommentIcon({ size = 22 }) {
           borderTopWidth: 5,
           borderLeftColor: 'transparent',
           borderRightColor: 'transparent',
-          borderTopColor: '#0D0D1A',
+          borderTopColor: colors.legacyNavy,
         }}
       />
     </View>
@@ -382,7 +383,7 @@ const PostCard = memo(function PostCard({
                     <Image source={{ uri }} style={styles.viewerMedia} resizeMode="contain" />
                   )
                 ) : (
-                  <Text style={{ color: '#fff' }}>Unavailable</Text>
+                  <Text style={{ color: colors.surface }}>Unavailable</Text>
                 )}
               </View>
             );
@@ -406,11 +407,11 @@ const styles = StyleSheet.create({
   },
   avatarInitials: {
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.surface,
   },
 
   post: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     paddingBottom: 12,
     paddingHorizontal: 0,
   },
@@ -433,22 +434,22 @@ const styles = StyleSheet.create({
   authorName: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#0D0D1A',
+    color: colors.legacyNavy,
     flexShrink: 1,
   },
   feelingInline: {
     fontSize: 13,
-    color: 'rgba(13,13,26,0.45)',
+    color: withAlpha(colors.legacyNavy, 0.45),
     marginLeft: 4,
     flexShrink: 1,
   },
   timestamp: {
     fontSize: 12,
-    color: 'rgba(13,13,26,0.38)',
+    color: withAlpha(colors.legacyNavy, 0.38),
     marginTop: 1,
   },
   pinChip: {
-    backgroundColor: 'rgba(212,160,23,0.15)',
+    backgroundColor: withAlpha(colors.legacyGold, 0.15),
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 3,
@@ -456,7 +457,7 @@ const styles = StyleSheet.create({
   pinText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#8A6A0A',
+    color: colors.legacyGoldDark,
     letterSpacing: 0.3,
   },
   moreBtn: {
@@ -466,7 +467,7 @@ const styles = StyleSheet.create({
   moreDots: {
     fontSize: 18,
     fontWeight: '700',
-    color: 'rgba(13,13,26,0.35)',
+    color: withAlpha(colors.legacyNavy, 0.35),
     letterSpacing: 1,
   },
 
@@ -480,7 +481,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   mediaMissingText: {
-    color: 'rgba(255,255,255,0.4)',
+    color: withAlpha(colors.white, 0.4),
     fontWeight: '600',
   },
   dots: {
@@ -493,23 +494,23 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 2.5,
-    backgroundColor: 'rgba(13,13,26,0.18)',
+    backgroundColor: withAlpha(colors.legacyNavy, 0.18),
   },
   dotOn: {
-    backgroundColor: '#D4A017',
+    backgroundColor: colors.legacyGold,
     width: 14,
   },
   countBadge: {
     position: 'absolute',
     top: 12,
     right: 12,
-    backgroundColor: 'rgba(13,13,26,0.55)',
+    backgroundColor: withAlpha(colors.legacyNavy, 0.55),
     borderRadius: 10,
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
   countBadgeText: {
-    color: '#fff',
+    color: colors.surface,
     fontSize: 11,
     fontWeight: '700',
   },
@@ -537,11 +538,11 @@ const styles = StyleSheet.create({
   actionCount: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#0D0D1A',
+    color: colors.legacyNavy,
   },
   actionSep: {
     height: 1,
-    backgroundColor: 'rgba(13,13,26,0.08)',
+    backgroundColor: withAlpha(colors.legacyNavy, 0.08),
     marginHorizontal: 22,
     marginTop: 10,
   },
@@ -552,7 +553,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     lineHeight: 22,
-    color: '#0D0D1A',
+    color: colors.legacyNavy,
   },
   captionBlock: {
     paddingHorizontal: 22,
@@ -562,7 +563,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     lineHeight: 20,
-    color: '#0D0D1A',
+    color: colors.legacyNavy,
     paddingHorizontal: 5,
     paddingBottom : 12,
   },
@@ -580,7 +581,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   activityBadge: {
-    backgroundColor: 'rgba(212,160,23,0.18)',
+    backgroundColor: withAlpha(colors.legacyGold, 0.18),
     borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 3,
@@ -588,17 +589,17 @@ const styles = StyleSheet.create({
   activityBadgeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#8A6A0A',
+    color: colors.legacyGoldDark,
   },
   subHeaderText: {
     fontSize: 12,
-    color: 'rgba(13,13,26,0.45)',
+    color: withAlpha(colors.legacyNavy, 0.45),
   },
 
   /* ── Full-screen media viewer ────────────────── */
   viewerOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.92)',
+    backgroundColor: withAlpha(colors.black, 0.92),
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -614,12 +615,12 @@ const styles = StyleSheet.create({
   },
   viewerClose: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: colors.surface,
     fontWeight: '600',
   },
   viewerDots: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: colors.surface,
     fontWeight: '700',
     letterSpacing: 2,
   },

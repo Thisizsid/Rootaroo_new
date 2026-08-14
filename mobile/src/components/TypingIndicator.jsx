@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
+import { colors } from '../shared/theme';
 
 export default function TypingIndicator({ displayNames }) {
   const dot1 = useRef(new Animated.Value(0)).current;
@@ -71,11 +72,11 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#9ca3af',
+    backgroundColor: colors.grayCool,
   },
   text: {
     fontSize: 12,
-    color: '#6b7280',
+    color: colors.grayMuted,
     fontStyle: 'italic',
   },
 });

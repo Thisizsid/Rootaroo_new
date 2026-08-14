@@ -53,7 +53,7 @@ import { getPrivateKey, storePrivateKey, getBackupMode } from '../shared/crypto/
 import { verifyPublicKey } from '../shared/crypto/keyPinStore';
 import { formatFileSize } from '../shared/utils/format';
 import * as ScreenCapture from 'expo-screen-capture';
-import { colors, fonts } from '../shared/theme';
+import { colors, fonts, withAlpha } from '../shared/theme';
 import ConfirmSheet from '../components/ConfirmSheet';
 function categorize(mimeType) {
   if (mimeType.startsWith('image/')) return 'image';
@@ -492,7 +492,7 @@ export default function VaultViewerScreen({ navigation, route }) {
               activeOpacity={0.85}
             >
               {exporting ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator size="small" color={colors.surface} />
               ) : (
                 <Text style={styles.openBtnText}>Open with another app</Text>
               )}
@@ -692,7 +692,7 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 16,
     paddingBottom: 10,
-    backgroundColor: 'rgba(27,30,36,0.72)',
+    backgroundColor: withAlpha(colors.inkDeep, 0.72),
   },
   headerBtn: {
     width: 32,
@@ -703,20 +703,20 @@ const styles = StyleSheet.create({
   backIcon: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.surface,
     lineHeight: 20,
   },
   optionsIcon: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.surface,
     lineHeight: 20,
   },
   headerTitle: {
     flex: 1,
     fontSize: 15,
     fontFamily: fonts.displayBold,
-    color: '#fff',
+    color: colors.surface,
   },
   footer: {
     position: 'absolute',
@@ -730,7 +730,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: fonts.mono,
     color: colors.gold,
-    backgroundColor: 'rgba(27,30,36,0.72)',
+    backgroundColor: withAlpha(colors.inkDeep, 0.72),
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 9999,
@@ -751,7 +751,7 @@ const styles = StyleSheet.create({
   fileCardTitle: {
     fontSize: 15,
     fontFamily: fonts.displayBold,
-    color: '#fff',
+    color: colors.surface,
     textAlign: 'center',
     marginBottom: 6,
   },
@@ -781,7 +781,7 @@ const styles = StyleSheet.create({
   openBtnText: {
     fontSize: 14,
     fontFamily: fonts.displayBold,
-    color: '#fff',
+    color: colors.surface,
   },
   playBtn: {
     marginTop: 16,
@@ -795,7 +795,7 @@ const styles = StyleSheet.create({
   playBtnText: {
     fontSize: 14,
     fontFamily: fonts.displayBold,
-    color: '#fff',
+    color: colors.surface,
   },
   // ── Options action sheet ──
   overlay: {
@@ -804,7 +804,7 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(27,30,36,0.55)',
+    backgroundColor: withAlpha(colors.inkDeep, 0.55),
   },
   sheet: {
     backgroundColor: colors.surface,
@@ -846,7 +846,7 @@ const styles = StyleSheet.create({
   // ── Rename modal ──
   renameOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(27,30,36,0.55)',
+    backgroundColor: withAlpha(colors.inkDeep, 0.55),
     justifyContent: 'center',
     paddingHorizontal: 32,
   },
@@ -896,7 +896,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gold,
   },
   renameSaveText: {
-    color: '#fff',
+    color: colors.surface,
     fontSize: 14,
     fontFamily: fonts.displayBold,
   },

@@ -248,7 +248,7 @@ export default function SignupStepAvatarScreen({ navigation }) {
                 height="14"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="#FFFFFF"
+                stroke={colors.surface}
                 strokeWidth="2"
               >
                 <Path d="M4 8h3l2-2h6l2 2h3v11H4z" />
@@ -378,7 +378,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1.5,
     borderColor: colors.fieldBorder,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
   avatarChoiceOn: {
     borderColor: colors.goldWarm,
@@ -393,7 +393,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 16,
-    backgroundColor: colors.goldTint || '#FBF3E6',
+    backgroundColor: colors.goldTint || colors.goldTint,
     borderWidth: 1.5,
     borderColor: colors.fieldBorder,
     alignItems: 'center',
@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 14,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderWidth: 1.5,
     borderColor: colors.fieldBorder,
     alignItems: 'center',
@@ -421,7 +421,7 @@ const styles = StyleSheet.create({
   emojiChoiceOn: {
     borderColor: colors.goldWarm,
     borderWidth: 2.5,
-    backgroundColor: colors.goldTint || '#FBF3E6',
+    backgroundColor: colors.goldTint || colors.goldTint,
   },
   emojiText: {
     fontSize: 24,

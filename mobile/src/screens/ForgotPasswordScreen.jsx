@@ -228,7 +228,7 @@ export default function ForgotPasswordScreen({ navigation }) {
                 disabled={loading}
               >
                 {loading ? (
-                  <ActivityIndicator color="#FFFFFF" />
+                  <ActivityIndicator color={colors.surface} />
                 ) : (
                   <Text style={styles.primaryText}>Send reset link</Text>
                 )}
@@ -269,7 +269,7 @@ export default function ForgotPasswordScreen({ navigation }) {
                 disabled={loading}
               >
                 {loading ? (
-                  <ActivityIndicator color="#FFFFFF" />
+                  <ActivityIndicator color={colors.surface} />
                 ) : (
                   <Text style={styles.primaryText}>Update password</Text>
                 )}
@@ -346,7 +346,7 @@ const styles = StyleSheet.create({
   // Standard input
   input: {
     height: 52,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 14,
     borderWidth: 1.5,
     borderColor: colors.fieldBorder,
@@ -361,7 +361,7 @@ const styles = StyleSheet.create({
   // Password row
   inputRow: {
     height: 52,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 14,
     borderWidth: 1.5,
     borderColor: colors.fieldBorder,
@@ -392,7 +392,7 @@ const styles = StyleSheet.create({
   otpBox: {
     flex: 1,
     height: 56,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     borderWidth: 1.5,
     borderColor: colors.fieldBorder,
@@ -440,7 +440,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyBold,
     fontSize: 16,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.surface,
     letterSpacing: 0.2,
   },
   // Back to sign in — mockup .link-center: centered 14px w600 gold-dark, mt 16

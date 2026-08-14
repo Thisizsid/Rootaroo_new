@@ -173,7 +173,7 @@ export default function HouseholdSetupScreen({ navigation }) {
 const styles = StyleSheet.create({
   optionCard: {
     marginTop: 14,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     borderWidth: 1.5,
     borderColor: colors.fieldBorder,
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
   },
   input: {
     height: 52,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 14,
     borderWidth: 1.5,
     borderColor: colors.fieldBorder,
@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderWidth: 1.5,
     borderColor: colors.fieldBorder,
     alignItems: 'center',

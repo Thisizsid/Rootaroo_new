@@ -330,7 +330,7 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 25,
     borderWidth: 4,
-    borderColor: '#E4DFD2',
+    borderColor: colors.sandMuted,
     borderTopColor: colors.goldWarm,
   },
   verifyText: {
@@ -375,7 +375,7 @@ const styles = StyleSheet.create({
   otpBox: {
     width: 52,
     height: 58,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 14,
     borderWidth: 1.5,
     borderColor: colors.fieldBorder,
@@ -444,7 +444,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.2,
-    color: '#FFFFFF',
+    color: colors.surface,
   },
   // Change number
   changeBtn: {

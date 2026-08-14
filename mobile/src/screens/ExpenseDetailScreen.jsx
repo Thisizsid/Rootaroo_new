@@ -21,7 +21,7 @@ import { householdApi } from '../shared/api/household';
 import { useAuthStore } from '../shared/store/authStore';
 import ConfirmSheet from '../components/ConfirmSheet';
 import { useExpenseStore } from '../shared/store/expenseStore';
-import { colors, radius, fonts } from '../shared/theme';
+import { colors, radius, fonts, withAlpha } from '../shared/theme';
 function getInitials(name) {
   return name
     .split(' ')
@@ -527,7 +527,7 @@ export default function ExpenseDetailScreen({ navigation, route }) {
                 activeOpacity={0.85}
               >
                 {saving ? (
-                  <ActivityIndicator size="small" color="#fff" />
+                  <ActivityIndicator size="small" color={colors.surface} />
                 ) : (
                   <Text style={styles.editUpdateText}>Update</Text>
                 )}
@@ -762,7 +762,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     fontFamily: fonts.displayBold,
-    color: '#fff',
+    color: colors.surface,
   },
   primaryBtnDisabled: {
     opacity: 0.6,
@@ -792,7 +792,7 @@ const styles = StyleSheet.create({
   },
   editBackdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(27,30,36,0.55)',
+    backgroundColor: withAlpha(colors.inkDeep, 0.55),
   },
   editSheet: {
     backgroundColor: colors.surface,
@@ -960,7 +960,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   editChipTextActive: {
-    color: '#fff',
+    color: colors.surface,
   },
   // Custom shares
   editShares: {
@@ -1040,7 +1040,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     fontFamily: fonts.displayBold,
-    color: '#fff',
+    color: colors.surface,
   },
   // Paid-by picker
   pickOverlay: {
@@ -1049,7 +1049,7 @@ const styles = StyleSheet.create({
   },
   pickBackdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(27,30,36,0.55)',
+    backgroundColor: withAlpha(colors.inkDeep, 0.55),
   },
   pickSheet: {
     backgroundColor: colors.surface,

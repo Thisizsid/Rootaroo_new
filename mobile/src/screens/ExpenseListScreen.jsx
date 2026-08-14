@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { householdApi } from '../shared/api/household';
 import { useAuthStore } from '../shared/store/authStore';
 import { useExpenseStore } from '../shared/store/expenseStore';
-import { colors, fonts } from '../shared/theme';
+import { colors, fonts, withAlpha } from '../shared/theme';
 function getInitials(name) {
   return name
     .split(' ')
@@ -221,7 +221,7 @@ export default function ExpenseListScreen({ navigation }) {
 
         {/* ── Balance card (glass) ── */}
         <LinearGradient
-          colors={['rgba(255,255,255,0.9)', 'rgba(239,227,211,0.55)']}
+          colors={[withAlpha(colors.white, 0.9), withAlpha(colors.overlayCream, 0.55)]}
           start={{
             x: 0,
             y: 0,
@@ -247,7 +247,7 @@ export default function ExpenseListScreen({ navigation }) {
             style={[
               styles.balanceStatus,
               {
-                color: owes ? '#B8632F' : owed ? colors.success : colors.textSecondary,
+                color: owes ? colors.rustDeep : owed ? colors.success : colors.textSecondary,
               },
             ]}
           >
@@ -426,7 +426,7 @@ const styles = StyleSheet.create({
     shadowRadius: 40,
     elevation: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.6)',
+    borderColor: withAlpha(colors.white, 0.6),
   },
   cardTop: {
     flexDirection: 'row',
@@ -452,7 +452,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginLeft: -8,
     borderWidth: 2,
-    borderColor: '#fff',
+    borderColor: colors.surface,
   },
   stackAvatarText: {
     fontSize: 8,
@@ -477,7 +477,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     fontFamily: fonts.body,
-    color: '#6B6153',
+    color: colors.taupeDeep,
   },
   // Widgets (SCREEN 22)
   widgetRow: {
@@ -648,6 +648,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
     fontFamily: fonts.body,
-    color: '#6B5738',
+    color: colors.brownDeep,
   },
 });

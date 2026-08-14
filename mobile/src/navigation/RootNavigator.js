@@ -61,7 +61,7 @@ import VaultListScreen from '../screens/VaultListScreen';
 import ChatScreen from '../screens/ChatScreen';
 import GroupMembersScreen from '../screens/GroupMembersScreen';
 import ConversationsScreen from '../screens/ConversationsScreen';
-import { colors } from '../shared/theme';
+import { colors, withAlpha } from '../shared/theme';
 
 const RootStack = createNativeStackNavigator();
 const AuthStack = createNativeStackNavigator();
@@ -165,9 +165,9 @@ function MoreNavigator() {
 }
 
 /* ── Design system tokens (mockup 03-Home-Feed) ── */
-const INK = '#2A2E33';
-const GOLD = '#B88A3E';
-const INACTIVE = 'rgba(42,46,51,0.45)';
+const INK = colors.ink;
+const GOLD = colors.gold;
+const INACTIVE = withAlpha(colors.ink, 0.45);
 
 /* ── Tab icon components (View-based, no emoji) ── */
 
@@ -276,9 +276,9 @@ function GlassTabBar({ state, descriptors, navigation }) {
           borderRadius: 28,
           overflow: 'hidden',
           borderWidth: 1,
-          borderColor: dark ? colors.gold : 'rgba(255,255,255,0.65)',
-          backgroundColor: dark ? 'rgba(43, 53, 71, 0.88)' : 'rgba(255,255,255,0.72)',
-          shadowColor: dark ? '#000' : INK,
+          borderColor: dark ? colors.gold : withAlpha(colors.white, 0.65),
+          backgroundColor: dark ? withAlpha(colors.overlaySlate, 0.88) : withAlpha(colors.white, 0.72),
+          shadowColor: dark ? colors.black : INK,
           shadowOffset: { width: 0, height: 10 },
           shadowOpacity: dark ? 0.4 : 0.12,
           shadowRadius: 24,
@@ -307,7 +307,7 @@ function GlassTabBar({ state, descriptors, navigation }) {
 
           const color = isFocused
             ? GOLD
-            : (dark ? 'rgba(255,255,255,0.55)' : INACTIVE);
+            : (dark ? withAlpha(colors.white, 0.55) : INACTIVE);
 
           return (
             <TouchableOpacity
@@ -346,8 +346,8 @@ function GlassTabBar({ state, descriptors, navigation }) {
                   fontWeight: isFocused ? '700' : '600',
                   letterSpacing: 0.1,
                   color: isFocused
-                    ? (dark ? '#FFFFFF' : INK)
-                    : (dark ? 'rgba(255,255,255,0.5)' : INACTIVE),
+                    ? (dark ? colors.surface : INK)
+                    : (dark ? withAlpha(colors.white, 0.5) : INACTIVE),
                   fontFamily: isFocused ? 'PlusJakartaSans_700Bold' : 'Inter_600SemiBold',
                 }}
               >
@@ -378,7 +378,7 @@ function MainNavigator() {
 
   useEffect(() => {
     if (Platform.OS !== 'android') return;
-    NavigationBar.setBackgroundColorAsync('#FFFFFF');
+    NavigationBar.setBackgroundColorAsync(colors.surface);
     NavigationBar.setButtonStyleAsync('dark');
   }, []);
 

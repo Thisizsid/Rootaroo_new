@@ -33,7 +33,7 @@ import {
 import { getPrivateKey } from '../shared/crypto/secureKeyStore';
 import { verifyPublicKey } from '../shared/crypto/keyPinStore';
 import { setupVaultKeys } from '../shared/crypto/vaultSetup';
-import { colors, fonts } from '../shared/theme';
+import { colors, fonts, withAlpha } from '../shared/theme';
 const MAX_SIZE = 20 * 1024 * 1024;
 
 /** Normalize a document-picker or image-picker asset into { uri, name, mimeType, size }. */
@@ -447,7 +447,7 @@ const styles = StyleSheet.create({
   // ── Overlay + sheet (SCREEN 29) ──
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(27,30,36,0.55)',
+    backgroundColor: withAlpha(colors.inkDeep, 0.55),
   },
   sheet: {
     position: 'absolute',
@@ -536,7 +536,7 @@ const styles = StyleSheet.create({
   backupTitle: {
     fontSize: 22,
     fontFamily: fonts.displayBold,
-    color: '#fff',
+    color: colors.surface,
     marginBottom: 8,
   },
   backupSubtitle: {
@@ -560,7 +560,7 @@ const styles = StyleSheet.create({
   backupOptionTitle: {
     fontSize: 15,
     fontFamily: fonts.displayBold,
-    color: '#fff',
+    color: colors.surface,
     marginBottom: 8,
   },
   backupOptionDesc: {

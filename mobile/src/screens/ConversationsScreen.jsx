@@ -18,12 +18,12 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { chatApi } from '../shared/api/chat';
 import { householdApi } from '../shared/api/household';
 import { useAuthStore } from '../shared/store/authStore';
-import { colors } from '../shared/theme';
+import { colors, withAlpha } from '../shared/theme';
 import EmptyState from '../components/EmptyState';
 import ErrorState from '../components/ErrorState';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import OfflineBanner from '../components/OfflineBanner';
-const AVATAR_COLORS = [colors.gold, '#D4B896', '#C4A0D4', '#A8C8A0', '#A0B8D4'];
+const AVATAR_COLORS = [colors.gold, colors.avatarTan, colors.avatarLilac, colors.avatarSage, colors.avatarSky];
 const PAD = 24;
 function initials(name) {
   const parts = name.trim().split(/\s+/);
@@ -432,7 +432,7 @@ export default function ConversationsScreen() {
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={searchModal.container}>
-          {/* <StatusBar barStyle="dark-content" backgroundColor="#ffffff" /> */}
+          {/* <StatusBar barStyle="dark-content" backgroundColor={colors.surface} /> */}
           {/* ConversationsScreen header */}
           {/* <View style={styles.brandBar}>
             <Text style={styles.brand}>ROOTAROO<Text style={styles.brandDot}>.</Text></Text>
@@ -487,7 +487,7 @@ export default function ConversationsScreen() {
                   activeOpacity={0.7}
                 >
                   {creating ? (
-                    <ActivityIndicator size="small" color="#1A1A2A" />
+                    <ActivityIndicator size="small" color={colors.legacyNavySoft} />
                   ) : (
                     <Text style={searchModal.createText}>Create</Text>
                   )}
@@ -951,11 +951,11 @@ const searchModal = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(27,30,36,0.04)',
+    borderBottomColor: withAlpha(colors.inkDeep, 0.04),
     backgroundColor: colors.surface,
   },
   mRowSel: {
-    backgroundColor: 'rgba(184,138,62,0.06)',
+    backgroundColor: withAlpha(colors.gold, 0.06),
   },
   mRowLeft: {
     flexDirection: 'row',
@@ -991,7 +991,7 @@ const searchModal = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: 'rgba(27,30,36,0.15)',
+    borderColor: withAlpha(colors.inkDeep, 0.15),
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'transparent',
@@ -1011,7 +1011,7 @@ const searchModal = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(255,255,255,0.8)',
+    backgroundColor: withAlpha(colors.white, 0.8),
     justifyContent: 'center',
     alignItems: 'center',
     gap: 10,

@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useAuthStore } from '../shared/store/authStore';
 import { authApi } from '../shared/api/auth';
+import { colors, withAlpha } from '../shared/theme';
 export default function AccountDeletionScreen({ navigation }) {
   const logout = useAuthStore((s) => s.logout);
   const [password, setPassword] = useState('');
@@ -81,7 +82,7 @@ export default function AccountDeletionScreen({ navigation }) {
   if (step === 'done') {
     return (
       <View style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#1A1A2A" />
+        <StatusBar barStyle="light-content" backgroundColor={colors.legacyNavySoft} />
         <View style={styles.inner}>
           <Text style={styles.doneIcon}>{'\u{1F4A5}'}</Text>
           <Text style={styles.doneTitle}>Account Deleted</Text>
@@ -97,7 +98,7 @@ export default function AccountDeletionScreen({ navigation }) {
   }
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F0EDE6" />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.canvasSoft} />
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         {step === 'confirm' && (
           <>
@@ -115,7 +116,7 @@ export default function AccountDeletionScreen({ navigation }) {
               value={password}
               onChangeText={setPassword}
               placeholder="Enter your password"
-              placeholderTextColor="rgba(13,13,26,0.2)"
+              placeholderTextColor={withAlpha(colors.legacyNavy, 0.2)}
               secureTextEntry
             />
 
@@ -126,7 +127,7 @@ export default function AccountDeletionScreen({ navigation }) {
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={colors.surface} />
               ) : (
                 <Text style={styles.dangerText}>SCHEDULE DELETION</Text>
               )}
@@ -158,7 +159,7 @@ export default function AccountDeletionScreen({ navigation }) {
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color="#1A1A2A" />
+                <ActivityIndicator color={colors.legacyNavySoft} />
               ) : (
                 <Text style={styles.primaryText}>CANCEL DELETION</Text>
               )}
@@ -176,7 +177,7 @@ export default function AccountDeletionScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F0EDE6',
+    backgroundColor: colors.canvasSoft,
   },
   inner: {
     flex: 1,
@@ -205,27 +206,27 @@ const styles = StyleSheet.create({
   heading: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#0D0D1A',
+    color: colors.legacyNavy,
     textAlign: 'center',
     marginBottom: 10,
   },
   doneTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#0D0D1A',
+    color: colors.legacyNavy,
     textAlign: 'center',
     marginBottom: 8,
   },
   doneSub: {
     fontSize: 13,
-    color: 'rgba(13,13,26,0.4)',
+    color: withAlpha(colors.legacyNavy, 0.4),
     textAlign: 'center',
     lineHeight: 18,
     marginBottom: 24,
   },
   warning: {
     fontSize: 13,
-    color: 'rgba(13,13,26,0.5)',
+    color: withAlpha(colors.legacyNavy, 0.5),
     textAlign: 'center',
     lineHeight: 18,
     marginBottom: 24,
@@ -235,7 +236,7 @@ const styles = StyleSheet.create({
     width: '100%',
     fontSize: 10,
     fontWeight: '600',
-    color: 'rgba(13,13,26,0.35)',
+    color: withAlpha(colors.legacyNavy, 0.35),
     letterSpacing: 1.5,
     textTransform: 'uppercase',
     marginBottom: 6,
@@ -243,19 +244,19 @@ const styles = StyleSheet.create({
   input: {
     width: '100%',
     height: 44,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: 'rgba(13,13,26,0.08)',
+    borderColor: withAlpha(colors.legacyNavy, 0.08),
     borderRadius: 8,
     paddingHorizontal: 14,
     fontSize: 14,
-    color: '#0D0D1A',
+    color: colors.legacyNavy,
     marginBottom: 16,
   },
   primaryBtn: {
     width: '100%',
     height: 46,
-    backgroundColor: '#D4A017',
+    backgroundColor: colors.legacyGold,
     borderRadius: 10,
     flexDirection: 'row',
     alignItems: 'center',
@@ -266,13 +267,13 @@ const styles = StyleSheet.create({
   primaryText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1A1A2A',
+    color: colors.legacyNavySoft,
     letterSpacing: 0.8,
   },
   dangerBtn: {
     width: '100%',
     height: 46,
-    backgroundColor: '#DC2626',
+    backgroundColor: colors.dangerStrong,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
@@ -281,7 +282,7 @@ const styles = StyleSheet.create({
   dangerText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.surface,
     letterSpacing: 0.8,
   },
   linkBtn: {
@@ -290,12 +291,12 @@ const styles = StyleSheet.create({
   linkDanger: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#DC2626',
+    color: colors.dangerStrong,
   },
   cancelText: {
     fontSize: 12,
     fontWeight: '500',
-    color: 'rgba(13,13,26,0.3)',
+    color: withAlpha(colors.legacyNavy, 0.3),
     marginBottom: 8,
   },
 });

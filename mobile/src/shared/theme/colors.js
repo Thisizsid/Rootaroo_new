@@ -72,8 +72,86 @@ export const colors = {
   goldWarmDark: '#A3762A',
   goldTint: '#FBF3E6',
 
-  /* ---- Legacy (pre-theme) — removed after full migration ---- */
+  /* ---- Legacy (pre-theme) ---- */
   legacyNavy: '#0D0D1A',
   legacyNavyTop: '#15152A',
+  legacyNavySoft: '#1A1A2A',
   legacyGold: '#D4A017',
+  legacyGoldDark: '#8A6A0A',
+
+  /* ---- Absolutes ---- */
+  black: '#000000',
+  white: '#FFFFFF',
+
+  /* ---- Canvas variants (screen-specific warm backgrounds) ---- */
+  canvasSoft: '#F0EDE6',
+  canvasDeep: '#E9E6E0',
+  canvasCool: '#F7F7FA',
+  canvasPaper: '#F5F2EB',
+  canvasGray: '#F3F4F6',
+  canvasIvory: '#F1EEE7',
+  canvasFlat: '#F0F0F0',
+  canvasWarm: '#F1EFEA',
+  canvasBright: '#F9F8F5',
+
+  /* ---- Extra neutrals / grays ---- */
+  grayMuted: '#6B7280',
+  grayCool: '#9CA3AF',
+  grayDeep: '#374151',
+  inkCool: '#2C313C',
+  taupeDeep: '#6B6153',
+  taupeMid: '#8A8578',
+  sandLight: '#E5DECF',
+  sandPale: '#EFE9DD',
+  sandMuted: '#E4DFD2',
+  sandDim: '#D8D4CA',
+  avatarNavy: '#33507A',
+
+  /* ---- Extra semantic (danger/success variants used in specific screens) ---- */
+  dangerBright: '#DC3545',
+  dangerStrong: '#DC2626',
+  dangerVivid: '#D0342C',
+  dangerDeep2: '#B91C1C',
+  dangerHeart: '#C0392B',
+  successDeep: '#5B8F6C',
+  successBright: '#22C55E',
+  coralSoft: '#E8917F',
+  blushPale: '#F5E3DE',
+  blushDeep: '#E8B0A2',
+  sagePale: '#E8F0E4',
+  amberPale: '#FEF3C7',
+  goldPale: '#F0D9A8',
+  tanPale: '#F0DCC8',
+  rustDeep: '#B8632F',
+  brownDeep: '#6B5738',
+
+  /* ---- Avatar / initials pastel palette (used across member-list screens) ---- */
+  avatarSage: '#A8C8A0',
+  avatarSky: '#A0B8D4',
+  avatarLilac: '#C4A0D4',
+  avatarTan: '#D4B896',
+  avatarGold2: '#E8C97A',
+  avatarBlush: '#F4A0A0',
+  avatarPeach: '#E8B4A0',
+  avatarBronze: '#C4A574',
+  avatarMoss: '#8FA88A',
+  avatarSlate: '#7A93A8',
+  avatarMauve: '#A888A0',
+
+  /* ---- Overlay-only bases (used exclusively via withAlpha()) ---- */
+  overlaySlate: '#2B3547',
+  overlayInk: '#0F172B',
+  overlayCream: '#EFE3D3',
 };
+
+/**
+ * Apply an alpha channel to a `#RRGGBB` token, e.g. withAlpha(colors.inkDeep, 0.55).
+ * Keeps every translucent overlay/scrim sourced from the same token as its opaque use.
+ */
+export function withAlpha(hex, alpha) {
+  const clean = hex.replace('#', '');
+  const r = parseInt(clean.substring(0, 2), 16);
+  const g = parseInt(clean.substring(2, 4), 16);
+  const b = parseInt(clean.substring(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}

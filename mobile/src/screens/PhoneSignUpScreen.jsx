@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { authApi } from '../shared/api/auth';
-import { colors, fonts } from '../shared/theme';
+import { colors, fonts, withAlpha } from '../shared/theme';
 const COUNTRY_CODES = [
   {
     code: '+91',
@@ -245,7 +245,7 @@ export default function PhoneSignUpScreen({ navigation }) {
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color="#FFFFFF" />
+                <ActivityIndicator color={colors.surface} />
               ) : (
                 <Text style={styles.primaryText}>Send OTP</Text>
               )}
@@ -424,7 +424,7 @@ const styles = StyleSheet.create({
   phoneRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 14,
     borderWidth: 1.5,
     borderColor: colors.fieldBorder,
@@ -491,7 +491,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.2,
-    color: '#FFFFFF',
+    color: colors.surface,
   },
   note: {
     fontFamily: fonts.body,
@@ -526,7 +526,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(30,27,22,0.08)',
+    borderBottomColor: withAlpha(colors.textPrimary, 0.08),
   },
   modalTitle: {
     fontSize: 16,
@@ -542,11 +542,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(30,27,22,0.06)',
+    borderBottomColor: withAlpha(colors.textPrimary, 0.06),
   },
   searchInput: {
     height: 40,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 10,
     borderWidth: 1.5,
     borderColor: colors.fieldBorder,
@@ -586,7 +586,7 @@ const styles = StyleSheet.create({
   },
   rowSeparator: {
     height: 1,
-    backgroundColor: 'rgba(30,27,22,0.05)',
+    backgroundColor: withAlpha(colors.textPrimary, 0.05),
     marginLeft: 54,
   },
 });

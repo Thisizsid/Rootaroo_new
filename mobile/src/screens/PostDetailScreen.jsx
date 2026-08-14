@@ -17,6 +17,7 @@ import {
 import PostCard from '../shared/components/PostCard';
 import { feedApi } from '../shared/api/feed';
 import { useAuthStore } from '../shared/store/authStore';
+import { colors, withAlpha } from '../shared/theme';
 /* ── Helpers ────────────────────────────────────────────────────────────── */
 
 function getInitials(name) {
@@ -27,7 +28,7 @@ function getInitials(name) {
     .toUpperCase()
     .slice(0, 2);
 }
-const AVATAR_TONES = ['#C4A574', '#8FA88A', '#7A93A8', '#A888A0', '#D4A017'];
+const AVATAR_TONES = [colors.avatarBronze, colors.avatarMoss, colors.avatarSlate, colors.avatarMauve, colors.legacyGold];
 function avatarTone(id) {
   let hash = 0;
   for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
@@ -118,7 +119,7 @@ export default function PostDetailScreen({ navigation, route }) {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
         <View style={styles.topBar}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
@@ -137,7 +138,7 @@ export default function PostDetailScreen({ navigation, route }) {
           <Text style={styles.topRight}>Feed Detail</Text>
         </View>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#D4A017" />
+          <ActivityIndicator size="large" color={colors.legacyGold} />
         </View>
       </SafeAreaView>
     );
@@ -145,7 +146,7 @@ export default function PostDetailScreen({ navigation, route }) {
   if (error || !post) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
         <View style={styles.topBar}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
@@ -174,7 +175,7 @@ export default function PostDetailScreen({ navigation, route }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
       {/* Top bar */}
       <View style={styles.topBar}>
         <TouchableOpacity
@@ -290,7 +291,7 @@ export default function PostDetailScreen({ navigation, route }) {
               value={commentText}
               onChangeText={setCommentText}
               placeholder="Write a comment..."
-              placeholderTextColor="rgba(13,13,26,0.35)"
+              placeholderTextColor={withAlpha(colors.legacyNavy, 0.35)}
               multiline={false}
               returnKeyType="send"
               onSubmitEditing={handleAddComment}
@@ -303,7 +304,7 @@ export default function PostDetailScreen({ navigation, route }) {
               style={styles.postButton}
             >
               {submitting ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
+                <ActivityIndicator size="small" color={colors.surface} />
               ) : (
                 <Text
                   style={[
@@ -327,7 +328,7 @@ export default function PostDetailScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F2EB',
+    backgroundColor: colors.canvasPaper,
   },
   /* ── Top bar ─────────────────────────────────────── */
   topBar: {
@@ -336,29 +337,29 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(13,13,26,0.08)',
+    borderBottomColor: withAlpha(colors.legacyNavy, 0.08),
   },
   backArrow: {
     fontSize: 20,
-    color: '#0D0D1A',
+    color: colors.legacyNavy,
     lineHeight: 24,
     width: 30,
   },
   topBrand: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#0D0D1A',
+    color: colors.legacyNavy,
     letterSpacing: 1.5,
   },
   topBrandDot: {
-    color: '#D4A017',
+    color: colors.legacyGold,
   },
   topRight: {
     fontSize: 13,
     fontWeight: '600',
-    color: 'rgba(13,13,26,0.45)',
+    color: withAlpha(colors.legacyNavy, 0.45),
     width: 80,
     textAlign: 'right',
   },
@@ -369,10 +370,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F5F2EB',
+    backgroundColor: colors.canvasPaper,
   },
   errorText: {
-    color: '#0D0D1A',
+    color: colors.legacyNavy,
     fontSize: 15,
     fontWeight: '600',
     opacity: 0.5,
@@ -383,7 +384,7 @@ const styles = StyleSheet.create({
   /* ── Divider ─────────────────────────────────────── */
   divider: {
     height: 1,
-    backgroundColor: 'rgba(13,13,26,0.08)',
+    backgroundColor: withAlpha(colors.legacyNavy, 0.08),
     marginHorizontal: 22,
     marginTop: 4,
   },
@@ -396,7 +397,7 @@ const styles = StyleSheet.create({
   commentsHeader: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#0D0D1A',
+    color: colors.legacyNavy,
     letterSpacing: 0.3,
   },
   /* ── Empty state ─────────────────────────────────── */
@@ -407,7 +408,7 @@ const styles = StyleSheet.create({
   },
   emptyCommentsText: {
     fontSize: 14,
-    color: 'rgba(13,13,26,0.4)',
+    color: withAlpha(colors.legacyNavy, 0.4),
   },
   /* ── Individual comment row ──────────────────────── */
   commentRow: {
@@ -430,7 +431,7 @@ const styles = StyleSheet.create({
   commentAvatarText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.surface,
   },
   commentContent: {
     flex: 1,
@@ -438,17 +439,17 @@ const styles = StyleSheet.create({
   commentAuthor: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#0D0D1A',
+    color: colors.legacyNavy,
   },
   commentBody: {
     fontSize: 14,
-    color: '#0D0D1A',
+    color: colors.legacyNavy,
     lineHeight: 20,
     marginTop: 2,
   },
   commentTime: {
     fontSize: 11,
-    color: 'rgba(13,13,26,0.38)',
+    color: withAlpha(colors.legacyNavy, 0.38),
     marginTop: 4,
   },
   /* ── Bottom input bar ────────────────────────────── */
@@ -458,25 +459,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     paddingBottom: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(13,13,26,0.08)',
+    borderTopColor: withAlpha(colors.legacyNavy, 0.08),
     gap: 10,
   },
   input: {
     flex: 1,
     height: 40,
-    backgroundColor: '#F5F2EB',
+    backgroundColor: colors.canvasPaper,
     borderRadius: 20,
     paddingHorizontal: 16,
     fontSize: 14,
-    color: '#0D0D1A',
+    color: colors.legacyNavy,
   },
   postButton: {
     paddingHorizontal: 18,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#D4A017',
+    backgroundColor: colors.legacyGold,
     minWidth: 56,
     alignItems: 'center',
     justifyContent: 'center',
@@ -484,7 +485,7 @@ const styles = StyleSheet.create({
   postButtonText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.surface,
   },
   postButtonTextDisabled: {
     opacity: 0.4,

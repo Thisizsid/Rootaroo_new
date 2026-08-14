@@ -39,7 +39,7 @@ import {
   computePublicKeyFingerprint,
 } from '../shared/crypto/vaultCrypto';
 import { verifyHouseholdKeys, updatePublicKeyPin } from '../shared/crypto/keyPinStore';
-import { colors, fonts } from '../shared/theme';
+import { colors, fonts, withAlpha } from '../shared/theme';
 export default function VaultKeyCeremonyScreen({ navigation }) {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -346,7 +346,7 @@ export default function VaultKeyCeremonyScreen({ navigation }) {
           disabled={ceremonyInProgress || completed}
         >
           {ceremonyInProgress ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={colors.surface} />
           ) : (
             <Text style={styles.ceremonyButtonText}>
               {completed ? 'Ceremony Completed' : 'Perform Key Ceremony'}
@@ -375,7 +375,7 @@ const styles = StyleSheet.create({
     paddingTop: 48,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.08)',
+    borderBottomColor: withAlpha(colors.white, 0.08),
   },
   backButton: {
     paddingVertical: 4,
@@ -388,7 +388,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontFamily: fonts.displayBold,
-    color: '#fff',
+    color: colors.surface,
   },
   content: {
     flex: 1,
@@ -397,7 +397,7 @@ const styles = StyleSheet.create({
   infoBox: {
     backgroundColor: colors.inkSoft,
     borderWidth: 1,
-    borderColor: 'rgba(184,138,62,0.35)',
+    borderColor: withAlpha(colors.gold, 0.35),
     borderRadius: 18,
     padding: 16,
     marginBottom: 16,
@@ -415,9 +415,9 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   warningBox: {
-    backgroundColor: 'rgba(181,75,58,0.16)',
+    backgroundColor: withAlpha(colors.danger, 0.16),
     borderWidth: 1,
-    borderColor: 'rgba(181,75,58,0.45)',
+    borderColor: withAlpha(colors.danger, 0.45),
     borderRadius: 12,
     padding: 12,
     marginBottom: 16,
@@ -425,7 +425,7 @@ const styles = StyleSheet.create({
   warningText: {
     fontSize: 13,
     fontFamily: fonts.body,
-    color: '#E8B0A2',
+    color: colors.blushDeep,
     lineHeight: 18,
   },
   sectionHeader: {
@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: withAlpha(colors.white, 0.06),
   },
   memberInfo: {
     flex: 1,
@@ -456,7 +456,7 @@ const styles = StyleSheet.create({
   memberName: {
     fontSize: 16,
     fontFamily: fonts.bodyMedium,
-    color: '#fff',
+    color: colors.surface,
     marginBottom: 2,
   },
   memberStatus: {
@@ -507,14 +507,14 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   ceremonyButtonText: {
-    color: '#fff',
+    color: colors.surface,
     fontSize: 15,
     fontFamily: fonts.displayBold,
   },
   // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: withAlpha(colors.black, 0.6),
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
@@ -525,18 +525,18 @@ const styles = StyleSheet.create({
     padding: 24,
     width: '100%',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: withAlpha(colors.white, 0.06),
   },
   modalTitle: {
     fontSize: 18,
     fontFamily: fonts.displayBold,
-    color: '#E8917F',
+    color: colors.coralSoft,
     marginBottom: 12,
   },
   modalBody: {
     fontSize: 14,
     fontFamily: fonts.body,
-    color: '#D8D4CA',
+    color: colors.sandDim,
     lineHeight: 20,
     marginBottom: 20,
   },
@@ -557,12 +557,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalRejectText: {
-    color: '#fff',
+    color: colors.surface,
     fontFamily: fonts.displayBold,
     fontSize: 15,
   },
   modalAcceptBtn: {
-    backgroundColor: 'rgba(184,138,62,0.16)',
+    backgroundColor: withAlpha(colors.gold, 0.16),
     borderWidth: 1,
     borderColor: colors.gold,
     borderRadius: 10,

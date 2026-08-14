@@ -31,7 +31,7 @@ import { placeApi } from '../shared/api/place';
 import { householdApi } from '../shared/api/household';
 import { usePingStore } from '../shared/store/pingStore';
 import { useAuthStore } from '../shared/store/authStore';
-import { colors, fonts } from '../shared/theme';
+import { colors, fonts, withAlpha } from '../shared/theme';
 import { haversineDistanceKm, formatDistance } from '../shared/utils/geo';
 const PLACE_ICON_EMOJI = {
   home: '⌂',
@@ -730,7 +730,7 @@ export default function CheckInScreen({ navigation }) {
                     activeOpacity={0.8}
                   >
                     {respondingPingId === request.id ? (
-                      <ActivityIndicator size="small" color="#fff" />
+                      <ActivityIndicator size="small" color={colors.surface} />
                     ) : (
                       <Text style={styles.pingAcceptText}>Share</Text>
                     )}
@@ -807,7 +807,7 @@ export default function CheckInScreen({ navigation }) {
             activeOpacity={0.85}
           >
             {checkingIn ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color={colors.surface} />
             ) : (
               <>
                 <Text style={styles.actionIconPrimary}>◈</Text>
@@ -1132,7 +1132,7 @@ export default function CheckInScreen({ navigation }) {
               activeOpacity={0.85}
             >
               {savingPlace ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator size="small" color={colors.surface} />
               ) : (
                 <Text style={styles.saveBtnText}>
                   {editingPlaceId ? 'Update place' : 'Save place'}
@@ -1283,7 +1283,7 @@ const styles = StyleSheet.create({
   // Map
   map: {
     flex: 1,
-    backgroundColor: '#E1E6EA',
+    backgroundColor: colors.borderCool,
   },
   // Native map markers (rendered as real RN views via <Marker>, not HTML)
   nativeSelfPin: {
@@ -1292,8 +1292,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: colors.gold,
     borderWidth: 3,
-    borderColor: '#fff',
-    shadowColor: '#000',
+    borderColor: colors.surface,
+    shadowColor: colors.black,
     shadowOffset: {
       width: 0,
       height: 1,
@@ -1308,8 +1308,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: colors.info,
     borderWidth: 3,
-    borderColor: '#fff',
-    shadowColor: '#000',
+    borderColor: colors.surface,
+    shadowColor: colors.black,
     shadowOffset: {
       width: 0,
       height: 1,
@@ -1328,10 +1328,10 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     backgroundColor: colors.gold,
     borderWidth: 2.5,
-    borderColor: '#fff',
+    borderColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
+    shadowColor: colors.black,
     shadowOffset: {
       width: 0,
       height: 3,
@@ -1347,7 +1347,7 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '600',
     color: colors.ink,
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    backgroundColor: withAlpha(colors.white, 0.9),
     paddingHorizontal: 5,
     paddingVertical: 1,
     borderRadius: 5,
@@ -1356,7 +1356,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#F0D9A8',
+    backgroundColor: colors.goldPale,
     borderWidth: 2.5,
     borderColor: colors.success,
     alignItems: 'center',
@@ -1376,7 +1376,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9,
     paddingVertical: 4,
     borderRadius: 8,
-    shadowColor: '#000',
+    shadowColor: colors.black,
     shadowOffset: {
       width: 0,
       height: 3,
@@ -1386,7 +1386,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   nativeFocusLabelText: {
-    color: '#fff',
+    color: colors.surface,
     fontWeight: '600',
     fontSize: 12,
   },
@@ -1404,8 +1404,8 @@ const styles = StyleSheet.create({
     ],
     backgroundColor: colors.inkDeep,
     borderWidth: 2.5,
-    borderColor: '#fff',
-    shadowColor: '#000',
+    borderColor: colors.surface,
+    shadowColor: colors.black,
     shadowOffset: {
       width: 0,
       height: 4,
@@ -1496,7 +1496,7 @@ const styles = StyleSheet.create({
   pingAcceptText: {
     fontFamily: fonts.bodySemiBold,
     fontSize: 13,
-    color: '#FFFFFF',
+    color: colors.surface,
   },
   // Route-to-shared-location card — distance + "Open in Maps"
   routeCard: {
@@ -1542,7 +1542,7 @@ const styles = StyleSheet.create({
   routeCardDirectionsText: {
     fontFamily: fonts.bodySemiBold,
     fontSize: 13,
-    color: '#FFFFFF',
+    color: colors.surface,
   },
   // Bottom tray — fixed-height absolute overlay, slid up/down via transform
   tray: {
@@ -1598,7 +1598,7 @@ const styles = StyleSheet.create({
   },
   actionIconPrimary: {
     fontSize: 18,
-    color: '#FFFFFF',
+    color: colors.surface,
     marginBottom: 2,
   },
   actionIconSecondary: {
@@ -1609,7 +1609,7 @@ const styles = StyleSheet.create({
   actionTitlePrimary: {
     fontFamily: fonts.displayBold,
     fontSize: 14,
-    color: '#FFFFFF',
+    color: colors.surface,
   },
   actionTitleSecondary: {
     fontFamily: fonts.displayBold,
@@ -1620,7 +1620,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: 11,
     lineHeight: 15,
-    color: 'rgba(255,255,255,0.85)',
+    color: withAlpha(colors.white, 0.85),
   },
   actionSubSecondary: {
     fontFamily: fonts.body,
@@ -1661,7 +1661,7 @@ const styles = StyleSheet.create({
   },
   placeChipDotText: {
     fontSize: 11,
-    color: '#FFFFFF',
+    color: colors.surface,
   },
   placeChipName: {
     fontFamily: fonts.bodySemiBold,
@@ -1777,12 +1777,12 @@ const styles = StyleSheet.create({
     width: 140,
     height: 140,
     borderRadius: 9999,
-    backgroundColor: '#5B8F6C',
+    backgroundColor: colors.successDeep,
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',
     marginBottom: 28,
-    shadowColor: '#5B8F6C',
+    shadowColor: colors.successDeep,
     shadowOffset: {
       width: 0,
       height: 12,
@@ -1794,7 +1794,7 @@ const styles = StyleSheet.create({
   successCheck: {
     fontFamily: fonts.displayBold,
     fontSize: 72,
-    color: '#FFFFFF',
+    color: colors.surface,
   },
   successWrap: {
     flex: 1,
@@ -1832,7 +1832,7 @@ const styles = StyleSheet.create({
   // Member picker sheet
   sheetOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(27,30,36,0.55)',
+    backgroundColor: withAlpha(colors.inkDeep, 0.55),
   },
   sheetBox: {
     backgroundColor: colors.surface,
@@ -2020,7 +2020,7 @@ const styles = StyleSheet.create({
     height: 190,
     borderRadius: 16,
     overflow: 'hidden',
-    backgroundColor: '#E1E6EA',
+    backgroundColor: colors.borderCool,
   },
   miniMapEmpty: {
     flex: 1,
@@ -2082,7 +2082,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   iconOptTextSelected: {
-    color: '#FFFFFF',
+    color: colors.surface,
   },
   saveBtn: {
     height: 48,
@@ -2097,7 +2097,7 @@ const styles = StyleSheet.create({
   saveBtnText: {
     fontFamily: fonts.displayBold,
     fontSize: 14,
-    color: '#FFFFFF',
+    color: colors.surface,
   },
   savedList: {
     gap: 2,

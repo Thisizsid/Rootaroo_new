@@ -27,35 +27,36 @@ import ErrorState from '../components/ErrorState';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import OfflineBanner from '../components/OfflineBanner';
 import ConfirmSheet from '../components/ConfirmSheet';
+import { colors, withAlpha } from '../shared/theme';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // Import the family cover photo as placeholder for featured image
 const FAMILY_COVER = require('../../assets/images/family-cover.png');
 const PENCIL_SVG =
   '<svg width="22" height="22" viewBox="0 0 24 24" fill="none">' +
-  '<path d="M12 20h9" stroke="#2A2E33" stroke-width="2" stroke-linecap="round"></path>' +
-  '<path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4L16.5 3.5z" stroke="#2A2E33" stroke-width="2" stroke-linejoin="round"></path>' +
+  `<path d="M12 20h9" stroke="${colors.ink}" stroke-width="2" stroke-linecap="round"></path>` +
+  `<path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4L16.5 3.5z" stroke="${colors.ink}" stroke-width="2" stroke-linejoin="round"></path>` +
   '</svg>';
 const DOTS_SVG =
-  '<svg width="20" height="20" viewBox="0 0 24 24" fill="#2A2E33">' +
+  `<svg width="20" height="20" viewBox="0 0 24 24" fill="${colors.ink}">` +
   '<circle cx="5" cy="12" r="1.7"></circle>' +
   '<circle cx="12" cy="12" r="1.7"></circle>' +
   '<circle cx="19" cy="12" r="1.7"></circle>' +
   '</svg>';
 const TAG_SVG =
   '<svg width="16" height="16" viewBox="0 0 24 24" fill="none">' +
-  '<path d="M20.6 13.4L13.4 20.6a2 2 0 01-2.8 0L4 14V4h10l6.6 6.6a2 2 0 010 2.8z" stroke="#8A6A0A" stroke-width="1.8" stroke-linejoin="round"></path>' +
-  '<circle cx="8.5" cy="8.5" r="1.3" fill="#8A6A0A"></circle>' +
+  `<path d="M20.6 13.4L13.4 20.6a2 2 0 01-2.8 0L4 14V4h10l6.6 6.6a2 2 0 010 2.8z" stroke="${colors.legacyGoldDark}" stroke-width="1.8" stroke-linejoin="round"></path>` +
+  `<circle cx="8.5" cy="8.5" r="1.3" fill="${colors.legacyGoldDark}"></circle>` +
   '</svg>';
 const CHAT_SVG =
   '<svg width="16" height="16" viewBox="0 0 24 24" fill="none">' +
-  '<path d="M21 12a8 8 0 01-8 8H4l2-3a8 8 0 1115-5z" stroke="#757A80" stroke-width="1.8" stroke-linejoin="round"></path>' +
+  `<path d="M21 12a8 8 0 01-8 8H4l2-3a8 8 0 1115-5z" stroke="${colors.textSecondary}" stroke-width="1.8" stroke-linejoin="round"></path>` +
   '</svg>';
 const PHOTO_SVG =
   '<svg width="28" height="28" viewBox="0 0 24 24" fill="none">' +
-  '<rect x="3" y="5" width="18" height="14" rx="2" stroke="#45566B" stroke-width="1.5"></rect>' +
-  '<circle cx="8.5" cy="10" r="1.5" stroke="#45566B" stroke-width="1.5"></circle>' +
-  '<path d="M21 16l-5-5-9 9" stroke="#45566B" stroke-width="1.5"></path>' +
+  `<rect x="3" y="5" width="18" height="14" rx="2" stroke="${colors.inkMuted}" stroke-width="1.5"></rect>` +
+  `<circle cx="8.5" cy="10" r="1.5" stroke="${colors.inkMuted}" stroke-width="1.5"></circle>` +
+  `<path d="M21 16l-5-5-9 9" stroke="${colors.inkMuted}" stroke-width="1.5"></path>` +
   '</svg>';
 const getServerBase = () => {
   const base = apiClient.defaults.baseURL || '';
@@ -393,7 +394,7 @@ export default function FeedScreen() {
           contentContainerStyle={styles.postsContainer}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#B88A3E" />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.gold} />
           }
         >
           <View style={styles.bannerWrap}>
@@ -414,7 +415,7 @@ export default function FeedScreen() {
               resizeMode="cover"
             />
             <LinearGradient
-              colors={['rgba(27,30,36,0)', 'rgba(27,30,36,0.68)']}
+              colors={[withAlpha(colors.inkDeep, 0), withAlpha(colors.inkDeep, 0.68)]}
               style={styles.featuredOverlay}
             />
             <View style={styles.featuredTextBlock}>
@@ -530,7 +531,7 @@ export default function FeedScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F1EC',
+    backgroundColor: colors.canvas,
     marginTop: 10,
     marginBottom: 90,
     paddingHorizontal: 4,
@@ -543,7 +544,7 @@ const styles = StyleSheet.create({
   timeText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#2A2E33',
+    color: colors.ink,
     fontFamily: 'Inter_600SemiBold',
   },
   titleBar: {
@@ -552,12 +553,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 24,
-    backgroundColor: '#F3F1EC',
+    backgroundColor: colors.canvas,
   },
   title: {
     fontSize: 19,
     fontWeight: '700',
-    color: '#2A2E33',
+    color: colors.ink,
     fontFamily: 'PlusJakartaSans_700Bold',
   },
   postsContainer: {
@@ -595,7 +596,7 @@ const styles = StyleSheet.create({
   },
   featuredEyebrow: {
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(27,30,36,0.45)',
+    backgroundColor: withAlpha(colors.inkDeep, 0.45),
     borderRadius: 9999,
     paddingHorizontal: 12,
     paddingVertical: 5,
@@ -604,17 +605,17 @@ const styles = StyleSheet.create({
   featuredEyebrowText: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#F0DCC8',
+    color: colors.tanPale,
     letterSpacing: 1.2,
     fontFamily: 'Inter_600SemiBold',
   },
   featuredTitle: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: colors.surface,
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     marginBottom: 6,
-    textShadowColor: 'rgba(27,30,36,0.4)',
+    textShadowColor: withAlpha(colors.inkDeep, 0.4),
     textShadowOffset: {
       width: 0,
       height: 1,
@@ -623,23 +624,23 @@ const styles = StyleSheet.create({
   },
   featuredSub: {
     fontSize: 13,
-    color: '#FFFFFF',
+    color: colors.surface,
     fontFamily: 'Inter_400Regular',
     lineHeight: 18,
     opacity: 0.92,
   },
   menuBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(27,30,36,0.25)',
+    backgroundColor: withAlpha(colors.inkDeep, 0.25),
   },
   menuDropdown: {
     position: 'absolute',
     width: 220,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 14,
     paddingVertical: 6,
     paddingHorizontal: 14,
-    shadowColor: '#1B1E24',
+    shadowColor: colors.inkDeep,
     shadowOffset: {
       width: 0,
       height: 6,
@@ -654,7 +655,7 @@ const styles = StyleSheet.create({
     right: 14,
     width: 12,
     height: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     transform: [
       {
         rotate: '45deg',
@@ -666,17 +667,17 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     marginBottom: 2,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(13,13,26,0.1)',
+    borderBottomColor: withAlpha(colors.legacyNavy, 0.1),
   },
   menuPostAuthor: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#2A2E33',
+    color: colors.ink,
     fontFamily: 'Inter_600SemiBold',
   },
   menuPostTime: {
     fontSize: 12,
-    color: '#A6ABB0',
+    color: colors.textMuted,
     fontFamily: 'Inter_400Regular',
     marginTop: 1,
   },
@@ -693,7 +694,7 @@ const styles = StyleSheet.create({
   menuItemText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#2A2E33',
+    color: colors.ink,
     fontFamily: 'Inter_500Medium',
   },
   likeButton: {
@@ -710,21 +711,21 @@ const styles = StyleSheet.create({
   },
   likeIcon: {
     fontSize: 17,
-    color: '#757A80',
+    color: colors.textSecondary,
   },
   likeIconActive: {
-    color: '#B88A3E',
+    color: colors.gold,
   },
   likeText: {
     fontSize: 13,
-    color: '#757A80',
+    color: colors.textSecondary,
     fontFamily: 'Inter_500Medium',
   },
   likeTextActive: {
-    color: '#B88A3E',
+    color: colors.gold,
   },
   postCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     marginBottom: 16,
   },
   postHeader: {
@@ -738,7 +739,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#E1E6EA',
+    backgroundColor: colors.borderCool,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -751,7 +752,7 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#45566B',
+    color: colors.inkMuted,
     fontFamily: 'Inter_600SemiBold',
   },
   postHeaderInfo: {
@@ -765,7 +766,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerFeeling: {
-    backgroundColor: 'rgba(212,160,23,0.14)',
+    backgroundColor: withAlpha(colors.legacyGold, 0.14),
     borderRadius: 14,
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -775,7 +776,7 @@ const styles = StyleSheet.create({
   headerFeelingText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#8A6A0A',
+    color: colors.legacyGoldDark,
     fontFamily: 'Inter_600SemiBold',
   },
   infoRow: {
@@ -786,7 +787,7 @@ const styles = StyleSheet.create({
   },
   infoRowText: {
     fontSize: 13,
-    color: '#757A80',
+    color: colors.textSecondary,
     fontFamily: 'Inter_400Regular',
     flexShrink: 1,
   },
@@ -794,7 +795,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: '#F3F1EC',
+    backgroundColor: colors.canvas,
     borderRadius: 9999,
     paddingHorizontal: 14,
     paddingVertical: 10,
@@ -804,17 +805,17 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#E1E6EA',
+    backgroundColor: colors.borderCool,
     alignItems: 'center',
     justifyContent: 'center',
   },
   commentInputAvatarText: {
     fontSize: 12,
-    color: '#45566B',
+    color: colors.inkMuted,
   },
   commentInputPlaceholder: {
     fontSize: 13,
-    color: '#A6ABB0',
+    color: colors.textMuted,
     fontFamily: 'Inter_400Regular',
   },
   mediaWrap: {
@@ -833,22 +834,22 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.5)',
+    backgroundColor: withAlpha(colors.white, 0.5),
   },
   pageDotActive: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     width: 16,
   },
   authorName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#2A2E33',
+    color: colors.ink,
     fontFamily: 'PlusJakartaSans_600SemiBold',
     marginBottom: 2,
   },
   postTime: {
     fontSize: 12,
-    color: '#A6ABB0',
+    color: colors.textMuted,
     fontFamily: 'Inter_400Regular',
   },
   postImage: {
@@ -861,7 +862,7 @@ const styles = StyleSheet.create({
   },
   postText: {
     fontSize: 15,
-    color: '#2A2E33',
+    color: colors.ink,
     fontFamily: 'Inter_400Regular',
     lineHeight: 22,
     paddingRight: 40,
@@ -869,7 +870,7 @@ const styles = StyleSheet.create({
   },
   taggedText: {
     fontSize: 13,
-    color: '#8A6A0A',
+    color: colors.legacyGoldDark,
     fontFamily: 'Inter_500Medium',
     marginBottom: 14,
   },
@@ -884,19 +885,19 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#2A2E33',
+    color: colors.ink,
     fontFamily: 'PlusJakartaSans_700Bold',
     marginBottom: 6,
   },
   emptySub: {
     fontSize: 13,
-    color: '#757A80',
+    color: colors.textSecondary,
     fontFamily: 'Inter_400Regular',
     textAlign: 'center',
     marginBottom: 16,
   },
   retryButton: {
-    backgroundColor: '#B88A3E',
+    backgroundColor: colors.gold,
     borderRadius: 9999,
     paddingHorizontal: 24,
     paddingVertical: 10,
@@ -904,7 +905,7 @@ const styles = StyleSheet.create({
   retryText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.surface,
     fontFamily: 'PlusJakartaSans_600SemiBold',
   },
   fab: {
@@ -914,10 +915,10 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#B88A3E',
+    backgroundColor: colors.gold,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
+    shadowColor: colors.black,
     shadowOffset: {
       width: 0,
       height: 10,
@@ -929,7 +930,7 @@ const styles = StyleSheet.create({
   fabIcon: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.surface,
     fontFamily: 'PlusJakartaSans_700Bold',
   },
 });

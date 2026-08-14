@@ -4,7 +4,7 @@ import SignupWizardShell from '../shared/components/SignupWizardShell';
 import { authApi } from '../shared/api/auth';
 import { useAuthStore } from '../shared/store/authStore';
 import { loadSignupProgress, updateSignupProgress } from '../shared/store/signupProgress';
-import { colors, fonts } from '../shared/theme';
+import { colors, fonts, withAlpha } from '../shared/theme';
 const ITEM_H = 46;
 const VISIBLE = 3; // previous / selected / next — selected centered
 const WHEEL_H = ITEM_H * VISIBLE;
@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   wheelItemSel: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderWidth: 1.5,
     borderColor: colors.goldWarm,
     borderRadius: 14,
@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
   },
   wheelItemText: {
     fontSize: 15,
-    color: '#B7B2A5',
+    color: colors.placeholderWarm,
   },
   wheelItemTextSel: {
     fontSize: 18,
@@ -307,13 +307,13 @@ const styles = StyleSheet.create({
   },
   wheelItemTextNeighbor: {
     fontSize: 14,
-    color: '#8A8578',
+    color: colors.taupeMid,
   },
   divider: {
     position: 'absolute',
     left: 8,
     right: 8,
     height: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(30,27,22,0.12)',
+    backgroundColor: withAlpha(colors.textPrimary, 0.12),
   },
 });

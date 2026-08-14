@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import { useAuthStore } from '../shared/store/authStore';
 import { householdApi } from '../shared/api/household';
-import { colors, fonts } from '../shared/theme';
+import { colors, fonts, withAlpha } from '../shared/theme';
 import ConfirmSheet from '../components/ConfirmSheet';
 // Role options match mock Screen 37 exactly — Admin & Member only.
 const ROLE_OPTIONS = [
@@ -655,7 +655,7 @@ export default function HouseholdSettingsScreen({ navigation }) {
               activeOpacity={0.85}
             >
               {deleteLoading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={colors.surface} />
               ) : (
                 <Text style={styles.saveBtnText}>Schedule deletion (30 days)</Text>
               )}
@@ -900,7 +900,7 @@ const styles = StyleSheet.create({
   // Role Edit modal (mock Screen 37)
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(27,30,36,0.55)',
+    backgroundColor: withAlpha(colors.inkDeep, 0.55),
     justifyContent: 'flex-end',
   },
   modalSheet: {

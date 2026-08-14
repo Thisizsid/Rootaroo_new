@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { colors } from '../shared/theme';
 
 const EMOJIS = ['👍', '❤️', '😂', '😲', '😢'];
 
@@ -35,18 +36,18 @@ const styles = StyleSheet.create({
   button: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.canvasGray,
     borderRadius: 12,
     paddingHorizontal: 6,
     paddingVertical: 3,
     gap: 2,
   },
   buttonActive: {
-    backgroundColor: '#fef3c7',
+    backgroundColor: colors.amberPale,
     borderWidth: 1,
-    borderColor: '#D4A017',
+    borderColor: colors.legacyGold,
   },
   emoji: { fontSize: 14 },
-  count: { fontSize: 11, color: '#6b7280', fontWeight: '600' },
-  countActive: { color: '#D4A017' },
+  count: { fontSize: 11, color: colors.grayMuted, fontWeight: '600' },
+  countActive: { color: colors.legacyGold },
 });

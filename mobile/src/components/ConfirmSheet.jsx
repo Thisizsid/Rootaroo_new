@@ -2,16 +2,16 @@ import React from 'react';
 import { View, Text, StyleSheet, Modal, Pressable, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SvgXml } from 'react-native-svg';
-import { colors, fonts, radius, spacing } from '../shared/theme';
+import { colors, fonts, radius, spacing, withAlpha } from '../shared/theme';
 
 const TRASH_SVG =
   '<svg width="24" height="24" viewBox="0 0 24 24" fill="none">' +
-  '<path d="M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13" stroke="#B54B3A" stroke-width="1.5" stroke-linecap="round"></path>' +
+  `<path d="M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13" stroke="${colors.danger}" stroke-width="1.5" stroke-linecap="round"></path>` +
   '</svg>';
 
 const CHECK_SVG =
   '<svg width="24" height="24" viewBox="0 0 24 24" fill="none">' +
-  '<path d="M5 13l4 4L19 7" stroke="#6B8F5A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>' +
+  `<path d="M5 13l4 4L19 7" stroke="${colors.success}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>` +
   '</svg>';
 
 /**
@@ -51,7 +51,7 @@ export default function ConfirmSheet({
             activeOpacity={0.85}
           >
             {loading ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
+              <ActivityIndicator size="small" color={colors.surface} />
             ) : (
               <Text style={styles.confirmText}>{confirmLabel}</Text>
             )}
@@ -66,7 +66,7 @@ export default function ConfirmSheet({
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(27,30,36,0.55)', justifyContent: 'flex-end' },
+  overlay: { flex: 1, backgroundColor: withAlpha(colors.inkDeep, 0.55), justifyContent: 'flex-end' },
   sheet: {
     backgroundColor: colors.surface,
     borderTopLeftRadius: 32,
@@ -91,12 +91,12 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#F5E3DE',
+    backgroundColor: colors.blushPale,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 22,
   },
-  iconCircleNeutral: { backgroundColor: '#E8F0E4' },
+  iconCircleNeutral: { backgroundColor: colors.sagePale },
   title: {
     fontSize: 19,
     lineHeight: 25,

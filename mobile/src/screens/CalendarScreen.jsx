@@ -456,7 +456,7 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 10,
     fontFamily: fonts.bodySemiBold,
-    color: '#fff',
+    color: colors.surface,
   },
   // Today's agenda
   todayCard: {
@@ -476,7 +476,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 21,
     fontFamily: fonts.displayBold,
-    color: '#fff',
+    color: colors.surface,
     marginBottom: 4,
   },
   todaySub: {
@@ -530,7 +530,7 @@ const styles = StyleSheet.create({
   },
   dayNumActive: {
     fontFamily: fonts.bodySemiBold,
-    color: '#fff',
+    color: colors.surface,
   },
   dayDot: {
     width: 4,
@@ -697,7 +697,7 @@ const styles = StyleSheet.create({
   fabText: {
     fontSize: 24,
     fontFamily: fonts.displayBold,
-    color: '#fff',
+    color: colors.surface,
     lineHeight: 28,
   },
 });

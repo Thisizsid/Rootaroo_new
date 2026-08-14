@@ -25,7 +25,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { householdApi } from '../shared/api/household';
 import { eventApi } from '../shared/api/event';
 import { useAuthStore } from '../shared/store/authStore';
-import { colors, fonts } from '../shared/theme';
+import { colors, fonts, withAlpha } from '../shared/theme';
 const REPEAT_OPTIONS = [
   {
     key: 'none',
@@ -270,7 +270,7 @@ export default function CreateEventScreen({ navigation }) {
           activeOpacity={0.85}
         >
           {saving ? (
-            <ActivityIndicator size="small" color="#fff" />
+            <ActivityIndicator size="small" color={colors.surface} />
           ) : (
             <Text style={styles.createButtonText}>Create event</Text>
           )}
@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(27,30,36,0.55)',
+    backgroundColor: withAlpha(colors.inkDeep, 0.55),
   },
   sheet: {
     backgroundColor: colors.surface,
@@ -395,7 +395,7 @@ const styles = StyleSheet.create({
   chipAvatarText: {
     fontSize: 9,
     fontFamily: fonts.bodySemiBold,
-    color: '#fff',
+    color: colors.surface,
   },
   chipText: {
     fontSize: 13,
@@ -428,7 +428,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   repeatChipTextSelected: {
-    color: '#fff',
+    color: colors.surface,
   },
   syncRow: {
     flexDirection: 'row',
@@ -456,7 +456,7 @@ const styles = StyleSheet.create({
     width: 21,
     height: 21,
     borderRadius: 9999,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
   },
   toggleThumbOn: {
     alignSelf: 'flex-end',
@@ -484,6 +484,6 @@ const styles = StyleSheet.create({
   createButtonText: {
     fontSize: 15,
     fontFamily: fonts.displayBold,
-    color: '#fff',
+    color: colors.surface,
   },
 });

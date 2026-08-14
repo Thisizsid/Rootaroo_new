@@ -337,7 +337,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     fontFamily: fonts.displayBold,
-    color: '#fff',
+    color: colors.surface,
   },
   outlineBtn: {
     height: 54,

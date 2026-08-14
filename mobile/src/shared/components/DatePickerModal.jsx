@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
+import { colors, withAlpha } from '../theme';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -289,7 +290,7 @@ export default function DatePickerModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: withAlpha(colors.black, 0.5),
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
@@ -299,8 +300,8 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     borderRadius: 20,
-    backgroundColor: '#F0EDE6',
-    shadowColor: '#000',
+    backgroundColor: colors.canvasSoft,
+    shadowColor: colors.black,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,
     shadowRadius: 16,
@@ -311,7 +312,7 @@ const styles = StyleSheet.create({
   cardInner: {
     borderRadius: 20,
     overflow: 'hidden',
-    backgroundColor: '#F0EDE6',
+    backgroundColor: colors.canvasSoft,
   },
 
   // Header
@@ -323,13 +324,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#0D0D1A',
+    color: colors.legacyNavy,
     marginBottom: 2,
   },
   subtitle: {
     fontSize: 13,
     fontWeight: '500',
-    color: '#D4A017',
+    color: colors.legacyGold,
   },
 
   // Column label row
@@ -341,7 +342,7 @@ const styles = StyleSheet.create({
   columnLabel: {
     fontSize: 11,
     fontWeight: '500',
-    color: 'rgba(13,13,26,0.38)',
+    color: withAlpha(colors.legacyNavy, 0.38),
     textAlign: 'center',
   },
   columnLabelDay: {
@@ -373,7 +374,7 @@ const styles = StyleSheet.create({
     left: 8,
     right: 8,
     height: 2,
-    backgroundColor: '#D4A017',
+    backgroundColor: colors.legacyGold,
     opacity: 0.6,
   },
 
@@ -400,12 +401,12 @@ const styles = StyleSheet.create({
   itemTextSelected: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#0D0D1A',
+    color: colors.legacyNavy,
   },
   itemTextUnselected: {
     fontSize: 16,
     fontWeight: '400',
-    color: 'rgba(13,13,26,0.35)',
+    color: withAlpha(colors.legacyNavy, 0.35),
   },
 
   // Action row
@@ -418,8 +419,8 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 18,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(13,13,26,0.08)',
-    backgroundColor: '#F0EDE6',
+    borderTopColor: withAlpha(colors.legacyNavy, 0.08),
+    backgroundColor: colors.canvasSoft,
   },
   cancelBtn: {
     paddingHorizontal: 18,
@@ -428,17 +429,17 @@ const styles = StyleSheet.create({
   cancelText: {
     fontSize: 14,
     fontWeight: '500',
-    color: 'rgba(13,13,26,0.45)',
+    color: withAlpha(colors.legacyNavy, 0.45),
   },
   confirmBtn: {
     paddingHorizontal: 22,
     paddingVertical: 10,
-    backgroundColor: '#D4A017',
+    backgroundColor: colors.legacyGold,
     borderRadius: 22,
   },
   confirmText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1A1A2A',
+    color: colors.legacyNavySoft,
   },
 });

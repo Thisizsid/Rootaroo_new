@@ -23,7 +23,7 @@ function MailIcon() {
 }
 function AppleIcon() {
   return (
-    <Svg width="16" height="16" viewBox="0 0 24 24" fill="#FFFFFF">
+    <Svg width="16" height="16" viewBox="0 0 24 24" fill={colors.surface}>
       <Path d="M16.5 1.5c0 1-.4 2-1 2.7-.7.8-1.8 1.4-2.8 1.3-.1-1 .4-2 1-2.7.7-.8 1.9-1.4 2.8-1.3zM20.6 17c-.6 1.3-1.3 2.6-2.3 3.8-.9 1.1-1.9 2.2-3.3 2.2-1.3 0-1.8-.8-3.3-.8s-2 .8-3.3.8c-1.3 0-2.4-1.2-3.3-2.3-1.8-2.2-3.2-6.2-1.3-9 .9-1.4 2.5-2.3 4.2-2.3 1.3 0 2.5.9 3.3.9.8 0 2.2-1.1 3.8-.9.6 0 2.5.3 3.7 2-3.2 1.8-2.7 6 .8 6.6z" />
     </Svg>
   );
@@ -213,6 +213,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodySemiBold,
     fontSize: 15,
     lineHeight: 15,
-    color: '#FFFFFF',
+    color: colors.surface,
   },
 });

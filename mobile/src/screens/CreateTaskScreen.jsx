@@ -18,7 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { taskApi } from '../shared/api/task';
 import { useAuthStore } from '../shared/store/authStore';
 import { householdApi } from '../shared/api/household';
-import { colors, radius, fonts } from '../shared/theme';
+import { colors, radius, fonts, withAlpha } from '../shared/theme';
 const RECURRENCE_OPTIONS = [
   {
     label: 'None',
@@ -467,7 +467,7 @@ export default function CreateTaskScreen({ route, navigation }) {
           activeOpacity={0.85}
         >
           {posting ? (
-            <ActivityIndicator size="small" color="#fff" />
+            <ActivityIndicator size="small" color={colors.surface} />
           ) : (
             <Text style={styles.submitBtnText}>{isEditing ? 'Save' : 'Add task'}</Text>
           )}
@@ -546,7 +546,7 @@ export default function CreateTaskScreen({ route, navigation }) {
 const sheet = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(27,30,36,0.55)',
+    backgroundColor: withAlpha(colors.inkDeep, 0.55),
   },
   box: {
     backgroundColor: colors.surface,
@@ -651,7 +651,7 @@ const cal = StyleSheet.create({
     borderWidth: 0,
   },
   selectedCellText: {
-    color: '#fff',
+    color: colors.surface,
     fontWeight: '800',
   },
   pastCellText: {
@@ -668,7 +668,7 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(27,30,36,0.55)',
+    backgroundColor: withAlpha(colors.inkDeep, 0.55),
   },
   sheet: {
     backgroundColor: colors.surface,
@@ -781,7 +781,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     fontFamily: fonts.displayBold,
-    color: '#fff',
+    color: colors.surface,
   },
   // Picker rows (assignee + recurrence)
   pickRow: {
@@ -865,6 +865,6 @@ const styles = StyleSheet.create({
   pickCheckMark: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#fff',
+    color: colors.surface,
   },
 });

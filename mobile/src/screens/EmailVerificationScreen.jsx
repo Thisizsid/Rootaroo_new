@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
   otpBox: {
     width: 48,
     height: 56,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     borderWidth: 1.5,
     borderColor: colors.fieldBorder,

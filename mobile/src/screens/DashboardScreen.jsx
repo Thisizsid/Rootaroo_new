@@ -29,7 +29,7 @@ import { expenseApi } from '../shared/api/expense';
 import { vaultApi } from '../shared/api/vault';
 import { eventApi } from '../shared/api/event';
 import { checkInApi } from '../shared/api/checkin';
-import { colors, fonts, spacing, radius } from '../shared/theme';
+import { colors, fonts, spacing, radius, withAlpha } from '../shared/theme';
 import { loadSignupProgress } from '../shared/store/signupProgress';
 
 // Family cover photo (Boss's pick, 2026-08-01) — default hero image
@@ -41,14 +41,14 @@ const FAMILY_COVER = require('../../assets/images/family-cover.png');
    frosted glass greeting card · 10 widgets
    ═══════════════════════════════════════════════ */
 
-const AVATAR_COLORS = ['#D9B87A', '#C4A0D4', '#A8C8A0', '#A0B8D4', '#E8B4A0'];
+const AVATAR_COLORS = [colors.goldSoft, colors.avatarLilac, colors.avatarSage, colors.avatarSky, colors.avatarPeach];
 const MEDALS = ['🥇', '🥈', '🥉'];
-const GOLD = '#B88A3E';
-const INK = '#2A2E33';
+const GOLD = colors.gold;
+const INK = colors.ink;
 
 // Notification bell (Feather "bell") — Dashboard top-right, over the hero photo.
 const BELL_SVG = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="${colors.surface}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
   <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
 </svg>`;
@@ -94,7 +94,7 @@ function sameDay(a, b) {
 }
 
 /* ── Widget label (mockup: 11px w600 ls 0.4 #A6ABB0) ── */
-function WidgetLabel({ children, color = '#A6ABB0', style }) {
+function WidgetLabel({ children, color = colors.textMuted, style }) {
   return (
     <Text
       style={[
@@ -287,10 +287,10 @@ export default function DashboardScreen() {
   }, []);
   useEffect(() => {
     if (Platform.OS !== 'android') return;
-    NavigationBar.setBackgroundColorAsync('#FFFFFF');
+    NavigationBar.setBackgroundColorAsync(colors.surface);
     NavigationBar.setButtonStyleAsync('dark');
     return () => {
-      NavigationBar.setBackgroundColorAsync('#FFFFFF');
+      NavigationBar.setBackgroundColorAsync(colors.surface);
       NavigationBar.setButtonStyleAsync('dark');
     };
   }, []);
@@ -313,7 +313,7 @@ export default function DashboardScreen() {
       const isToday = i === days.length - 1;
       const done = total > 0 || (isToday && completedToday > 0);
       return {
-        bg: done ? GOLD : isToday ? '#D9B87A' : '#ECEAE5',
+        bg: done ? GOLD : isToday ? colors.goldSoft : colors.canvasElevated,
         label: d.date
           ? new Date(d.date).toLocaleDateString('en-US', {
               weekday: 'narrow',
@@ -421,7 +421,7 @@ export default function DashboardScreen() {
           },
         ]}
       >
-        <StatusBar barStyle="dark-content" backgroundColor="#E9E6E0" />
+        <StatusBar barStyle="dark-content" backgroundColor={colors.canvasDeep} />
         <View style={styles.loadingWrap}>
           <ActivityIndicator color={GOLD} size="large" />
           <Text style={styles.loadingText}>Loading your home…</Text>
@@ -444,7 +444,7 @@ export default function DashboardScreen() {
       }),
       num: d.getDate(),
       bg: isToday ? GOLD : 'transparent',
-      color: isToday ? '#FFFFFF' : INK,
+      color: isToday ? colors.surface : INK,
       dot: events.some((e) => sameDay(new Date(e.startsAt), d)) ? GOLD : 'transparent',
       isSelected,
     };
@@ -498,7 +498,7 @@ export default function DashboardScreen() {
           resizeMode="cover"
         />
         <LinearGradient
-          colors={['rgba(27,30,36,0.05)', 'rgba(27,30,36,0.10)', 'rgba(27,30,36,0.55)']}
+          colors={[withAlpha(colors.inkDeep, 0.05), withAlpha(colors.inkDeep, 0.10), withAlpha(colors.inkDeep, 0.55)]}
           style={styles.heroOverlay}
         />
       </View>
@@ -639,7 +639,7 @@ export default function DashboardScreen() {
               <Text
                 style={{
                   fontSize: 13,
-                  color: '#757A80',
+                  color: colors.textSecondary,
                 }}
               >
                 Couldn't load your dashboard
@@ -946,7 +946,7 @@ export default function DashboardScreen() {
                     </View>
                   )}
                   <LinearGradient
-                    colors={['rgba(27,30,36,0)', 'rgba(27,30,36,0.55)']}
+                    colors={[withAlpha(colors.inkDeep, 0), withAlpha(colors.inkDeep, 0.55)]}
                     style={styles.feedGradient}
                   />
                   <Text style={styles.feedCaption} numberOfLines={1}>
@@ -1191,7 +1191,7 @@ export default function DashboardScreen() {
             >
               <Text style={mo.allText}>Notify All</Text>
               <View style={[mo.cb, selMembers.size > 0 && mo.cbOn]}>
-                {selMembers.size > 0 && <CheckIcon size={10} color="#FFFFFF" />}
+                {selMembers.size > 0 && <CheckIcon size={10} color={colors.surface} />}
               </View>
             </TouchableOpacity>
             <ScrollView style={mo.list} keyboardShouldPersistTaps="handled">
@@ -1235,7 +1235,7 @@ export default function DashboardScreen() {
                         <Text style={mo.mName}>{m.displayName || m.name || m.email}</Text>
                       </View>
                       <View style={[mo.cb, checked && mo.cbOn]}>
-                        {checked && <CheckIcon size={10} color="#FFFFFF" />}
+                        {checked && <CheckIcon size={10} color={colors.surface} />}
                       </View>
                     </TouchableOpacity>
                   );
@@ -1256,7 +1256,7 @@ export default function DashboardScreen() {
                 activeOpacity={0.7}
               >
                 {sending ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <ActivityIndicator size="small" color={colors.surface} />
                 ) : (
                   <Text style={mo.sendText}>Notify ({selMembers.size})</Text>
                 )}
@@ -1268,7 +1268,7 @@ export default function DashboardScreen() {
     </View>
   );
 }
-function CheckIcon({ size = 10, color = '#FFFFFF' }) {
+function CheckIcon({ size = 10, color = colors.surface }) {
   return (
     <View
       style={{
@@ -1301,7 +1301,7 @@ function CheckIcon({ size = 10, color = '#FFFFFF' }) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#E9E6E0',
+    backgroundColor: colors.canvasDeep,
   },
   scroll: {
     flex: 1,
@@ -1315,7 +1315,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(27,30,36,0.45)',
+    backgroundColor: withAlpha(colors.inkDeep, 0.45),
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1327,11 +1327,11 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 13,
-    color: '#757A80',
+    color: colors.textSecondary,
   },
   /* Cards */
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     padding: 22,
     marginBottom: 14,
     shadowColor: INK,
@@ -1344,7 +1344,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   card20: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 18,
     marginBottom: 14,
@@ -1384,7 +1384,7 @@ const styles = StyleSheet.create({
     paddingTop: 18,
     paddingHorizontal: 20,
     paddingBottom: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.84)',
+    backgroundColor: withAlpha(colors.white, 0.84),
     shadowColor: INK,
     shadowOffset: {
       width: 0,
@@ -1396,7 +1396,7 @@ const styles = StyleSheet.create({
   },
   frostDate: {
     fontSize: 11,
-    color: '#6B6153',
+    color: colors.taupeDeep,
     marginBottom: 5,
   },
   frostGreeting: {
@@ -1421,12 +1421,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.7)',
+    borderColor: withAlpha(colors.white, 0.7),
   },
   avatarInitials: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.surface,
   },
   avatarEmoji: {
     fontSize: 15,
@@ -1438,13 +1438,13 @@ const styles = StyleSheet.create({
     width: 9,
     height: 9,
     borderRadius: 4.5,
-    backgroundColor: '#22C55E',
+    backgroundColor: colors.successBright,
     borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.7)',
+    borderColor: withAlpha(colors.white, 0.7),
   },
   frostDivider: {
     height: 1,
-    backgroundColor: 'rgba(42,46,51,0.1)',
+    backgroundColor: withAlpha(colors.ink, 0.1),
     marginBottom: 16,
   },
   streakTop: {
@@ -1479,12 +1479,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 10,
     fontWeight: '600',
-    color: '#757A80',
+    color: colors.textSecondary,
   },
   streakSub: {
     fontSize: 12,
     lineHeight: 17,
-    color: '#6B6153',
+    color: colors.taupeDeep,
   },
   /* Body — cards scroll over the photo */
   body: {
@@ -1501,7 +1501,7 @@ const styles = StyleSheet.create({
   retryText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.surface,
   },
   rowBetween: {
     flexDirection: 'row',
@@ -1512,7 +1512,7 @@ const styles = StyleSheet.create({
   greenDelta: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#6B8F5A',
+    color: colors.success,
   },
   scoreRow: {
     flexDirection: 'row',
@@ -1529,12 +1529,12 @@ const styles = StyleSheet.create({
   },
   scoreMeta: {
     fontSize: 13,
-    color: '#757A80',
+    color: colors.textSecondary,
   },
   progressTrack: {
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#ECEAE5',
+    backgroundColor: colors.canvasElevated,
     marginBottom: 6,
     overflow: 'hidden',
   },
@@ -1546,7 +1546,7 @@ const styles = StyleSheet.create({
   scoreCaption: {
     fontSize: 12,
     lineHeight: 17,
-    color: '#757A80',
+    color: colors.textSecondary,
     marginBottom: 18,
   },
   lbRow: {
@@ -1570,12 +1570,12 @@ const styles = StyleSheet.create({
   lbPts: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#757A80',
+    color: colors.textSecondary,
     fontFamily: 'Inter_500Medium',
   },
   emptyText: {
     fontSize: 13,
-    color: '#757A80',
+    color: colors.textSecondary,
     paddingVertical: 6,
   },
   focusRow: {
@@ -1586,7 +1586,7 @@ const styles = StyleSheet.create({
   },
   focusRowBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: '#ECEAE5',
+    borderBottomColor: colors.canvasElevated,
   },
   focusTitle: {
     flex: 1,
@@ -1598,12 +1598,12 @@ const styles = StyleSheet.create({
   },
   focusMeta: {
     fontSize: 13,
-    color: '#757A80',
+    color: colors.textSecondary,
   },
   calMonth: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#757A80',
+    color: colors.textSecondary,
   },
   weekStrip: {
     flexDirection: 'row',
@@ -1618,7 +1618,7 @@ const styles = StyleSheet.create({
   weekLabel: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#A6ABB0',
+    color: colors.textMuted,
   },
   weekDay: {
     width: 28,
@@ -1638,7 +1638,7 @@ const styles = StyleSheet.create({
   },
   calDivider: {
     height: 1,
-    backgroundColor: '#ECEAE5',
+    backgroundColor: colors.canvasElevated,
     marginBottom: 12,
   },
   calEvent: {
@@ -1650,7 +1650,7 @@ const styles = StyleSheet.create({
   },
   calMeta: {
     fontSize: 12,
-    color: '#757A80',
+    color: colors.textSecondary,
   },
   calControls: {
     flexDirection: 'row',
@@ -1681,7 +1681,7 @@ const styles = StyleSheet.create({
   },
   calEventTime: {
     fontSize: 12,
-    color: '#A6ABB0',
+    color: colors.textMuted,
     marginLeft: 'auto',
   },
   twoUp: {
@@ -1691,7 +1691,7 @@ const styles = StyleSheet.create({
   },
   halfCard: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 18,
     shadowColor: INK,
@@ -1711,12 +1711,12 @@ const styles = StyleSheet.create({
     fontFamily: 'PlusJakartaSans_700Bold',
   },
   balanceNum: {
-    color: '#B54B3A',
+    color: colors.danger,
     fontSize: 20,
   },
   halfMeta: {
     fontSize: 12,
-    color: '#757A80',
+    color: colors.textSecondary,
   },
   feedCard: {
     flex: 1.2,
@@ -1730,7 +1730,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   feedPlaceholder: {
-    backgroundColor: '#E1E6EA',
+    backgroundColor: colors.borderCool,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1744,7 +1744,7 @@ const styles = StyleSheet.create({
     right: 14,
     fontSize: 12,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.surface,
     fontFamily: 'Inter_600SemiBold',
   },
   hhCard: {
@@ -1761,7 +1761,7 @@ const styles = StyleSheet.create({
   },
   hhMeta: {
     fontSize: 12,
-    color: '#757A80',
+    color: colors.textSecondary,
   },
   qaRow: {
     flexDirection: 'row',
@@ -1776,20 +1776,20 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#E1E6EA',
+    backgroundColor: colors.borderCool,
     alignItems: 'center',
     justifyContent: 'center',
   },
   qaGlyphText: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#45566B',
+    color: colors.inkMuted,
     fontFamily: 'PlusJakartaSans_700Bold',
   },
   qaLabel: {
     fontSize: 10,
     fontWeight: '500',
-    color: '#757A80',
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   actRow: {
@@ -1802,14 +1802,14 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: '#E1E6EA',
+    backgroundColor: colors.borderCool,
     alignItems: 'center',
     justifyContent: 'center',
   },
   actAvatarText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#45566B',
+    color: colors.inkMuted,
   },
   actText: {
     flex: 1,
@@ -1818,25 +1818,25 @@ const styles = StyleSheet.create({
   },
   actTime: {
     fontSize: 11,
-    color: '#A6ABB0',
+    color: colors.textMuted,
   },
   vaultCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#1B1E24',
+    backgroundColor: colors.inkDeep,
   },
   vaultLabel: {
     fontSize: 11,
     fontWeight: '600',
     letterSpacing: 0.4,
-    color: '#9CA3AC',
+    color: colors.textFaint,
     marginBottom: 8,
   },
   vaultTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.surface,
     fontFamily: 'Inter_600SemiBold',
   },
   vaultTime: {
@@ -1848,14 +1848,14 @@ const styles = StyleSheet.create({
   insightsCard: {
     borderRadius: 20,
     padding: 20,
-    backgroundColor: '#E9E6E0',
+    backgroundColor: colors.canvasDeep,
     marginBottom: 14,
   },
   insightsLabel: {
     fontSize: 11,
     fontWeight: '600',
     letterSpacing: 0.4,
-    color: '#45566B',
+    color: colors.inkMuted,
     marginBottom: 10,
   },
   insightsText: {
@@ -1872,7 +1872,7 @@ const styles = StyleSheet.create({
 const mo = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(27,30,36,0.55)',
+    backgroundColor: withAlpha(colors.inkDeep, 0.55),
     justifyContent: 'flex-end',
   },
   sheet: {

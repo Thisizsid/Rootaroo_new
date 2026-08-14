@@ -21,7 +21,7 @@ import { useChatStore } from '../shared/store/chatStore';
 import { registerChatSocket, unregisterChatSocket } from '../shared/socket/chatSocket';
 import { connectSocket } from '../shared/socket';
 import { useAuthStore } from '../shared/store/authStore';
-import { colors, radius, spacing } from '../shared/theme';
+import { colors, radius, spacing, withAlpha } from '../shared/theme';
 import MessageBubble from '../components/MessageBubble';
 import ChatInputBar from '../components/ChatInputBar';
 import TypingIndicator from '../components/TypingIndicator';
@@ -116,7 +116,7 @@ export default function ChatScreen({ route }) {
   const setReplyTo = useChatStore((s) => s.setReplyTo);
   const BACK_SVG =
     '<svg width="20" height="20" viewBox="0 0 24 24" fill="none">' +
-    '<path d="M15 5l-7 7 7 7" stroke="#2A2E33" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>' +
+    `<path d="M15 5l-7 7 7 7" stroke="${colors.ink}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>` +
     '</svg>';
   const handleDeleteConversation = useCallback(() => {
     Alert.alert(
@@ -905,7 +905,7 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 11,
     color: colors.textSecondary,
-    backgroundColor: 'rgba(27,30,36,0.05)',
+    backgroundColor: withAlpha(colors.inkDeep, 0.05),
     paddingHorizontal: 14,
     paddingVertical: 4,
     borderRadius: radius.pill,
@@ -956,7 +956,7 @@ const styles = StyleSheet.create({
   },
   scrollToBottomText: {
     fontSize: 20,
-    color: '#fff',
+    color: colors.surface,
     fontWeight: '700',
   },
   // ---- Fix 2: Edit Modal styles ----
@@ -964,7 +964,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(27,30,36,0.5)',
+    backgroundColor: withAlpha(colors.inkDeep, 0.5),
   },
   editModal: {
     backgroundColor: colors.surface,
@@ -1012,13 +1012,13 @@ const styles = StyleSheet.create({
   },
   editSaveText: {
     fontSize: 15,
-    color: '#fff',
+    color: colors.surface,
     fontWeight: '600',
   },
   // ---- Fix 3: Image Preview/Lightbox styles ----
   previewOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(27,30,36,0.9)',
+    backgroundColor: withAlpha(colors.inkDeep, 0.9),
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1029,14 +1029,14 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: withAlpha(colors.white, 0.2),
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
   },
   previewCloseText: {
     fontSize: 18,
-    color: '#fff',
+    color: colors.surface,
     fontWeight: '700',
   },
   previewImage: {

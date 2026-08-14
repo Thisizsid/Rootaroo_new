@@ -28,7 +28,7 @@ import { useAuthStore } from '../shared/store/authStore';
 import { useVaultStore } from '../shared/store/vaultStore';
 import { setupVaultKeys } from '../shared/crypto/vaultSetup';
 import { getPrivateKey } from '../shared/crypto/secureKeyStore';
-import { colors, fonts } from '../shared/theme';
+import { colors, fonts, withAlpha } from '../shared/theme';
 export default function VaultSetupScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const [backupChoice, setBackupChoice] = useState('passphrase');
@@ -221,7 +221,7 @@ export default function VaultSetupScreen({ navigation }) {
         >
           {settingUp ? (
             <View style={styles.creatingRow}>
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color={colors.surface} />
               <Text style={styles.createButtonText}>Creating secure key…</Text>
             </View>
           ) : (
@@ -258,13 +258,13 @@ const styles = StyleSheet.create({
   backIcon: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.surface,
     lineHeight: 20,
   },
   headerTitle: {
     fontSize: 17,
     fontFamily: fonts.displayBold,
-    color: '#fff',
+    color: colors.surface,
   },
   content: {
     paddingHorizontal: 24,
@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
     fontSize: 23,
     lineHeight: 30,
     fontFamily: fonts.displayBold,
-    color: '#fff',
+    color: colors.surface,
     textAlign: 'center',
     marginBottom: 10,
   },
@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
   optionTitle: {
     fontSize: 15,
     fontFamily: fonts.displayBold,
-    color: '#fff',
+    color: colors.surface,
     marginBottom: 6,
   },
   optionDesc: {
@@ -322,11 +322,11 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     backgroundColor: colors.inkSoft,
     borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: withAlpha(colors.white, 0.1),
     paddingHorizontal: 16,
     fontSize: 14,
     fontFamily: fonts.body,
-    color: '#fff',
+    color: colors.surface,
   },
   note: {
     fontSize: 12,
@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
   createButtonText: {
     fontSize: 15,
     fontFamily: fonts.displayBold,
-    color: '#fff',
+    color: colors.surface,
   },
   waitHint: {
     fontSize: 12,
