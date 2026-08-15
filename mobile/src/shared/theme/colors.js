@@ -142,6 +142,36 @@ export const colors = {
   overlaySlate: '#2B3547',
   overlayInk: '#0F172B',
   overlayCream: '#EFE3D3',
+
+  /* ═══ Night surfaces — dark glass theme (Dashboard) ═══ */
+  /* Deep navy field the frosted cards float on. */
+  navyDeep: '#0A1120',
+  navyBase: '#0B1220',
+  navyDark: '#070C17',
+  navyMid: '#142748',
+  navyLift: '#1B3159',
+  navySurface: '#16243F',
+
+  /* Text ramp for dark surfaces (bright → dim). */
+  textOnDark: '#F2F5FA',
+  textOnDarkSoft: '#EAEFF7',
+  textOnDarkBody: '#DCE4F0',
+  textOnDarkLabel: '#93A2B8',
+  textOnDarkMuted: '#8A99B0',
+  textOnDarkDim: '#6C7A90',
+  textOnDarkFaint: '#7F8FA8',
+
+  /* Brand gold tuned for dark backgrounds. */
+  goldGlow: '#E0B563',
+  goldGlowDeep: '#C98F3C',
+  goldGlowSoft: '#F0CB86',
+  goldGlowPale: '#FFE7BC',
+  goldGlowDim: '#C8A46B',
+
+  /* Semantic on dark. */
+  successOnDark: '#7FB07A',
+  dangerOnDark: '#E08876',
+  offlineOnDark: '#5A6880',
 };
 
 /**
