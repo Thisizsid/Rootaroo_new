@@ -1,1 +1,0 @@
-{"version":3,"file":"PostTag.d.ts","sourceRoot":"","sources":["../../../src/database/models/PostTag.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,KAAK,EAAa,gBAAgB,EAAE,MAAM,WAAW,CAAC;AAG/D,cAAM,OAAQ,SAAQ,KAAK;IACjB,EAAE,EAAE,gBAAgB,CAAC,MAAM,CAAC,CAAC;IAC7B,MAAM,EAAE,MAAM,CAAC;IACf,MAAM,EAAE,MAAM,CAAC;IACf,SAAS,EAAE,gBAAgB,CAAC,IAAI,CAAC,CAAC;CAC3C;AAqCD,eAAe,OAAO,CAAC"}
