@@ -8,54 +8,15 @@ import {
   Share,
   ActivityIndicator,
 } from 'react-native';
-import Svg, { Rect } from 'react-native-svg';
+import QRCodeSvg from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
 import SignupWizardShell from '../shared/components/SignupWizardShell';
 import { useAuthStore } from '../shared/store/authStore';
 import { householdApi } from '../shared/api/household';
 import { updateSignupProgress } from '../shared/store/signupProgress';
 import { colors, fonts } from '../shared/theme';
-// Soft pastel colours for initials avatars
-const AVATAR_COLORS = [colors.avatarGold2, colors.avatarBlush, colors.avatarSage, colors.avatarSky, colors.avatarLilac];
-function initials(name) {
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-}
+import Avatar from '../components/Avatar';
 
-/* Mockup QR block (screen11) — static ink squares on white */
-function QRCode() {
-  return (
-    <Svg width="96" height="96" viewBox="0 0 100 100">
-      <Rect width="100" height="100" fill={colors.surface} />
-      {[
-        [8, 8],
-        [18, 8],
-        [38, 8],
-        [8, 18],
-        [38, 18],
-        [8, 28],
-        [18, 28],
-        [28, 28],
-        [55, 40],
-        [70, 40],
-        [45, 50],
-        [60, 50],
-        [80, 50],
-        [55, 60],
-        [70, 60],
-        [45, 70],
-        [65, 70],
-        [80, 70],
-      ].map(([x, y], i) => (
-        <Rect key={i} x={x} y={y} width="10" height="10" fill={colors.textPrimary} />
-      ))}
-    </Svg>
-  );
-}
 export default function InviteMembersScreen({ navigation }) {
   const completeSetup = useAuthStore((s) => s.completeSetup);
   const householdId = useAuthStore((s) => s.householdId);
@@ -70,13 +31,14 @@ export default function InviteMembersScreen({ navigation }) {
       return;
     }
     Promise.all([
-      householdApi.generateInvite(householdId).then((inv) => setInviteCode(inv.code)),
+      householdApi.getHousehold(householdId).then((hh) => setInviteCode(hh.inviteCode)),
       householdApi.getMembers(householdId).then(setMembers),
     ])
       .catch(() => Alert.alert('Error', 'Failed to load invite details.'))
       .finally(() => setLoading(false));
   }, [householdId]);
   const displayCode = loading ? '···-···' : inviteCode || 'MND-482';
+  const joinLink = inviteCode ? `rootaru://join?code=${inviteCode}` : null;
   const handleCopy = async () => {
     await Clipboard.setStringAsync(displayCode);
     setCopied(true);
@@ -102,7 +64,7 @@ export default function InviteMembersScreen({ navigation }) {
   };
   return (
     <SignupWizardShell
-      step={7}
+      step={8}
       stepName="Invite"
       title="Bring everyone together"
       onBack={() => navigation.goBack()}
@@ -116,7 +78,11 @@ export default function InviteMembersScreen({ navigation }) {
         <Text style={styles.inviteCode}>{displayCode}</Text>
 
         <View style={styles.qrWrap}>
-          {loading ? <ActivityIndicator color={colors.goldWarm} /> : <QRCode />}
+          {loading || !joinLink ? (
+            <ActivityIndicator color={colors.goldWarm} />
+          ) : (
+            <QRCodeSvg value={joinLink} size={96} color={colors.textPrimary} backgroundColor={colors.surface} />
+          )}
         </View>
 
         <View style={styles.inviteActions}>
@@ -135,19 +101,16 @@ export default function InviteMembersScreen({ navigation }) {
       {/* Joining now */}
       <Text style={styles.joiningLabel}>Joining now</Text>
 
-      {otherMembers.map((m, i) => (
+      {otherMembers.map((m) => (
         <View key={m.userId} style={styles.joinRow}>
           <Text style={styles.joinCheck}>✓</Text>
-          <View
-            style={[
-              styles.memberAvatar,
-              {
-                backgroundColor: AVATAR_COLORS[(i + 1) % AVATAR_COLORS.length],
-              },
-            ]}
-          >
-            <Text style={styles.memberAvatarText}>{initials(m.displayName)}</Text>
-          </View>
+          <Avatar
+            url={m.avatarUrl}
+            emoji={m.avatarEmoji}
+            name={m.displayName}
+            id={m.userId}
+            size={36}
+          />
           <Text style={styles.joinName}>{m.displayName} joined</Text>
         </View>
       ))}
@@ -155,16 +118,13 @@ export default function InviteMembersScreen({ navigation }) {
       {/* You + waiting for more */}
       <View style={styles.joinRow}>
         <Text style={styles.joinCheck}>✓</Text>
-        <View
-          style={[
-            styles.memberAvatar,
-            {
-              backgroundColor: AVATAR_COLORS[0],
-            },
-          ]}
-        >
-          <Text style={styles.memberAvatarText}>{initials(currentUserName)}</Text>
-        </View>
+        <Avatar
+          url={currentUser?.avatarUrl}
+          emoji={currentUser?.avatarEmoji}
+          name={currentUserName}
+          id={user?.id}
+          size={36}
+        />
         <Text style={styles.joinName}>
           {currentUserName}
           <Text style={styles.joinYou}> (you)</Text>

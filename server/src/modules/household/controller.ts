@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../../shared/middleware/auth';
+import { uploadBuffer } from '../../shared/utils/cloudinary';
 import * as householdService from './service';
 
 function getUserId(req: Request): string {
@@ -66,6 +67,36 @@ export async function changeMemberRole(req: Request, res: Response, next: NextFu
   try {
     const result = await householdService.changeMemberRole(getUserId(req), req.params.id, req.params.userId, req.body);
     res.status(200).json({ success: true, data: result });
+  } catch (e) { next(e); }
+}
+
+export async function uploadCoverPhoto(req: Request, res: Response, next: NextFunction) {
+  try {
+    const file = req.file;
+    if (!file) {
+      res.status(400).json({ success: false, error: 'No file uploaded.' });
+      return;
+    }
+    const result = await uploadBuffer(file.buffer, {
+      folder: 'rootaru/household-covers',
+      resource_type: 'image',
+      // Cap the stored asset's size so the banner loads quickly on Home and
+      // Edit Profile — this is a wide 4:3 crop from a phone camera, which can
+      // otherwise be several MB at full resolution.
+      transformation: [
+        { width: 1200, crop: 'limit' },
+        { quality: 'auto', fetch_format: 'auto' },
+      ],
+    });
+    const household = await householdService.updateCoverPhoto(getUserId(req), req.params.id, result.secure_url);
+    res.status(200).json({ success: true, data: household });
+  } catch (e) { next(e); }
+}
+
+export async function removeCoverPhoto(req: Request, res: Response, next: NextFunction) {
+  try {
+    const household = await householdService.removeCoverPhoto(getUserId(req), req.params.id);
+    res.status(200).json({ success: true, data: household });
   } catch (e) { next(e); }
 }
 

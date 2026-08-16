@@ -24,16 +24,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { format, addDays } from 'date-fns';
 import { colors, radius, fonts, withAlpha } from '../shared/theme';
 import ConfirmSheet from '../components/ConfirmSheet';
-// ─── Helpers ───────────────────────────────────────────────────────────────
-
-function getInitials(name) {
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-}
+import Avatar from '../components/Avatar';
 
 // ─── Section type shared for both tabs ────────────────────────────────────
 
@@ -829,11 +820,13 @@ export default function GroceryListScreen({ navigation }) {
                     }}
                     activeOpacity={0.7}
                   >
-                    <View style={sheet.memberAvatar}>
-                      <Text style={sheet.memberAvatarText}>
-                        {item.avatarEmoji || getInitials(item.displayName)}
-                      </Text>
-                    </View>
+                    <Avatar
+                      url={item.avatarUrl}
+                      emoji={item.avatarEmoji}
+                      name={item.displayName}
+                      id={item.userId}
+                      size={40}
+                    />
                     <Text style={sheet.memberName}>{item.displayName}</Text>
                     {sel && <Text style={sheet.memberCheck}>✓</Text>}
                   </TouchableOpacity>
@@ -1256,19 +1249,6 @@ const sheet = StyleSheet.create({
   },
   memberRowActive: {
     opacity: 0.7,
-  },
-  memberAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.surfaceWarm,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  memberAvatarText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.goldDeep,
   },
   memberName: {
     flex: 1,

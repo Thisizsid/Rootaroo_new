@@ -192,13 +192,23 @@ export default function SignupStepBirthdayScreen({ navigation }) {
           dateOfBirth: iso,
         });
       }
-      await updateSignupProgress({
-        step: 'address',
-        draft: {
-          dateOfBirth: iso,
-        },
-      });
-      navigation.navigate('SignupStepAddress');
+      if (method === 'phone') {
+        await updateSignupProgress({
+          step: 'phone',
+          draft: {
+            dateOfBirth: iso,
+          },
+        });
+        navigation.navigate('SignupStepPhone');
+      } else {
+        await updateSignupProgress({
+          step: 'avatar',
+          draft: {
+            dateOfBirth: iso,
+          },
+        });
+        navigation.navigate('SignupStepAvatar');
+      }
     } catch (e) {
       Alert.alert('Error', e?.response?.data?.error || e?.message || 'Could not save birthday');
     } finally {

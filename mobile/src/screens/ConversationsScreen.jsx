@@ -18,7 +18,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { chatApi } from '../shared/api/chat';
 import { householdApi } from '../shared/api/household';
 import { useAuthStore } from '../shared/store/authStore';
-import { colors, withAlpha } from '../shared/theme';
+import { colors, withAlpha, fonts, spacing, radius } from '../shared/theme';
 import EmptyState from '../components/EmptyState';
 import ErrorState from '../components/ErrorState';
 import LoadingSkeleton from '../components/LoadingSkeleton';
@@ -57,9 +57,12 @@ function getOtherParticipant(conversation, currentUserId) {
 /* ──────────────────────────────────────────── */
 
 function ConversationItem({ item, currentUserId, onPress }) {
-  const isGroup = item.type === 'group';
+  const isEveryone = item.type === 'household';
+  const isGroup = item.type === 'group' || isEveryone;
   const otherUser = isGroup ? null : getOtherParticipant(item, currentUserId);
-  const displayName = isGroup ? item.name || 'Group Chat' : otherUser?.displayName || 'Unknown';
+  const displayName = isGroup
+    ? item.name || (isEveryone ? 'Everyone' : 'Group Chat')
+    : otherUser?.displayName || 'Unknown';
   const avatarUrl = isGroup ? null : otherUser?.avatarUrl;
   const lastMessage = item.lastMessage?.content || null;
   const timestamp = item.lastMessage?.createdAt || item.createdAt;
@@ -86,7 +89,9 @@ function ConversationItem({ item, currentUserId, onPress }) {
             style={styles.avatarImage}
           />
         ) : (
-          <Text style={styles.avatarText}>{isGroup ? '#' : initials(displayName)}</Text>
+          <Text style={styles.avatarText}>
+            {isEveryone ? '👥' : isGroup ? '#' : initials(displayName)}
+          </Text>
         )}
       </View>
 
@@ -125,13 +130,12 @@ export default function ConversationsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [fetchError, setFetchError] = useState(false);
   const [members, setMembers] = useState([]);
+  const [householdName, setHouseholdName] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
-  const [modalMode, setModalMode] = useState('search');
-  const [groupName, setGroupName] = useState('');
-  const [selectedMembers, setSelectedMembers] = useState(new Set());
   const [creating, setCreating] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const currentUserId = user?.id || '';
+  const otherMembers = members.filter((m) => m.userId !== currentUserId);
 
   /* ── Fetch conversations ── */
 
@@ -161,17 +165,19 @@ export default function ConversationsScreen() {
       .then(setMembers)
       .catch(() => {});
   }, [householdId]);
+
+  // Fetch household name (used as the auto-name for the Everyone conversation)
+  useEffect(() => {
+    if (!householdId) return;
+    householdApi
+      .getHousehold(householdId)
+      .then((h) => setHouseholdName(h.name))
+      .catch(() => {});
+  }, [householdId]);
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
     fetchConversations();
   }, [fetchConversations]);
-  const handleNewConversation = useCallback(() => {
-    setSearchQuery('');
-    setGroupName('');
-    setSelectedMembers(new Set());
-    setModalMode('new');
-    setModalVisible(true);
-  }, []);
 
   /* ── DM: tap member to create immediately ── */
 
@@ -202,48 +208,41 @@ export default function ConversationsScreen() {
     [nav],
   );
 
-  /* ── Group: multi-select + name + create ── */
+  /* ── Everyone: one persistent household-wide conversation ── */
 
-  const handleToggleMember = useCallback((userId) => {
-    setSelectedMembers((prev) => {
-      const next = new Set(prev);
-      if (next.has(userId)) {
-        next.delete(userId);
-      } else {
-        next.add(userId);
-      }
-      return next;
-    });
-  }, []);
-  const handleCreateGroup = useCallback(async () => {
-    if (!groupName.trim()) {
-      Alert.alert('Error', 'Please enter a group name');
+  const handleMessageEveryone = useCallback(async () => {
+    const existing = conversations.find((c) => c.type === 'household');
+    if (existing) {
+      setModalVisible(false);
+      nav.navigate('ChatScreen', {
+        conversationId: existing.id,
+        title: existing.name || 'Everyone',
+        type: 'household',
+        participantCount: existing.participants?.length || otherMembers.length + 1,
+      });
       return;
     }
-    if (selectedMembers.size === 0) {
-      Alert.alert('Error', 'Please select at least one member');
-      return;
-    }
+    if (otherMembers.length === 0) return;
     setCreating(true);
     try {
       const conv = await chatApi.createConversation({
-        type: 'group',
-        participantIds: Array.from(selectedMembers),
-        name: groupName.trim(),
+        type: 'household',
+        participantIds: otherMembers.map((m) => m.userId),
+        name: householdName || 'Everyone',
       });
       setModalVisible(false);
       nav.navigate('ChatScreen', {
         conversationId: conv.id,
-        title: groupName.trim(),
-        type: 'group',
-        participantCount: selectedMembers.size + 1,
+        title: conv.name || 'Everyone',
+        type: 'household',
+        participantCount: otherMembers.length + 1,
       });
     } catch (e) {
-      Alert.alert('Error', e?.response?.data?.error || e?.message || 'Could not create group');
+      Alert.alert('Error', e?.response?.data?.error || e?.message || 'Could not open Everyone chat');
     } finally {
       setCreating(false);
     }
-  }, [groupName, selectedMembers, nav]);
+  }, [conversations, otherMembers, householdName, nav]);
 
   /* ── Navigate to conversation ── */
 
@@ -259,10 +258,6 @@ export default function ConversationsScreen() {
     },
     [currentUserId, nav],
   );
-
-  /* ── Filter out self from member list ── */
-
-  const otherMembers = members.filter((m) => m.userId !== currentUserId);
 
   /* ── Render helpers ── */
 
@@ -325,7 +320,6 @@ export default function ConversationsScreen() {
             activeOpacity={0.7}
             onPress={() => {
               setSearchQuery('');
-              setModalMode('search');
               setModalVisible(true);
             }}
           >
@@ -336,19 +330,22 @@ export default function ConversationsScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.iconBtn}
-            onPress={handleNewConversation}
+            onPress={handleMessageEveryone}
+            disabled={creating || otherMembers.length === 0}
             activeOpacity={0.7}
           >
-            <Text style={styles.plusIcon}>+</Text>
+            {creating ? (
+              <ActivityIndicator size="small" color={colors.gold} />
+            ) : (
+              <Text style={styles.everyoneIcon}>{'👥'}</Text>
+            )}
           </TouchableOpacity>
         </View>
       </View>
 
       {/* ── Members grid ── */}
       <View style={styles.memberGrid}>
-        {members
-          .filter((m) => m.userId !== currentUserId)
-          .map((m) => (
+        {otherMembers.map((m) => (
             <TouchableOpacity
               key={m.userId}
               style={styles.memberItem}
@@ -424,86 +421,43 @@ export default function ConversationsScreen() {
         showsVerticalScrollIndicator={false}
       />
 
-      {/* ── Unified Search Modal ── */}
+      {/* ── New Message Sheet ── */}
       <Modal
         visible={modalVisible}
         animationType="slide"
         presentationStyle="pageSheet"
+        statusBarTranslucent
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={searchModal.container}>
-          {/* <StatusBar barStyle="dark-content" backgroundColor={colors.surface} /> */}
-          {/* ConversationsScreen header */}
-          {/* <View style={styles.brandBar}>
-            <Text style={styles.brand}>ROOTAROO<Text style={styles.brandDot}>.</Text></Text>
-           </View> */}
-          <View style={styles.msgsHeader}>
-            <Text style={styles.msgsTitle}>Messages</Text>
-            <View style={styles.msgsActions}>
-              <TouchableOpacity style={styles.iconBtn} activeOpacity={0.7}>
-                <View style={styles.searchIcon}>
-                  <View style={styles.searchGlass} />
-                  <View style={styles.searchHandle} />
-                </View>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.iconBtn} activeOpacity={0.7}>
-                <Text style={styles.plusIcon}>+</Text>
-              </TouchableOpacity>
-            </View>
+        <View style={[searchModal.container, { paddingTop: insets.top }]}>
+          <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
+
+          {/* Sheet header */}
+          <View style={searchModal.sheetHeader}>
+            <TouchableOpacity
+              onPress={() => setModalVisible(false)}
+              hitSlop={10}
+              style={searchModal.closeBtn}
+              activeOpacity={0.7}
+            >
+              <Text style={searchModal.closeIcon}>{'✕'}</Text>
+            </TouchableOpacity>
+            <Text style={searchModal.sheetTitle}>New Message</Text>
+            <View style={searchModal.closeBtn} />
           </View>
 
-          {/* Search + back */}
+          {/* Search */}
           <View style={searchModal.searchBar}>
-            <TouchableOpacity onPress={() => setModalVisible(false)} hitSlop={10}>
-              <Text style={searchModal.backArrow}>←</Text>
-            </TouchableOpacity>
+            <Text style={searchModal.searchIcon}>{'⌕'}</Text>
             <TextInput
               style={searchModal.searchInput}
-              placeholder="Search members..."
+              placeholder="Search household members"
               placeholderTextColor={colors.textFaint}
               value={searchQuery}
               onChangeText={setSearchQuery}
               autoFocus
             />
           </View>
-
-          {/* Groups section (only in 'new' mode) */}
-          {modalMode === 'new' && (
-            <View style={searchModal.groupsSection}>
-              <View style={searchModal.groupsRow}>
-                <View style={searchModal.groupsLeft}>
-                  <Text style={searchModal.groupsIcon}>👥</Text>
-
-                  <Text style={searchModal.newGroupLabel}>New Group</Text>
-                </View>
-                <TouchableOpacity
-                  style={[
-                    searchModal.createBtn,
-                    (selectedMembers.size === 0 || !groupName.trim() || creating) &&
-                      searchModal.createBtnDisabled,
-                  ]}
-                  onPress={handleCreateGroup}
-                  disabled={selectedMembers.size === 0 || !groupName.trim() || creating}
-                  activeOpacity={0.7}
-                >
-                  {creating ? (
-                    <ActivityIndicator size="small" color={colors.legacyNavySoft} />
-                  ) : (
-                    <Text style={searchModal.createText}>Create</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-              {modalMode === 'new' && (
-                <TextInput
-                  style={searchModal.groupNameInput}
-                  placeholder="Group name"
-                  placeholderTextColor={colors.textFaint}
-                  value={groupName}
-                  onChangeText={setGroupName}
-                />
-              )}
-            </View>
-          )}
 
           {/* Member list */}
           {otherMembers.length === 0 ? (
@@ -519,52 +473,43 @@ export default function ConversationsScreen() {
               })}
               keyExtractor={(item) => item.userId}
               style={searchModal.list}
-              renderItem={({ item: member }) => {
-                const checked = selectedMembers.has(member.userId);
-                return (
-                  <TouchableOpacity
-                    key={member.userId}
-                    style={[searchModal.mRow, checked && searchModal.mRowSel]}
-                    onPress={
-                      modalMode === 'search'
-                        ? () => handleDMSelect(member)
-                        : () => handleToggleMember(member.userId)
-                    }
-                    activeOpacity={0.7}
-                  >
-                    <View style={searchModal.mRowLeft}>
-                      <View
-                        style={[
-                          searchModal.mAv,
-                          {
-                            backgroundColor:
-                              AVATAR_COLORS[
-                                Math.abs(
-                                  (member.displayName || member.email || '?').charCodeAt(0),
-                                ) % AVATAR_COLORS.length
-                              ],
-                          },
-                        ]}
-                      >
-                        <Text style={searchModal.mAvText}>
-                          {initials(member.displayName || member.email || '??')}
-                        </Text>
-                      </View>
-                      <View style={searchModal.mNameCol}>
-                        <Text style={searchModal.mName}>{member.displayName || member.email}</Text>
-                        <Text style={searchModal.mRole}>
-                          {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
-                        </Text>
-                      </View>
+              contentContainerStyle={{ paddingBottom: insets.bottom + spacing.xl }}
+              ListHeaderComponent={
+                <Text style={searchModal.sectionLabel}>HOUSEHOLD MEMBERS</Text>
+              }
+              renderItem={({ item: member }) => (
+                <TouchableOpacity
+                  style={searchModal.mRow}
+                  onPress={() => handleDMSelect(member)}
+                  activeOpacity={0.7}
+                >
+                  <View style={searchModal.mRowLeft}>
+                    <View
+                      style={[
+                        searchModal.mAv,
+                        {
+                          backgroundColor:
+                            AVATAR_COLORS[
+                              Math.abs(
+                                (member.displayName || member.email || '?').charCodeAt(0),
+                              ) % AVATAR_COLORS.length
+                            ],
+                        },
+                      ]}
+                    >
+                      <Text style={searchModal.mAvText}>
+                        {initials(member.displayName || member.email || '??')}
+                      </Text>
                     </View>
-                    {modalMode === 'new' && (
-                      <View style={[searchModal.cb, checked && searchModal.cbOn]}>
-                        {checked && <Text style={searchModal.cbCheck}>{'✓'}</Text>}
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                );
-              }}
+                    <View style={searchModal.mNameCol}>
+                      <Text style={searchModal.mName}>{member.displayName || member.email}</Text>
+                      <Text style={searchModal.mRole}>
+                        {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              )}
             />
           )}
 
@@ -725,11 +670,8 @@ const styles = StyleSheet.create({
       },
     ],
   },
-  plusIcon: {
-    fontSize: 22,
-    color: colors.gold,
-    fontWeight: '600',
-    lineHeight: 24,
+  everyoneIcon: {
+    fontSize: 18,
   },
   brand: {
     fontSize: 15,
@@ -853,84 +795,62 @@ const searchModal = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.canvas,
   },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  backArrow: {
-    fontSize: 22,
-    color: colors.ink,
-    lineHeight: 24,
-  },
-  searchInput: {
-    flex: 1,
-    height: 40,
-    backgroundColor: colors.canvas,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    fontSize: 15,
-    color: colors.ink,
-  },
-  groupsSection: {
-    backgroundColor: colors.surface,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  groupsRow: {
+  sheetHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
   },
-  groupsLeft: {
+  closeBtn: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeIcon: {
+    fontSize: 16,
+    fontFamily: fonts.bodySemiBold,
+    color: colors.textSecondary,
+  },
+  sheetTitle: {
+    fontSize: 17,
+    fontFamily: fonts.displayBold,
+    color: colors.ink,
+  },
+  searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.sm,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    paddingHorizontal: spacing.md,
+    height: 42,
+    backgroundColor: colors.surface,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  groupsIcon: {
-    fontSize: 20,
+  searchIcon: {
+    fontSize: 16,
+    color: colors.textFaint,
   },
-  groupsLabel: {
+  searchInput: {
+    flex: 1,
+    height: '100%',
     fontSize: 15,
-    fontWeight: '700',
+    fontFamily: fonts.body,
     color: colors.ink,
   },
-  newGroupLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: colors.textMuted,
-  },
-  groupNameInput: {
-    marginTop: 10,
-    height: 40,
-    backgroundColor: colors.canvas,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    fontSize: 14,
-    color: colors.ink,
-  },
-  createBtn: {
-    paddingHorizontal: 18,
-    paddingVertical: 8,
-    borderRadius: 18,
-    backgroundColor: colors.gold,
-    minWidth: 70,
-    alignItems: 'center',
-  },
-  createBtnDisabled: {
-    opacity: 0.35,
-  },
-  createText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.surface,
+  sectionLabel: {
+    fontSize: 12,
+    fontFamily: fonts.bodySemiBold,
+    color: colors.textFaint,
+    letterSpacing: 0.6,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.sm,
   },
   list: {
     flex: 1,
@@ -941,26 +861,20 @@ const searchModal = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontFamily: fonts.body,
     color: colors.textFaint,
   },
   mRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: withAlpha(colors.inkDeep, 0.04),
-    backgroundColor: colors.surface,
-  },
-  mRowSel: {
-    backgroundColor: withAlpha(colors.gold, 0.06),
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.lg,
   },
   mRowLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: spacing.md,
   },
   mAv: {
     width: 44,
@@ -971,39 +885,20 @@ const searchModal = StyleSheet.create({
   },
   mAvText: {
     fontSize: 15,
-    fontWeight: '700',
+    fontFamily: fonts.bodyBold,
     color: colors.ink,
   },
   mNameCol: {},
   mName: {
     fontSize: 15,
-    fontWeight: '600',
+    fontFamily: fonts.bodySemiBold,
     color: colors.ink,
   },
   mRole: {
     fontSize: 12,
-    fontWeight: '500',
+    fontFamily: fonts.body,
     color: colors.textFaint,
     marginTop: 2,
-  },
-  cb: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: withAlpha(colors.inkDeep, 0.15),
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'transparent',
-  },
-  cbOn: {
-    backgroundColor: colors.gold,
-    borderColor: colors.gold,
-  },
-  cbCheck: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: colors.surface,
   },
   creatingOverlay: {
     position: 'absolute',
@@ -1018,7 +913,7 @@ const searchModal = StyleSheet.create({
   },
   creatingText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: fonts.bodySemiBold,
     color: colors.gold,
   },
 });

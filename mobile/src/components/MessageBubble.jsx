@@ -7,6 +7,7 @@ import {
   Image,
 } from 'react-native';
 import { colors } from '../shared/theme';
+import Avatar from './Avatar';
 
 export default function MessageBubble({
   message,
@@ -16,8 +17,10 @@ export default function MessageBubble({
   onPressReply,
   onSelectMessage,
   onMediaPress,
+  showAvatar,
 }) {
   const containerRef = useRef(null);
+  const withAvatar = !isOwn && showAvatar;
 
   const format12HourTime = (iso) => {
     const d = new Date(iso);
@@ -45,8 +48,8 @@ export default function MessageBubble({
   // Only reactions with count > 0 should be displayed in the main stream
   const activeReactions = (message.reactions || []).filter((r) => r.count > 0);
 
-  return (
-    <View ref={containerRef} style={[styles.container, isOwn && styles.containerOwn]}>
+  const bubbleContent = (
+    <>
       {/* Reply preview */}
       {message.replyPreview && (
         <TouchableOpacity
@@ -128,6 +131,28 @@ export default function MessageBubble({
         <Text style={styles.metaText}>{format12HourTime(message.createdAt)}</Text>
         {isEdited && <Text style={styles.editedText}> (edited)</Text>}
       </View>
+    </>
+  );
+
+  if (withAvatar) {
+    return (
+      <View ref={containerRef} style={styles.rowWithAvatar}>
+        <Avatar
+          url={message.sender.avatarUrl}
+          emoji={message.sender.avatarEmoji}
+          name={message.sender.displayName}
+          id={message.sender.id}
+          size={28}
+          style={styles.senderAvatar}
+        />
+        <View style={styles.bubbleColumn}>{bubbleContent}</View>
+      </View>
+    );
+  }
+
+  return (
+    <View ref={containerRef} style={[styles.container, isOwn && styles.containerOwn]}>
+      {bubbleContent}
     </View>
   );
 }
@@ -140,6 +165,20 @@ const styles = StyleSheet.create({
   },
   containerOwn: {
     alignItems: 'flex-end',
+  },
+  rowWithAvatar: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 8,
+    marginBottom: 14,
+    paddingHorizontal: 16,
+  },
+  senderAvatar: {
+    marginBottom: 2,
+  },
+  bubbleColumn: {
+    flex: 1,
+    alignItems: 'flex-start',
   },
   bubble: {
     maxWidth: '82%',

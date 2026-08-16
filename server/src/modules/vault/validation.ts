@@ -27,59 +27,9 @@ export const vaultDocumentQuerySchema: ValidationSchemas = {
   }),
 };
 
-export const keyCeremonySchema: ValidationSchemas = {
-  body: z.object({
-    wrappedKeys: z.array(
-      z.object({
-        userId: z.string().uuid(),
-        wrappedKey: z.string().min(1),
-      })
-    ).min(1),
-  }),
-  params: z.object({
-    id: z.string().uuid(),
-  }),
-};
-
-export const keyRotationSchema: ValidationSchemas = {
-  body: z.object({
-    documents: z.array(
-      z.object({
-        documentId: z.string().uuid(),
-        wrappedKeys: z.array(
-          z.object({
-            userId: z.string().uuid(),
-            wrappedKey: z.string().min(1),
-          })
-        ).min(1),
-      })
-    ).min(1),
-  }),
-};
-
 export const storeUserKeySchema: ValidationSchemas = {
   body: z.object({
     publicKey: z.string().min(1),
     privateKeyEncrypted: z.string().min(1),
-  }),
-};
-
-export const revokeAndRekeySchema: ValidationSchemas = {
-  body: z.object({
-    revokedUserId: z.string().uuid(),
-    documents: z.array(
-      z.object({
-        documentId: z.string().uuid(),
-        wrappedKeys: z.array(
-          z.object({
-            userId: z.string().uuid(),
-            wrappedKey: z.string().min(1),
-          })
-        ).min(1),
-      })
-    ).min(1),
-  }),
-  params: z.object({
-    memberId: z.string().uuid(),
   }),
 };

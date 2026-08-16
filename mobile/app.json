@@ -36,6 +36,12 @@
       "expo-file-system",
       "expo-location",
       "expo-web-browser",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Rootaroo to use your camera to scan invite QR codes."
+        }
+      ],
       "@react-native-community/datetimepicker",
       "@maplibre/maplibre-react-native",
       [

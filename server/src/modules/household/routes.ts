@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { authenticate } from '../../shared/middleware/auth';
 import { requireRole } from '../../shared/middleware/rbac';
 import { validate } from '../../shared/middleware/validate';
+import { uploadHouseholdCover } from '../../shared/middleware/upload';
 import { createHouseholdSchema, joinHouseholdSchema, transferAdminSchema, changeMemberRoleSchema, scheduleHouseholdDeletionSchema } from './validation';
 import * as ctrl from './controller';
 
@@ -17,6 +18,10 @@ router.get('/:id', ctrl.getById);
 // Invitations
 router.post('/:id/invitations', requireRole('member'), ctrl.generateInvitation);
 router.post('/join', validate(joinHouseholdSchema), ctrl.join);
+
+// Cover photo (admin-only)
+router.post('/:id/cover-photo', requireRole('admin'), uploadHouseholdCover, ctrl.uploadCoverPhoto);
+router.delete('/:id/cover-photo', requireRole('admin'), ctrl.removeCoverPhoto);
 
 // Member management
 router.get('/:id/members', ctrl.listMembers);

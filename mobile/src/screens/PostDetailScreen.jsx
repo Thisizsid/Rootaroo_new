@@ -18,22 +18,9 @@ import PostCard from '../shared/components/PostCard';
 import { feedApi } from '../shared/api/feed';
 import { useAuthStore } from '../shared/store/authStore';
 import { colors, withAlpha } from '../shared/theme';
+import Avatar from '../components/Avatar';
 /* ── Helpers ────────────────────────────────────────────────────────────── */
 
-function getInitials(name) {
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-}
-const AVATAR_TONES = [colors.avatarBronze, colors.avatarMoss, colors.avatarSlate, colors.avatarMauve, colors.legacyGold];
-function avatarTone(id) {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
-  return AVATAR_TONES[Math.abs(hash) % AVATAR_TONES.length];
-}
 function elapsed(timestamp) {
   const diff = Date.now() - new Date(timestamp).getTime();
   const mins = Math.floor(diff / 60000);
@@ -253,19 +240,13 @@ export default function PostDetailScreen({ navigation, route }) {
             ) : (
               comments.map((comment) => (
                 <View key={comment.id} style={styles.commentRow}>
-                  {/* Author initials avatar */}
-                  <View
-                    style={[
-                      styles.commentAvatar,
-                      {
-                        backgroundColor: avatarTone(comment.author.id),
-                      },
-                    ]}
-                  >
-                    <Text style={styles.commentAvatarText}>
-                      {getInitials(comment.author.displayName)}
-                    </Text>
-                  </View>
+                  <Avatar
+                    url={comment.author.avatarUrl}
+                    emoji={comment.author.avatarEmoji}
+                    name={comment.author.displayName}
+                    id={comment.author.id}
+                    size={32}
+                  />
 
                   {/* Comment body */}
                   <View style={styles.commentContent}>
@@ -419,19 +400,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     borderBottomWidth: 1,
     borderBottomColor: 'white',
-  },
-  commentAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  commentAvatarText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.surface,
   },
   commentContent: {
     flex: 1,

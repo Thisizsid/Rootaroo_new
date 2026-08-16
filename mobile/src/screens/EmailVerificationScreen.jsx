@@ -104,7 +104,7 @@ export default function EmailVerificationScreen({ navigation, route }) {
   const otpFilled = otp.every((d) => d !== '');
   return (
     <SignupWizardShell
-      step={6}
+      step={7}
       stepName="Verify"
       title="Check your email"
       subtitle={`We sent a 6-digit code to ${email}.`}

@@ -12,13 +12,17 @@ import {
   Modal,
   Pressable,
   TextInput,
+  Share,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import QRCodeSvg from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
 import { useAuthStore } from '../shared/store/authStore';
 import { householdApi } from '../shared/api/household';
 import { colors, fonts, withAlpha } from '../shared/theme';
 import ConfirmSheet from '../components/ConfirmSheet';
+import Avatar from '../components/Avatar';
 // Role options match mock Screen 37 exactly — Admin & Member only.
 const ROLE_OPTIONS = [
   {
@@ -42,18 +46,7 @@ const ROLE_COLOR = {
   member: colors.textMuted,
   child: colors.textMuted,
 };
-const AVATAR_BG = colors.skeleton; // #E1E6EA (mock)
-const AVATAR_TEXT = colors.inkMuted; // #45566B (mock)
-
 const EMOJI_OPTIONS = ['🏡', '🏠', '🏕️', '🌳', '🌻', '🐾', '⭐', '🌙'];
-function initials(name) {
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-}
 function sinceLabel(dateStr) {
   return new Date(dateStr).toLocaleDateString('en-US', {
     month: 'long',
@@ -95,6 +88,7 @@ export default function HouseholdSettingsScreen({ navigation }) {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const currentUserRole = myRole || user?.role || 'member';
   const isAdmin = currentUserRole === 'admin';
+  const joinLink = inviteCode ? `rootaru://join?code=${inviteCode}` : null;
   const load = useCallback(async () => {
     if (!householdId) {
       setLoading(false);
@@ -126,6 +120,16 @@ export default function HouseholdSettingsScreen({ navigation }) {
     await Clipboard.setStringAsync(inviteCode);
     setCodeCopied(true);
     setTimeout(() => setCodeCopied(false), 2000);
+  };
+  const handleShareInvite = async () => {
+    if (!inviteCode) return;
+    try {
+      await Share.share({
+        message: `Join our household on Rootaroo! Use invite code: ${inviteCode}`,
+      });
+    } catch {
+      /* dismissed */
+    }
   };
   const handleSaveRole = async () => {
     if (!selectedMember || !householdId) return;
@@ -361,77 +365,100 @@ export default function HouseholdSettingsScreen({ navigation }) {
           />
         }
       >
-        {/* ── Hero: household name + emoji ── */}
-        <View style={styles.hero}>
-          <Text style={styles.heroName}>
-            {householdName} {householdEmoji}
-          </Text>
+        {/* ── Hero: household name + emoji, gold gradient panel ── */}
+        <LinearGradient
+          colors={[colors.goldLight, withAlpha(colors.gold, 0.08)]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.hero}
+        >
+          <View style={styles.heroBadge}>
+            <Text style={styles.heroBadgeEmoji}>{householdEmoji}</Text>
+          </View>
+          <Text style={styles.heroName}>{householdName}</Text>
           <Text style={styles.heroMeta}>
             {memberCount(members.length)} · since {createdAt ? sinceLabel(createdAt) : '—'}
           </Text>
-        </View>
+        </LinearGradient>
 
         {/* ── Members ── */}
         <Text style={styles.sectionLabel}>Members</Text>
-        {members.map((member, i) => {
-          const isSelf = member.userId === user?.id;
-          const canManage = isAdmin && !isSelf;
-          return (
-            <TouchableOpacity
-              key={member.userId}
-              disabled={!canManage}
-              activeOpacity={0.7}
-              onPress={() => openRoleModal(member)}
-              style={[styles.memberRow, i === members.length - 1 && styles.memberRowLast]}
-            >
-              <View style={styles.memberAvatar}>
-                <Text style={styles.memberAvatarText}>{initials(member.displayName)}</Text>
-              </View>
-              <Text style={styles.memberName} numberOfLines={1}>
-                {member.displayName}
-              </Text>
-              <Text
-                style={[
-                  styles.memberRole,
-                  {
-                    color: ROLE_COLOR[member.role] || colors.textMuted,
-                  },
-                ]}
+        <View style={styles.membersCard}>
+          {members.map((member, i) => {
+            const isSelf = member.userId === user?.id;
+            const canManage = isAdmin && !isSelf;
+            const roleColor = ROLE_COLOR[member.role] || colors.textMuted;
+            return (
+              <TouchableOpacity
+                key={member.userId}
+                disabled={!canManage}
+                activeOpacity={0.7}
+                onPress={() => openRoleModal(member)}
+                style={[styles.memberRow, i === members.length - 1 && styles.memberRowLast]}
               >
-                {ROLE_DISPLAY[member.role] || 'Member'}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+                <View style={[styles.memberAccent, { backgroundColor: roleColor }]} />
+                <Avatar
+                  url={member.avatarUrl}
+                  emoji={member.avatarEmoji}
+                  name={member.displayName}
+                  id={member.userId}
+                  size={36}
+                />
+                <Text style={styles.memberName} numberOfLines={1}>
+                  {member.displayName}
+                </Text>
+                <View
+                  style={[
+                    styles.memberRolePill,
+                    {
+                      backgroundColor: withAlpha(roleColor, 0.14),
+                    },
+                  ]}
+                >
+                  <Text style={[styles.memberRoleText, { color: roleColor }]}>
+                    {ROLE_DISPLAY[member.role] || 'Member'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
 
-        {/* ── Invite code card ── */}
+        {/* ── Invite section: QR + code, one permanent code for the whole household ── */}
+        <Text style={styles.sectionLabel}>Invite to household</Text>
         <View style={styles.inviteCard}>
-          <View>
-            <Text style={styles.inviteLabel}>Invite code</Text>
+          <View style={styles.inviteQrWrap}>
+            {joinLink ? (
+              <QRCodeSvg value={joinLink} size={132} color={colors.ink} backgroundColor={colors.surface} />
+            ) : (
+              <ActivityIndicator color={colors.gold} />
+            )}
+          </View>
+          <Text style={styles.inviteHint}>Anyone can scan this to join instantly</Text>
+          <View style={styles.inviteCodeBox}>
             <Text style={styles.inviteCode}>{inviteCode || '--------'}</Text>
           </View>
-          <TouchableOpacity
-            onPress={handleCopyInvite}
-            hitSlop={{
-              top: 8,
-              bottom: 8,
-              left: 8,
-              right: 8,
-            }}
-          >
-            <Text style={styles.inviteCopy}>{codeCopied ? 'Copied!' : 'Copy'}</Text>
-          </TouchableOpacity>
+          <View style={styles.inviteActions}>
+            <TouchableOpacity
+              style={styles.invitePillBtn}
+              onPress={handleCopyInvite}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.invitePillBtnText}>{codeCopied ? 'Copied!' : 'Copy code'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.invitePillBtn, styles.invitePillBtnOutline]}
+              onPress={handleShareInvite}
+              activeOpacity={0.85}
+            >
+              <Text style={[styles.invitePillBtnText, styles.invitePillBtnOutlineText]}>
+                Share
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* ── Nav rows ── */}
-        <TouchableOpacity
-          style={styles.navRow}
-          onPress={() => navigation.navigate('NotificationPreferences')}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.navLabel}>Notification preferences</Text>
-          <Text style={styles.navChevron}>›</Text>
-        </TouchableOpacity>
         <TouchableOpacity
           style={styles.navRow}
           onPress={() => setShowEmojiModal(true)}
@@ -442,34 +469,39 @@ export default function HouseholdSettingsScreen({ navigation }) {
         </TouchableOpacity>
 
         {/* ── Danger zone ── */}
-        <Text style={styles.dangerLabel}>Danger zone</Text>
-        <TouchableOpacity style={styles.dangerRow} onPress={handleLeave} activeOpacity={0.7}>
-          <Text style={styles.dangerText}>Leave household</Text>
-        </TouchableOpacity>
-        {isAdmin &&
-          (scheduledDeletionAt ? (
-            <View style={styles.deletionBanner}>
-              <Text style={styles.deletionBannerText}>
-                Deletion scheduled for{' '}
-                {new Date(scheduledDeletionAt).toLocaleDateString('en-US', {
-                  month: 'long',
-                  day: 'numeric',
-                  year: 'numeric',
-                })}
-              </Text>
-              <TouchableOpacity onPress={handleCancelScheduledDeletion} activeOpacity={0.7}>
-                <Text style={styles.deletionBannerCancel}>Cancel deletion</Text>
+        <View style={styles.dangerCard}>
+          <TouchableOpacity
+            style={[styles.dangerRow, !isAdmin && styles.dangerRowLast]}
+            onPress={handleLeave}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.dangerText}>Leave household</Text>
+          </TouchableOpacity>
+          {isAdmin &&
+            (scheduledDeletionAt ? (
+              <View style={styles.deletionBanner}>
+                <Text style={styles.deletionBannerText}>
+                  Deletion scheduled for{' '}
+                  {new Date(scheduledDeletionAt).toLocaleDateString('en-US', {
+                    month: 'long',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })}
+                </Text>
+                <TouchableOpacity onPress={handleCancelScheduledDeletion} activeOpacity={0.7}>
+                  <Text style={styles.deletionBannerCancel}>Cancel deletion</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={[styles.dangerRow, styles.dangerRowLast]}
+                onPress={handleDeleteNest}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.dangerText}>Delete household</Text>
               </TouchableOpacity>
-            </View>
-          ) : (
-            <TouchableOpacity
-              style={styles.dangerRow}
-              onPress={handleDeleteNest}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.dangerText}>Delete household</Text>
-            </TouchableOpacity>
-          ))}
+            ))}
+        </View>
 
         {actionLoading && (
           <ActivityIndicator
@@ -723,10 +755,33 @@ const styles = StyleSheet.create({
   headerSpacer: {
     width: 32,
   },
-  // Hero (mock: 21px bold name + 13px muted meta, centered)
+  // Hero: gold gradient panel with a badge, name, meta
   hero: {
     alignItems: 'center',
-    marginBottom: 30,
+    borderRadius: 26,
+    paddingVertical: 28,
+    paddingHorizontal: 20,
+    marginBottom: 28,
+  },
+  heroBadge: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    shadowColor: colors.ink,
+    shadowOffset: {
+      width: 0,
+      height: 6,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    elevation: 2,
+  },
+  heroBadgeEmoji: {
+    fontSize: 30,
   },
   heroName: {
     fontSize: 21,
@@ -738,7 +793,7 @@ const styles = StyleSheet.create({
   heroMeta: {
     fontSize: 13,
     fontFamily: fonts.body,
-    color: colors.textMuted,
+    color: colors.inkMuted,
     marginTop: 4,
   },
   // Section label (mock: 600 11px, letter-spacing 0.4, #A6ABB0)
@@ -750,31 +805,25 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginBottom: 14,
   },
-  // Member rows (mock: 36px avatar, name, colored role, bottom border)
+  // Members — grouped rows, role accent bar + pill badge (no card background)
+  membersCard: {
+    marginBottom: 28,
+  },
   memberRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingVertical: 12,
+    paddingVertical: 13,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
   memberRowLast: {
     borderBottomWidth: 0,
   },
-  memberAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: AVATAR_BG,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  memberAvatarText: {
-    fontSize: 13,
-    fontWeight: '600',
-    fontFamily: fonts.bodySemiBold,
-    color: AVATAR_TEXT,
+  memberAccent: {
+    width: 3,
+    alignSelf: 'stretch',
+    borderRadius: 2,
   },
   memberName: {
     flex: 1,
@@ -782,17 +831,26 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     color: colors.ink,
   },
-  memberRole: {
-    fontSize: 12,
-    fontWeight: '600',
+  memberRolePill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  memberRoleText: {
+    fontSize: 11,
+    fontWeight: '700',
     fontFamily: fonts.bodySemiBold,
   },
-  // Invite code card (mock: white, radius 20, soft shadow)
+  // Invite card — QR + permanent code + gold pill actions
   inviteCard: {
     backgroundColor: colors.surface,
-    borderRadius: 20,
-    padding: 20,
-    marginVertical: 26,
+    borderRadius: 24,
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    marginBottom: 28,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.goldLight,
     shadowColor: colors.ink,
     shadowOffset: {
       width: 0,
@@ -801,29 +859,69 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 28,
     elevation: 3,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
   },
-  inviteLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    fontFamily: fonts.bodySemiBold,
-    letterSpacing: 0.4,
+  inviteQrWrap: {
+    width: 132,
+    height: 132,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  inviteHint: {
+    fontSize: 12,
+    fontFamily: fonts.body,
     color: colors.textMuted,
-    marginBottom: 7,
+    marginBottom: 16,
+  },
+  inviteCodeBox: {
+    backgroundColor: colors.goldLight,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    marginBottom: 18,
   },
   inviteCode: {
     fontSize: 18,
-    fontWeight: '500',
+    fontWeight: '600',
     fontFamily: fonts.mono,
-    color: colors.ink,
+    letterSpacing: 2,
+    color: colors.goldDeep,
   },
-  inviteCopy: {
-    fontSize: 13,
-    fontWeight: '500',
-    fontFamily: fonts.bodyMedium,
-    color: colors.gold,
+  inviteActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  invitePillBtn: {
+    paddingHorizontal: 22,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.gold,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.gold,
+    shadowOffset: {
+      width: 0,
+      height: 6,
+    },
+    shadowOpacity: 0.24,
+    shadowRadius: 14,
+    elevation: 4,
+  },
+  invitePillBtnOutline: {
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  invitePillBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: fonts.bodySemiBold,
+    color: colors.surface,
+  },
+  invitePillBtnOutlineText: {
+    color: colors.ink,
   },
   // Nav rows (mock: 14px label + chevron, bottom border)
   navRow: {
@@ -845,28 +943,28 @@ const styles = StyleSheet.create({
     marginTop: -2,
   },
   // Danger zone (mock: #B54B3A)
-  dangerLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    fontFamily: fonts.bodySemiBold,
-    letterSpacing: 0.4,
-    color: colors.danger,
+  dangerCard: {
     marginTop: 26,
-    marginBottom: 8,
   },
   dangerRow: {
-    paddingVertical: 8,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: withAlpha(colors.danger, 0.15),
+  },
+  dangerRowLast: {
+    borderBottomWidth: 0,
   },
   dangerText: {
     fontSize: 14,
-    fontFamily: fonts.body,
+    fontWeight: '600',
+    fontFamily: fonts.bodySemiBold,
     color: colors.danger,
   },
   deletionBanner: {
     backgroundColor: colors.goldTint,
     borderRadius: 14,
     padding: 14,
-    marginTop: 4,
+    marginVertical: 10,
     gap: 8,
   },
   deletionBannerText: {

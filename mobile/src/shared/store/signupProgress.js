@@ -5,9 +5,10 @@ const KEY = 'rootaru_signup_progress';
 const STEP_TO_ROUTE = {
   name: 'SignupStepName',
   birthday: 'SignupStepBirthday',
-  address: 'SignupStepAddress',
+  phone: 'SignupStepPhone',
   avatar: 'SignupStepAvatar',
   household: 'HouseholdSetup',
+  address: 'SignupStepAddress',
   verify: 'EmailVerification',
   invite: 'InviteMembers',
 };

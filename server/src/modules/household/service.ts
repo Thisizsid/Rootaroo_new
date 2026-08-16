@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
-import { Household, HouseholdMember, Invitation, User } from '../../database/models';
+import { Household, HouseholdMember, Invitation, User, Conversation, ConversationParticipant } from '../../database/models';
 import { ConflictError, NotFoundError, ForbiddenError, AppError } from '../../shared/utils/errors';
 import * as notificationService from '../../shared/services/notifications';
 import type {
@@ -13,6 +13,25 @@ function generateCode(): string {
   return crypto.randomBytes(4).toString('hex').toUpperCase();
 }
 
+/**
+ * Keep the household's 'household'-type conversation (the "Everyone" chat)
+ * in sync with actual membership. No-op if that conversation doesn't exist
+ * yet (created lazily, on first use, from the chat module).
+ */
+async function addToHouseholdConversation(householdId: string, userId: string): Promise<void> {
+  const conv = await Conversation.findOne({ where: { householdId, type: 'household' } });
+  if (!conv) return;
+  const existing = await ConversationParticipant.findOne({ where: { conversationId: conv.id, userId } });
+  if (existing) return;
+  await ConversationParticipant.create({ id: uuidv4(), conversationId: conv.id, userId });
+}
+
+async function removeFromHouseholdConversation(householdId: string, userId: string): Promise<void> {
+  const conv = await Conversation.findOne({ where: { householdId, type: 'household' } });
+  if (!conv) return;
+  await ConversationParticipant.destroy({ where: { conversationId: conv.id, userId } });
+}
+
 function toHouseholdResponse(household: Household, role: string, memberCount: number): HouseholdResponse {
   return {
     id: household.id,
@@ -20,6 +39,7 @@ function toHouseholdResponse(household: Household, role: string, memberCount: nu
     inviteCode: household.inviteCode,
     memberCount,
     role,
+    coverPhotoUrl: household.coverPhotoUrl,
     createdAt: household.createdAt.toISOString(),
     scheduledDeletionAt: household.scheduledDeletionAt ? household.scheduledDeletionAt.toISOString() : null,
   };
@@ -107,7 +127,7 @@ export async function generateInvitation(
     id: invitation.id,
     code,
     expiresAt: expiresAt.toISOString(),
-    shareLink: `rootaroo://join?code=${code}`,
+    shareLink: `rootaru://join?code=${code}`,
   };
 }
 
@@ -164,6 +184,7 @@ export async function joinViaCode(userId: string, body: JoinHouseholdBody): Prom
   });
 
   await User.update({ role: 'member' }, { where: { id: userId } });
+  await addToHouseholdConversation(household.id, userId);
 
   // Mark invitation as accepted if using an invitation record
   if (invitation && !invitation.acceptedAt) {
@@ -175,6 +196,30 @@ export async function joinViaCode(userId: string, body: JoinHouseholdBody): Prom
   });
 
   return toHouseholdResponse(household, 'member', memberCount);
+}
+
+export async function updateCoverPhoto(
+  userId: string,
+  householdId: string,
+  coverPhotoUrl: string | null,
+): Promise<HouseholdResponse> {
+  const membership = await getMembership(householdId, userId);
+  if (membership.role !== 'admin') {
+    throw new ForbiddenError('Only admins can change the household cover photo');
+  }
+
+  const household = await Household.findByPk(householdId);
+  if (!household) throw new NotFoundError('Household');
+
+  household.coverPhotoUrl = coverPhotoUrl;
+  await household.save();
+
+  const memberCount = await HouseholdMember.count({ where: { householdId } });
+  return toHouseholdResponse(household, membership.role, memberCount);
+}
+
+export async function removeCoverPhoto(userId: string, householdId: string): Promise<HouseholdResponse> {
+  return updateCoverPhoto(userId, householdId, null);
 }
 
 // ── Member Management ──
@@ -205,6 +250,7 @@ export async function removeMember(
   }
 
   await target.destroy();
+  await removeFromHouseholdConversation(householdId, targetUserId);
 }
 
 export async function leaveHousehold(userId: string, householdId: string): Promise<void> {
@@ -216,6 +262,7 @@ export async function leaveHousehold(userId: string, householdId: string): Promi
   }
   await membership.destroy();
   await User.update({ role: 'member' }, { where: { id: userId } });
+  await removeFromHouseholdConversation(householdId, userId);
 }
 
 export async function transferAdmin(
@@ -276,6 +323,7 @@ export async function changeMemberRole(
     email: target.user.email,
     avatarUrl: target.user.avatarUrl,
     avatarEmoji: target.user.avatarEmoji,
+    dateOfBirth: target.user.dateOfBirth,
     role: body.role,
     joinedAt: target.joinedAt.toISOString(),
   };
@@ -299,6 +347,7 @@ export async function listMembers(
     email: m.user!.email,
     avatarUrl: m.user!.avatarUrl,
     avatarEmoji: m.user!.avatarEmoji,
+    dateOfBirth: m.user!.dateOfBirth,
     role: m.role,
     joinedAt: m.joinedAt.toISOString(),
   }));

@@ -17,6 +17,7 @@ import { useAuthStore } from '../shared/store/authStore';
 import { colors, spacing, fonts } from '../shared/theme';
 import EmptyState from '../components/EmptyState';
 import LoadingSkeleton from '../components/LoadingSkeleton';
+import Avatar from '../components/Avatar';
 import OfflineBanner from '../components/OfflineBanner';
 const CHECK_SVG =
   '<svg width="28" height="28" viewBox="0 0 24 24" fill="none">' +
@@ -173,6 +174,19 @@ export default function TaskListScreen({ navigation }) {
       }
       activeOpacity={0.6}
     >
+      {(() => {
+        const person = item.assignees[0] || item.createdBy;
+        return (
+          <Avatar
+            url={person?.avatarUrl}
+            emoji={person?.avatarEmoji}
+            name={person?.displayName || '?'}
+            id={person?.id}
+            size={30}
+            style={styles.taskRowAvatar}
+          />
+        );
+      })()}
       <View style={styles.taskRowLeft}>
         <Text style={styles.taskTitle} numberOfLines={1}>
           {item.title}
@@ -348,6 +362,9 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   // Task rows
+  taskRowAvatar: {
+    marginTop: 2,
+  },
   taskRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',

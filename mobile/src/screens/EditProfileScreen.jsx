@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,9 +17,16 @@ import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../shared/store/authStore';
 import { authApi } from '../shared/api/auth';
+import { householdApi } from '../shared/api/household';
+import { feedApi } from '../shared/api/feed';
 import apiClient from '../shared/api/client';
-import { colors, fonts } from '../shared/theme';
-const EMOJIS = ['🏠', '🌿', '🌟', '🦘', '🌱', '🦋', '🌸', '🦁', '🍀', '🌊', '🔥', '⭐'];
+import { colors, fonts, withAlpha } from '../shared/theme';
+import PostCard from '../shared/components/PostCard';
+const AVATAR_SIZE = 88;
+const AVATAR_RADIUS = AVATAR_SIZE / 2;
+// How much of the avatar sits over the cover photo vs. hangs below it.
+const AVATAR_COVER_OVERLAP = 90;
+const AVATAR_HANG_BELOW = AVATAR_SIZE - AVATAR_COVER_OVERLAP;
 function getServerBase() {
   const base = apiClient.defaults.baseURL || '';
   return base.replace(/\/api\/v1\/?$/, '');
@@ -35,17 +42,114 @@ function getInitials(name) {
 export default function EditProfileScreen({ navigation }) {
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
+  const householdId = useAuthStore((s) => s.householdId);
   const insets = useSafeAreaInsets();
   const [name, setName] = useState(user?.name ?? '');
   const [phone, setPhone] = useState(user?.phone ?? '');
-  const [selectedEmoji, setSelectedEmoji] = useState(() => {
-    const idx = EMOJIS.indexOf(user?.avatarEmoji ?? '');
-    return idx >= 0 ? idx : 3;
-  });
   const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl ?? null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [isHouseholdAdmin, setIsHouseholdAdmin] = useState(false);
+  const [coverPhotoUrl, setCoverPhotoUrl] = useState(null);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const [myPosts, setMyPosts] = useState([]);
+  const [postsLoading, setPostsLoading] = useState(true);
   const canSave = name.trim().length > 0 && !saving && !uploadingAvatar;
+  useEffect(() => {
+    if (!householdId) return;
+    householdApi
+      .getHousehold(householdId)
+      .then((hh) => {
+        setIsHouseholdAdmin(hh.role === 'admin');
+        setCoverPhotoUrl(hh.coverPhotoUrl);
+      })
+      .catch(() => {});
+  }, [householdId]);
+  useEffect(() => {
+    if (!user?.id) return;
+    setPostsLoading(true);
+    feedApi
+      .list({ authorId: user.id, limit: 50 })
+      .then((data) => setMyPosts(data.posts || []))
+      .catch(() => setMyPosts([]))
+      .finally(() => setPostsLoading(false));
+  }, [user?.id]);
+  const handleDeletePost = useCallback((postId) => {
+    Alert.alert('Delete post', 'This cannot be undone.', [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await feedApi.delete(postId);
+            setMyPosts((prev) => prev.filter((p) => p.id !== postId));
+          } catch {
+            Alert.alert('Error', 'Could not delete post');
+          }
+        },
+      },
+    ]);
+  }, []);
+  const pickCoverPhoto = useCallback(async () => {
+    if (!householdId) return;
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Allow access to your photo library.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.5,
+    });
+    if (result.canceled || !result.assets[0]) return;
+    setUploadingCover(true);
+    try {
+      const hh = await householdApi.uploadCoverPhoto(householdId, result.assets[0].uri);
+      setCoverPhotoUrl(hh.coverPhotoUrl);
+    } catch (e) {
+      Alert.alert('Upload failed', e?.response?.data?.error || 'Could not upload cover photo');
+    } finally {
+      setUploadingCover(false);
+    }
+  }, [householdId]);
+  const removeCoverPhoto = useCallback(async () => {
+    if (!householdId) return;
+    setUploadingCover(true);
+    try {
+      const hh = await householdApi.removeCoverPhoto(householdId);
+      setCoverPhotoUrl(hh.coverPhotoUrl);
+    } catch (e) {
+      Alert.alert('Error', e?.response?.data?.error || 'Could not remove cover photo');
+    } finally {
+      setUploadingCover(false);
+    }
+  }, [householdId]);
+  const handleCoverMenu = useCallback(() => {
+    const options = [
+      {
+        text: coverPhotoUrl ? 'Change photo' : 'Choose photo',
+        onPress: pickCoverPhoto,
+      },
+    ];
+    if (coverPhotoUrl) {
+      options.push({
+        text: 'Remove photo',
+        style: 'destructive',
+        onPress: removeCoverPhoto,
+      });
+    }
+    options.push({
+      text: 'Cancel',
+      style: 'cancel',
+    });
+    Alert.alert('Cover photo', undefined, options);
+  }, [coverPhotoUrl, pickCoverPhoto, removeCoverPhoto]);
   const pickAvatar = useCallback(async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -80,7 +184,6 @@ export default function EditProfileScreen({ navigation }) {
     try {
       const updated = await authApi.updateProfile({
         displayName: name.trim(),
-        avatarEmoji: EMOJIS[selectedEmoji],
         avatarUrl: avatarUrl ?? undefined,
       });
       if (user) {
@@ -98,13 +201,25 @@ export default function EditProfileScreen({ navigation }) {
     } finally {
       setSaving(false);
     }
-  }, [name, phone, selectedEmoji, avatarUrl, user, setUser, navigation]);
+  }, [name, phone, avatarUrl, user, setUser, navigation]);
   const avatarSrc = avatarUrl
     ? {
         uri: avatarUrl.startsWith('http') ? avatarUrl : `${getServerBase()}${avatarUrl}`,
       }
     : null;
   const initials = getInitials(name || user?.name || 'ME');
+  const hasCoverSection = !!coverPhotoUrl || isHouseholdAdmin;
+  const avatarInner = uploadingAvatar ? (
+    <View style={styles.avatarCircle}>
+      <ActivityIndicator color={colors.gold} />
+    </View>
+  ) : avatarSrc ? (
+    <Image source={avatarSrc} style={styles.avatarImage} />
+  ) : (
+    <View style={styles.avatarCircle}>
+      <Text style={styles.avatarInitials}>{initials}</Text>
+    </View>
+  );
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -118,6 +233,7 @@ export default function EditProfileScreen({ navigation }) {
           styles.header,
           {
             paddingTop: insets.top,
+            
           },
         ]}
       >
@@ -152,40 +268,84 @@ export default function EditProfileScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
+      {/* ── Household cover photo banner (Facebook-style, admin-editable) ──
+          Avatar is absolutely positioned here (outside the ScrollView below)
+          so it overlaps the cover without being clipped by the scroll
+          viewport's bounds. */}
+      {hasCoverSection && (
+        <View style={styles.coverContainer}>
+          <View style={styles.coverBanner}>
+            {coverPhotoUrl ? (
+              <Image source={{ uri: coverPhotoUrl }} style={styles.coverImage} />
+            ) : (
+              <View style={styles.coverPlaceholder}>
+                <Text style={styles.coverPlaceholderText}>Add a cover photo</Text>
+              </View>
+            )}
+            {uploadingCover && (
+              <View style={styles.coverUploadingOverlay}>
+                <ActivityIndicator color={colors.surface} />
+              </View>
+            )}
+            {isHouseholdAdmin && (
+              <TouchableOpacity
+                style={styles.coverEditBadge}
+                onPress={handleCoverMenu}
+                activeOpacity={0.85}
+                disabled={uploadingCover}
+                hitSlop={{
+                  top: 8,
+                  bottom: 8,
+                  left: 8,
+                  right: 8,
+                }}
+              >
+                <Text style={styles.coverEditBadgeIcon}>✎</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <TouchableOpacity
+            style={styles.avatarWrapOverlap}
+            onPress={pickAvatar}
+            activeOpacity={0.85}
+            disabled={uploadingAvatar}
+          >
+            {avatarInner}
+            <View style={styles.cameraBadge}>
+              <Text style={styles.cameraBadgeIcon}>📷</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+      )}
+
       <ScrollView
         contentContainerStyle={[
           styles.form,
           {
+            paddingTop: hasCoverSection ? AVATAR_HANG_BELOW + 16 : 24,
             paddingBottom: insets.bottom + 40,
           },
         ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* ── Avatar (SCREEN 40) ── */}
-        <View style={styles.avatarSection}>
-          <TouchableOpacity
-            style={styles.avatarWrap}
-            onPress={pickAvatar}
-            activeOpacity={0.85}
-            disabled={uploadingAvatar}
-          >
-            {uploadingAvatar ? (
-              <View style={styles.avatarCircle}>
-                <ActivityIndicator color={colors.gold} />
+        {/* ── Avatar (SCREEN 40) — centered, only when there's no cover banner ── */}
+        {!hasCoverSection && (
+          <View style={styles.avatarSection}>
+            <TouchableOpacity
+              style={styles.avatarWrap}
+              onPress={pickAvatar}
+              activeOpacity={0.85}
+              disabled={uploadingAvatar}
+            >
+              {avatarInner}
+              <View style={styles.cameraBadge}>
+                <Text style={styles.cameraBadgeIcon}>📷</Text>
               </View>
-            ) : avatarSrc ? (
-              <Image source={avatarSrc} style={styles.avatarImage} />
-            ) : (
-              <View style={styles.avatarCircle}>
-                <Text style={styles.avatarInitials}>{initials}</Text>
-              </View>
-            )}
-            <View style={styles.cameraBadge}>
-              <Text style={styles.cameraBadgeIcon}>📷</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* ── Name ── */}
         <Text style={styles.fieldLabel}>Name</Text>
@@ -213,24 +373,33 @@ export default function EditProfileScreen({ navigation }) {
 
         {/* ── Email (read-only) ── */}
         <Text style={styles.fieldLabel}>Email</Text>
-        <View style={[styles.input, styles.inputReadOnly]}>
-          <Text style={styles.inputReadOnlyText}>{user?.email || ''}</Text>
-        </View>
+        <TextInput
+          style={[styles.input, styles.inputReadOnly, styles.inputReadOnlyText]}
+          value={user?.email || ''}
+          editable={false}
+        />
 
-        {/* ── Your emoji ── */}
-        <Text style={[styles.fieldLabel, styles.emojiLabel]}>Your emoji</Text>
-        <View style={styles.emojiGrid}>
-          {EMOJIS.map((e, i) => (
-            <TouchableOpacity
-              key={i}
-              style={[styles.emojiCell, i === selectedEmoji && styles.emojiCellSelected]}
-              onPress={() => setSelectedEmoji(i)}
-              activeOpacity={0.75}
-            >
-              <Text style={styles.emojiText}>{e}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {/* ── My posts (Facebook profile-style feed) ── */}
+        <Text style={[styles.fieldLabel, styles.postsLabel]}>My posts</Text>
+        {postsLoading ? (
+          <ActivityIndicator color={colors.gold} style={styles.postsLoading} />
+        ) : myPosts.length === 0 ? (
+          <Text style={styles.postsEmptyText}>You haven't posted anything yet.</Text>
+        ) : (
+          <View style={styles.postsList}>
+            {myPosts.map((post) => (
+              <View key={post.id} style={styles.postCardWrap}>
+                <PostCard
+                  post={post}
+                  onOpen={() => navigation.navigate('PostDetail', { postId: post.id })}
+                  onLike={() => {}}
+                  canDelete
+                  onOptions={() => handleDeletePost(post.id)}
+                />
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* ── Delete account ── */}
         <TouchableOpacity
@@ -254,7 +423,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    height: 56,
+    height: 66,
     paddingHorizontal: 24,
   },
   backBtn: {
@@ -294,23 +463,35 @@ const styles = StyleSheet.create({
   // Avatar (SCREEN 40)
   avatarSection: {
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 0,
   },
   avatarWrap: {
     position: 'relative',
   },
+  // Avatar overlapping the bottom-left of the cover banner (FB-style).
+  // Absolutely positioned against coverContainer so it can hang below the
+  // banner without being clipped by the ScrollView underneath.
+  avatarWrapOverlap: {
+    position: 'absolute',
+    left: 24,
+    bottom: -AVATAR_HANG_BELOW,
+  },
   avatarCircle: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+    width: AVATAR_SIZE,
+    height: AVATAR_SIZE,
+    borderRadius: AVATAR_RADIUS,
     backgroundColor: colors.borderCool,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: colors.canvas,
   },
   avatarImage: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+    width: AVATAR_SIZE,
+    height: AVATAR_SIZE,
+    borderRadius: AVATAR_RADIUS,
+    borderWidth: 3,
+    borderColor: colors.canvas,
   },
   avatarInitials: {
     fontSize: 24,
@@ -360,36 +541,79 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceDark,
   },
   inputReadOnlyText: {
-    fontSize: 14,
-    fontFamily: fonts.body,
     color: colors.textMuted,
   },
-  // Emoji (SCREEN 40 — keep 12, restyled)
-  emojiLabel: {
+  // My posts (Facebook profile-style feed)
+  postsLabel: {
     marginTop: 26,
     marginBottom: 10,
   },
-  emojiGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 32,
+  postsLoading: {
+    marginVertical: 20,
   },
-  emojiCell: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.surface,
-    borderWidth: 1.5,
+  postsEmptyText: {
+    fontSize: 13,
+    fontFamily: fonts.body,
+    color: colors.textMuted,
+    marginBottom: 20,
+  },
+  postsList: {
+    marginHorizontal: -24,
+    marginBottom: 20,
+    gap: 10,
+  },
+  postCardWrap: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
+  },
+  // Household cover photo banner (Facebook-style)
+  coverContainer: {
+    position: 'relative',
+    marginTop:20
+  },
+  coverBanner: {
+    height: 210,
+    backgroundColor: colors.surfaceWarm,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  coverImage: {
+    width: '100%',
+    height: '100%',
+  },
+  coverPlaceholder: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emojiCellSelected: {
-    borderColor: colors.gold,
+  coverPlaceholderText: {
+    fontSize: 13,
+    fontFamily: fonts.body,
+    color: colors.textMuted,
   },
-  emojiText: {
-    fontSize: 20,
+  coverUploadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: withAlpha(colors.inkDeep, 0.35),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  coverEditBadge: {
+    position: 'absolute',
+    bottom: 12,
+    right: 16,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: colors.gold,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.canvas,
+  },
+  coverEditBadgeIcon: {
+    fontSize: 14,
+    color: colors.surface,
   },
   // Delete account (SCREEN 40)
   deleteRow: {

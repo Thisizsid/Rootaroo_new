@@ -21,7 +21,7 @@ import { colors, fonts } from '../../shared/theme';
  */
 export default function SignupWizardShell({
   step,
-  totalSteps = 7,
+  totalSteps = 8,
   stepName,
   title,
   subtitle,

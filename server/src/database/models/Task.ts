@@ -8,9 +8,10 @@ class Task extends Model {
   declare title: string;
   declare description: string | null;
   declare dueDate: string | null;        // DATEONLY → Sequelize returns a string "YYYY-MM-DD"
-  declare recurrence: 'none' | 'daily' | 'weekly' | 'monthly';
+  declare recurrence: 'none' | 'daily' | 'weekly' | 'biweekly' | 'monthly';
   declare recurrenceEndDate: string | null; // DATEONLY → string
   declare points: number;
+  declare pointsReduced: boolean;
   declare status: 'pending' | 'completed' | 'reopened';
   declare completedAt: Date | null;
   declare completedBy: string | null;
@@ -50,7 +51,7 @@ Task.init(
       field: 'due_date',
     },
     recurrence: {
-      type: DataTypes.ENUM('none', 'daily', 'weekly', 'monthly'),
+      type: DataTypes.ENUM('none', 'daily', 'weekly', 'biweekly', 'monthly'),
       defaultValue: 'none',
     },
     recurrenceEndDate: {
@@ -62,6 +63,12 @@ Task.init(
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 1,
+    },
+    pointsReduced: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      field: 'points_reduced',
     },
     status: {
       type: DataTypes.ENUM('pending', 'completed', 'reopened'),

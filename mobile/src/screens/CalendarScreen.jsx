@@ -20,20 +20,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { householdApi } from '../shared/api/household';
 import { eventApi } from '../shared/api/event';
+import { checkInApi } from '../shared/api/checkin';
 import { useGoogleCalendarConnect } from '../shared/hooks/useGoogleCalendarConnect';
 import { useAuthStore } from '../shared/store/authStore';
 import { colors, fonts } from '../shared/theme';
+import Avatar from '../components/Avatar';
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-const AVATAR_COLORS = [colors.gold, colors.success, colors.goldSoft, colors.info];
-function getInitials(name) {
-  return (name ?? '')
-    .split(' ')
-    .filter(Boolean)
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-}
 function buildMonthGrid(year, month) {
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -64,6 +56,26 @@ function timeGroupLabel(date) {
   if (h < 17) return 'Afternoon';
   return 'Evening';
 }
+/** Next upcoming birthday among household members with a saved date of birth. */
+function nextBirthday(members) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const upcoming = members
+    .filter((m) => m.dateOfBirth)
+    .map((m) => {
+      const dob = new Date(m.dateOfBirth + 'T00:00:00');
+      let next = new Date(today.getFullYear(), dob.getMonth(), dob.getDate());
+      if (next < today) next.setFullYear(today.getFullYear() + 1);
+      const age = next.getFullYear() - dob.getFullYear();
+      return {
+        name: m.displayName,
+        date: next,
+        age,
+      };
+    })
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
+  return upcoming[0] || null;
+}
 export default function CalendarScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const householdId = useAuthStore((s) => s.householdId);
@@ -72,6 +84,7 @@ export default function CalendarScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [googleStatus, setGoogleStatus] = useState(null);
+  const [checkedInTodayCount, setCheckedInTodayCount] = useState(0);
   const viewDate = useMemo(() => new Date(), []);
   const [selected, setSelected] = useState(() => new Date());
   const load = useCallback(async () => {
@@ -91,6 +104,21 @@ export default function CalendarScreen({ navigation }) {
       setMembers(memberList);
       setEvents(eventList);
       setGoogleStatus(syncStatus);
+      try {
+        const ci = await checkInApi.list({
+          limit: 50,
+        });
+        const items = ci?.items || [];
+        const todayKey = new Date().toDateString();
+        const todayCount = new Set(
+          items
+            .filter((i) => new Date(i.checkedInAt).toDateString() === todayKey)
+            .map((i) => i.userId),
+        ).size;
+        setCheckedInTodayCount(todayCount);
+      } catch {
+        setCheckedInTodayCount(0);
+      }
     } catch (err) {
       setError(err?.response?.data?.message || err?.message || 'Could not load calendar');
     } finally {
@@ -183,6 +211,7 @@ export default function CalendarScreen({ navigation }) {
         .slice(0, 3),
     [events],
   );
+  const birthday = useMemo(() => nextBirthday(members), [members]);
   return (
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.canvas} />
@@ -237,18 +266,20 @@ export default function CalendarScreen({ navigation }) {
           </View>
           <View style={styles.avatarStack}>
             {members.slice(0, 4).map((m, i) => (
-              <View
+              <Avatar
                 key={m.userId}
+                url={m.avatarUrl}
+                emoji={m.avatarEmoji}
+                name={m.displayName}
+                id={m.userId}
+                size={30}
                 style={[
-                  styles.avatar,
+                  styles.avatarRing,
                   {
-                    backgroundColor: AVATAR_COLORS[i % AVATAR_COLORS.length],
                     marginLeft: i === 0 ? 0 : -8,
                   },
                 ]}
-              >
-                <Text style={styles.avatarText}>{getInitials(m.displayName)}</Text>
-              </View>
+              />
             ))}
           </View>
         </View>
@@ -343,13 +374,28 @@ export default function CalendarScreen({ navigation }) {
         <View style={styles.tilesRow}>
           <View style={styles.whiteCardSmall}>
             <Text style={styles.cardLabel}>BIRTHDAYS</Text>
-            <Text style={styles.tileTitle}>Emma turns 8</Text>
-            <Text style={styles.tileSub}>August 3</Text>
+            {birthday ? (
+              <>
+                <Text style={styles.tileTitle} numberOfLines={1}>
+                  {birthday.name} turns {birthday.age}
+                </Text>
+                <Text style={styles.tileSub}>
+                  {birthday.date.toLocaleDateString('en-US', {
+                    month: 'long',
+                    day: 'numeric',
+                  })}
+                </Text>
+              </>
+            ) : (
+              <Text style={styles.tileSub}>No birthdays on file</Text>
+            )}
           </View>
           <View style={styles.whiteCardSmall}>
-            <Text style={styles.cardLabel}>AVAILABILITY</Text>
-            <Text style={styles.tileTitle}>Everyone home</Text>
-            <Text style={styles.tileSub}>after 6:00 PM</Text>
+            <Text style={styles.cardLabel}>CHECKED IN</Text>
+            <Text style={styles.tileTitle}>
+              {checkedInTodayCount} of {members.length || 0}
+            </Text>
+            <Text style={styles.tileSub}>home today</Text>
           </View>
         </View>
 
@@ -444,19 +490,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingTop: 6,
   },
-  avatar: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
+  avatarRing: {
     borderWidth: 2,
     borderColor: colors.canvas,
-  },
-  avatarText: {
-    fontSize: 10,
-    fontFamily: fonts.bodySemiBold,
-    color: colors.surface,
   },
   // Today's agenda
   todayCard: {

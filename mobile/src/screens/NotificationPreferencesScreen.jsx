@@ -20,12 +20,20 @@ const ACTIVITY_ROWS = [
     key: 'taskAssigned',
   },
   {
+    label: 'Task completed',
+    key: 'taskCompleted',
+  },
+  {
     label: 'Feed posts',
     key: 'newPost',
   },
   {
     label: 'Chat messages',
     key: 'chatMessage',
+  },
+  {
+    label: 'New member joined',
+    key: 'memberJoined',
   },
 ];
 
@@ -39,7 +47,13 @@ const REMINDER_ROWS = [
     label: 'Check-in alerts',
     key: 'checkIn',
   },
+  {
+    label: 'Calendar events',
+    key: 'calendarEvent',
+  },
 ];
+
+const ALL_PREF_KEYS = [...ACTIVITY_ROWS, ...REMINDER_ROWS].map((row) => row.key);
 const DEFAULT_PREFS = {
   newPost: true,
   taskAssigned: true,
@@ -84,6 +98,22 @@ export default function NotificationPreferencesScreen({ navigation }) {
       Alert.alert('Error', 'Could not save preference.');
     }
   }, []);
+  const allOn = ALL_PREF_KEYS.every((key) => prefs[key]);
+  const handleToggleAll = useCallback(
+    async (next) => {
+      const snapshot = prefs;
+      const patch = Object.fromEntries(ALL_PREF_KEYS.map((key) => [key, next]));
+      setPrefs((p) => ({ ...p, ...patch }));
+      try {
+        const saved = await notificationApi.updatePreferences(patch);
+        setPrefs(saved);
+      } catch {
+        setPrefs(snapshot);
+        Alert.alert('Error', 'Could not save preference.');
+      }
+    },
+    [prefs],
+  );
   if (loading) {
     return (
       <View
@@ -143,8 +173,14 @@ export default function NotificationPreferencesScreen({ navigation }) {
         ]}
         showsVerticalScrollIndicator={false}
       >
+        {/* Master toggle */}
+        <View style={[styles.row, styles.masterRow]}>
+          <Text style={styles.masterLabel}>All notifications</Text>
+          <PreferenceToggle value={allOn} onChange={handleToggleAll} />
+        </View>
+
         {/* Activity */}
-        <Text style={styles.sectionLabel}>Activity</Text>
+        <Text style={[styles.sectionLabel, styles.sectionLabelGap]}>Activity</Text>
         {ACTIVITY_ROWS.map((row) => (
           <View key={row.key} style={styles.row}>
             <Text style={styles.rowLabel}>{row.label}</Text>
@@ -236,6 +272,16 @@ const styles = StyleSheet.create({
   rowLabel: {
     fontSize: 14,
     fontFamily: fonts.body,
+    color: colors.ink,
+  },
+  // Master "All notifications" toggle
+  masterRow: {
+    borderBottomWidth: 0,
+  },
+  masterLabel: {
+    fontSize: 15,
+    fontFamily: fonts.bodySemiBold,
+    fontWeight: '600',
     color: colors.ink,
   },
 });

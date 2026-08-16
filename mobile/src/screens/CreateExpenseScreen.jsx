@@ -20,14 +20,7 @@ import { householdApi } from '../shared/api/household';
 import { useAuthStore } from '../shared/store/authStore';
 import { useExpenseStore } from '../shared/store/expenseStore';
 import { colors, radius, fonts, withAlpha } from '../shared/theme';
-function getInitials(name) {
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-}
+import Avatar from '../components/Avatar';
 function formatDateLabel(dateStr) {
   if (!dateStr) return 'Today';
   const d = new Date(dateStr);
@@ -241,7 +234,13 @@ export default function CreateExpenseScreen({ navigation }) {
                     onPress={() => handleToggleParticipant(m.userId)}
                     activeOpacity={0.7}
                   >
-                    <Text style={styles.splitAvatarText}>{getInitials(m.displayName)}</Text>
+                    <Avatar
+                      url={m.avatarUrl}
+                      emoji={m.avatarEmoji}
+                      name={m.displayName}
+                      id={m.userId}
+                      size={38}
+                    />
                   </TouchableOpacity>
                 );
               })}
@@ -348,9 +347,13 @@ export default function CreateExpenseScreen({ navigation }) {
                     }}
                     activeOpacity={0.7}
                   >
-                    <View style={styles.pickAvatar}>
-                      <Text style={styles.pickAvatarText}>{getInitials(item.displayName)}</Text>
-                    </View>
+                    <Avatar
+                      url={item.avatarUrl}
+                      emoji={item.avatarEmoji}
+                      name={item.displayName}
+                      id={item.userId}
+                      size={40}
+                    />
                     <Text style={styles.pickName}>{item.displayName}</Text>
                     {sel && <Text style={styles.pickCheck}>✓</Text>}
                   </TouchableOpacity>
@@ -504,12 +507,6 @@ const styles = StyleSheet.create({
   splitAvatarSelected: {
     borderColor: colors.gold,
   },
-  splitAvatarText: {
-    fontSize: 13,
-    fontWeight: '600',
-    fontFamily: fonts.bodySemiBold,
-    color: colors.inkMuted,
-  },
   splitChips: {
     flexDirection: 'row',
     gap: 8,
@@ -623,20 +620,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     paddingVertical: 12,
-  },
-  pickAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.borderCool,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pickAvatarText: {
-    fontSize: 13,
-    fontWeight: '600',
-    fontFamily: fonts.bodySemiBold,
-    color: colors.inkMuted,
   },
   pickName: {
     flex: 1,

@@ -71,6 +71,9 @@ function computeNextDueDate(
     case 'weekly':
       date.setDate(date.getDate() + 7);
       break;
+    case 'biweekly':
+      date.setDate(date.getDate() + 14);
+      break;
     case 'monthly':
       date.setMonth(date.getMonth() + 1);
       break;
@@ -124,6 +127,10 @@ export async function createTask(
 ): Promise<TaskResponse> {
   const householdId = await getUserHousehold(userId);
 
+  // Points can't be self-awarded: a task assigned solely to its own creator
+  // always gets the baseline point value, regardless of what the client sent.
+  const isSelfOnly = body.assigneeIds?.length === 1 && body.assigneeIds[0] === userId;
+
   const task = await Task.create({
     id: uuidv4(),
     householdId,
@@ -134,7 +141,7 @@ export async function createTask(
     status: 'pending',
     recurrence: body.recurrence || 'none',
     recurrenceEndDate: body.recurrenceEndDate || null,
-    points: body.points ?? 1,
+    points: isSelfOnly ? 1 : (body.points ?? 1),
   });
 
   if (body.assigneeIds && body.assigneeIds.length > 0) {
@@ -271,7 +278,13 @@ export async function updateTask(
   if (body.recurrenceEndDate !== undefined) {
     task.recurrenceEndDate = body.recurrenceEndDate || null;
   }
-  if (body.points !== undefined) task.points = body.points;
+  if (body.points !== undefined) {
+    // This endpoint doesn't support reassigning members, so "self-only"
+    // is determined from the task's existing assignees, not the request body.
+    const currentAssignees = (task.get('assignees') as User[]) || [];
+    const isSelfOnly = currentAssignees.length === 1 && currentAssignees[0].id === userId;
+    task.points = isSelfOnly ? 1 : body.points;
+  }
 
   await task.save();
   return toTaskResponse(task);
@@ -341,6 +354,7 @@ export async function completeTask(
         recurrence: task.recurrence,
         recurrenceEndDate: task.recurrenceEndDate,
         points: task.points,
+        pointsReduced: false,
       });
 
       const assignees = await TaskAssignee.findAll({

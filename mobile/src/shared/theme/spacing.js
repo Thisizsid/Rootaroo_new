@@ -23,6 +23,4 @@ export const layout = {
   screenPadding: 20,
   contentMaxWidth: 560,
   bottomNavHeight: 64,
-  splashLogoSize: 58,
-  splashLogoRadius: 20,
 };

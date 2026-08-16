@@ -23,7 +23,7 @@ function initials(name) {
   return name.slice(0, 2).toUpperCase();
 }
 export default function GroupMembersScreen({ route }) {
-  const { conversationId, title } = route.params;
+  const { conversationId, title, type } = route.params;
   const insets = useSafeAreaInsets();
   const nav = useNavigation();
   const currentUserId = useAuthStore((s) => s.user?.id || '');
@@ -33,12 +33,19 @@ export default function GroupMembersScreen({ route }) {
   const [groupMembers, setGroupMembers] = useState([]);
   const [householdMembers, setHouseholdMembers] = useState([]);
   const [createdBy, setCreatedBy] = useState(null);
+  const [convType, setConvType] = useState(type);
   const [pickerVisible, setPickerVisible] = useState(false);
+
+  // "Everyone" membership auto-follows actual household membership (synced
+  // server-side on join/leave/remove) — no manual add/remove here, that
+  // would silently desync the chat from who's actually in the household.
+  const isHousehold = convType === 'household';
 
   // Group creator OR household admin can manage members.
   const isAdmin =
-    (createdBy !== null && createdBy === currentUserId) ||
-    householdMembers.some((m) => m.userId === currentUserId && m.role === 'admin');
+    !isHousehold &&
+    ((createdBy !== null && createdBy === currentUserId) ||
+      householdMembers.some((m) => m.userId === currentUserId && m.role === 'admin'));
   const load = useCallback(async () => {
     try {
       setLoading(true);
@@ -49,6 +56,7 @@ export default function GroupMembersScreen({ route }) {
       const conv = list.find((c) => c.id === conversationId);
       setGroupMembers(conv?.participants || []);
       setCreatedBy(conv?.createdBy || null);
+      if (conv?.type) setConvType(conv.type);
       setHouseholdMembers(members);
     } catch {
       // keep existing state
@@ -184,7 +192,9 @@ export default function GroupMembersScreen({ route }) {
               </View>
             ) : null}
           </View>
-          <Text style={styles.rowSub}>{inGroup ? 'In this group' : 'Not in this group'}</Text>
+          {isHousehold
+            ? !inGroup && <Text style={styles.rowSub}>Not yet synced to this chat</Text>
+            : <Text style={styles.rowSub}>{inGroup ? 'In this group' : 'Not in this group'}</Text>}
         </View>
 
         {!isAdmin ? null : inGroup ? (
@@ -282,8 +292,14 @@ export default function GroupMembersScreen({ route }) {
                 </TouchableOpacity>
               )}
               <Text style={styles.sectionLabel}>HOUSEHOLD MEMBERS</Text>
-              {!isAdmin && (
-                <Text style={styles.adminHint}>Only the group admin can add or remove members</Text>
+              {isHousehold ? (
+                <Text style={styles.adminHint}>
+                  This list always matches your household — join or leave from Household Settings.
+                </Text>
+              ) : (
+                !isAdmin && (
+                  <Text style={styles.adminHint}>Only the group admin can add or remove members</Text>
+                )
               )}
             </>
           }

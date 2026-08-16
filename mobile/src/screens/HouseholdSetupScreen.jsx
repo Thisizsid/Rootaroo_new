@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert } from 'react-native';
 import SignupWizardShell from '../shared/components/SignupWizardShell';
+import QrScannerModal from '../components/QrScannerModal';
 import { useAuthStore } from '../shared/store/authStore';
 import { householdApi } from '../shared/api/household';
-import { loadSignupProgress, updateSignupProgress } from '../shared/store/signupProgress';
-import { authApi } from '../shared/api/auth';
+import { navigateAfterHouseholdSetup } from '../shared/navigation/postAuthNavigation';
 import { colors, fonts } from '../shared/theme';
 const FAMILY_EMOJIS = ['🏡', '🌿', '☀️'];
+// Matches the QR the household admin generates in Household Settings /
+// Invite Members (rootaru://join?code=XXXX) — see app.json's "scheme".
+const JOIN_LINK_RE = /^rootaru:\/\/join\?code=([A-Za-z0-9]+)$/i;
 export default function HouseholdSetupScreen({ navigation }) {
   const setHousehold = useAuthStore((s) => s.setHousehold);
   const [option, setOption] = useState('create');
@@ -15,6 +18,16 @@ export default function HouseholdSetupScreen({ navigation }) {
   const [inviteCode, setInviteCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [focusedField, setFocusedField] = useState(null);
+  const [showScanner, setShowScanner] = useState(false);
+  const handleScanned = (rawValue) => {
+    setShowScanner(false);
+    const match = JOIN_LINK_RE.exec((rawValue || '').trim());
+    if (!match) {
+      Alert.alert('Not a Rootaroo invite code', 'That QR code doesn\'t look like a household invite. Try again or enter the code manually.');
+      return;
+    }
+    setInviteCode(match[1].toUpperCase());
+  };
   const handleContinue = async () => {
     setLoading(true);
     try {
@@ -34,37 +47,10 @@ export default function HouseholdSetupScreen({ navigation }) {
           ? await householdApi.create(nestName.trim())
           : await householdApi.join(inviteCode.trim());
       setHousehold(hh.id);
-      const progress = await loadSignupProgress();
-      const method = progress?.authMethod || 'email';
-      const user = useAuthStore.getState().user;
-      if (method === 'phone') {
-        await updateSignupProgress({
-          step: 'verify',
-        });
-        const phone = progress?.phone || user?.phone || '';
-        let code;
-        try {
-          const sent = await authApi.sendPhoneOtp(phone);
-          code = sent.code;
-        } catch {
-          /* still open verify screen */
-        }
-        navigation.navigate('PhoneVerification', {
-          phone,
-          code,
-        });
-      } else if (method === 'google' || user?.isVerified) {
-        await updateSignupProgress({
-          step: 'invite',
-        });
-        navigation.navigate('InviteMembers');
+      if (option === 'create') {
+        navigation.navigate('SignupStepAddress');
       } else {
-        await updateSignupProgress({
-          step: 'verify',
-        });
-        navigation.navigate('EmailVerification', {
-          email: user?.email,
-        });
+        await navigateAfterHouseholdSetup(navigation);
       }
     } catch (e) {
       const msg = e?.response?.data?.error || e?.message || 'Failed to set up household.';
@@ -165,8 +151,21 @@ export default function HouseholdSetupScreen({ navigation }) {
             onFocus={() => setFocusedField('code')}
             onBlur={() => setFocusedField(null)}
           />
+          <TouchableOpacity
+            style={styles.scanBtn}
+            onPress={() => setShowScanner(true)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.scanBtnText}>Scan QR code instead</Text>
+          </TouchableOpacity>
         </View>
       )}
+
+      <QrScannerModal
+        visible={showScanner}
+        onClose={() => setShowScanner(false)}
+        onScanned={handleScanned}
+      />
     </SignupWizardShell>
   );
 }
@@ -273,6 +272,17 @@ const styles = StyleSheet.create({
   },
   emojiMiniText: {
     fontSize: 22,
+  },
+  scanBtn: {
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  scanBtnText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.goldWarm,
+    textDecorationLine: 'underline',
   },
   simpleOption: {
     flexDirection: 'row',

@@ -17,10 +17,14 @@ import {
   Alert,
   ActivityIndicator,
   StatusBar,
+  Modal,
+  TextInput,
 } from 'react-native';
 import Svg, { Path, Rect, Circle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { File, Paths } from 'expo-file-system';
+import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
 import { vaultApi } from '../shared/api/vault';
 import { useVaultStore } from '../shared/store/vaultStore';
 import { useAuthStore } from '../shared/store/authStore';
@@ -56,6 +60,12 @@ export default function VaultUploadScreen({ navigation }) {
   const [fileName, setFileName] = useState('');
   const [keyState, setKeyState] = useState('checking');
   const [showBackupChoice, setShowBackupChoice] = useState(false);
+  const [namePrompt, setNamePrompt] = useState({
+    visible: false,
+    value: '',
+    defaultName: '',
+    resolve: null,
+  });
   React.useEffect(() => {
     (async () => {
       try {
@@ -119,6 +129,21 @@ export default function VaultUploadScreen({ navigation }) {
     } catch (e) {
       reject(e);
     }
+  };
+
+  /**
+   * Prompt for a document name, pre-filled with the picked file's name.
+   * Alert.prompt is iOS-only in React Native (silently no-ops on Android),
+   * so this uses a plain cross-platform Modal + TextInput instead — same
+   * pattern as the rename dialog in VaultListScreen.jsx.
+   */
+  const promptDocumentName = (defaultName) =>
+    new Promise((resolve) => {
+      setNamePrompt({ visible: true, value: defaultName, defaultName, resolve });
+    });
+  const closeNamePrompt = (value) => {
+    namePrompt.resolve?.(value?.trim() || namePrompt.defaultName || 'Document');
+    setNamePrompt({ visible: false, value: '', defaultName: '', resolve: null });
   };
 
   /** Shared encryption + upload pipeline for any picked asset. */
@@ -243,31 +268,32 @@ export default function VaultUploadScreen({ navigation }) {
   };
   const handlePickDocument = async () => {
     try {
-      const { getDocumentAsync } = await import('expo-document-picker');
-      const result = await getDocumentAsync({
+      const result = await DocumentPicker.getDocumentAsync({
         type: ['application/pdf', 'image/*'],
         copyToCacheDirectory: true,
       });
       if (result.canceled || !result.assets?.[0]) return;
-      await processAndUpload(normalizeAsset(result.assets[0]));
+      const asset = normalizeAsset(result.assets[0]);
+      const name = await promptDocumentName(asset.name);
+      await processAndUpload({ ...asset, name });
     } catch (e) {
       Alert.alert('Error', e?.message || 'Could not pick file');
     }
   };
   const handleTakePhoto = async () => {
     try {
-      const { requestCameraPermissionsAsync, launchCameraAsync } =
-        await import('expo-image-picker');
-      const perm = await requestCameraPermissionsAsync();
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
       if (!perm.granted) {
         Alert.alert('Permission needed', 'Camera access is required to take a photo.');
         return;
       }
-      const result = await launchCameraAsync({
+      const result = await ImagePicker.launchCameraAsync({
         quality: 0.8,
       });
       if (result.canceled || !result.assets?.[0]) return;
-      await processAndUpload(normalizeAsset(result.assets[0]));
+      const asset = normalizeAsset(result.assets[0]);
+      const name = await promptDocumentName(asset.name);
+      await processAndUpload({ ...asset, name });
     } catch (e) {
       Alert.alert('Error', e?.message || 'Could not take photo');
     }
@@ -437,6 +463,45 @@ export default function VaultUploadScreen({ navigation }) {
           </View>
         )}
       </View>
+
+      {/* ── Name this document ── */}
+      <Modal
+        visible={namePrompt.visible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => closeNamePrompt(namePrompt.value)}
+      >
+        <View style={styles.namePromptOverlay}>
+          <View style={styles.namePromptCard}>
+            <Text style={styles.namePromptTitle}>Name this document</Text>
+            <TextInput
+              style={styles.namePromptInput}
+              value={namePrompt.value}
+              onChangeText={(v) => setNamePrompt((p) => ({ ...p, value: v }))}
+              autoFocus
+              placeholder="Document name"
+              placeholderTextColor={colors.textMuted}
+              maxLength={255}
+            />
+            <View style={styles.namePromptButtons}>
+              <TouchableOpacity
+                style={styles.namePromptCancel}
+                onPress={() => closeNamePrompt(namePrompt.defaultName)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.namePromptCancelText}>Skip</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.namePromptSave}
+                onPress={() => closeNamePrompt(namePrompt.value)}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.namePromptSaveText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -583,5 +648,62 @@ const styles = StyleSheet.create({
     backgroundColor: colors.inkDeep,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  // ── Name this document ──
+  namePromptOverlay: {
+    flex: 1,
+    backgroundColor: withAlpha(colors.inkDeep, 0.55),
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  namePromptCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    padding: 20,
+  },
+  namePromptTitle: {
+    fontSize: 17,
+    fontFamily: fonts.displayBold,
+    color: colors.ink,
+    marginBottom: 14,
+  },
+  namePromptInput: {
+    height: 50,
+    borderRadius: 12,
+    backgroundColor: colors.canvas,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    paddingHorizontal: 14,
+    fontSize: 15,
+    fontFamily: fonts.body,
+    color: colors.ink,
+    marginBottom: 16,
+  },
+  namePromptButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+  },
+  namePromptCancel: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: colors.surfaceWarm,
+  },
+  namePromptCancelText: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    fontFamily: fonts.bodySemiBold,
+  },
+  namePromptSave: {
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: colors.gold,
+  },
+  namePromptSaveText: {
+    color: colors.surface,
+    fontSize: 14,
+    fontFamily: fonts.displayBold,
   },
 });

@@ -7,6 +7,7 @@ class Household extends Model {
   declare inviteCode: string;
   declare storageUsedBytes: number;
   declare storageLimitBytes: number;
+  declare coverPhotoUrl: string | null;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare deletedAt: Date | null;
@@ -39,6 +40,11 @@ Household.init(
       type: DataTypes.BIGINT,
       defaultValue: 2147483648,
       field: 'storage_limit_bytes',
+    },
+    coverPhotoUrl: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'cover_photo_url',
     },
     createdAt: {
       type: DataTypes.DATE,

@@ -13,8 +13,10 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { expenseApi } from '../shared/api/expense';
+import { householdApi } from '../shared/api/household';
 import { useAuthStore } from '../shared/store/authStore';
 import { colors, withAlpha } from '../shared/theme';
+import Avatar from '../components/Avatar';
 function getInitials(name) {
   return name
     .split(' ')
@@ -33,10 +35,23 @@ function formatCurrency(amount) {
 }
 export default function ExpenseLedgerScreen({ navigation }) {
   const user = useAuthStore((s) => s.user);
+  const householdId = useAuthStore((s) => s.householdId);
   const [ledger, setLedger] = useState([]);
+  const [membersById, setMembersById] = useState({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  useEffect(() => {
+    if (!householdId) return;
+    householdApi
+      .getMembers(householdId)
+      .then((list) => {
+        const map = {};
+        for (const m of list) map[m.userId] = m;
+        setMembersById(map);
+      })
+      .catch(() => {});
+  }, [householdId]);
 
   // Settlement modal
   const [showSettleModal, setShowSettleModal] = useState(false);
@@ -100,16 +115,31 @@ export default function ExpenseLedgerScreen({ navigation }) {
     setShowSettleModal(true);
   }, [ledger, user]);
   const renderItem = useCallback(
-    ({ item }) => (
+    ({ item }) => {
+      const fromMember = membersById[item.fromUserId];
+      const toMember = membersById[item.toUserId];
+      return (
       <View style={styles.entryCard}>
         <View style={styles.entryRow}>
           <View style={styles.userChip}>
-            <Text style={styles.userInitials}>{getInitials(item.fromUserName)}</Text>
+            <Avatar
+              url={fromMember?.avatarUrl}
+              emoji={fromMember?.avatarEmoji}
+              name={item.fromUserName}
+              id={item.fromUserId}
+              size={18}
+            />
             <Text style={styles.userName}>{item.fromUserName}</Text>
           </View>
           <Text style={styles.arrowText}>→</Text>
           <View style={styles.userChip}>
-            <Text style={styles.userInitials}>{getInitials(item.toUserName)}</Text>
+            <Avatar
+              url={toMember?.avatarUrl}
+              emoji={toMember?.avatarEmoji}
+              name={item.toUserName}
+              id={item.toUserId}
+              size={18}
+            />
             <Text style={styles.userName}>{item.toUserName}</Text>
           </View>
         </View>
@@ -124,8 +154,9 @@ export default function ExpenseLedgerScreen({ navigation }) {
           </TouchableOpacity>
         </View>
       </View>
-    ),
-    [handleQuickSettle],
+      );
+    },
+    [handleQuickSettle, membersById],
   );
   const renderEmpty = useCallback(
     () => (
@@ -407,13 +438,6 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 12,
     gap: 6,
-  },
-  userInitials: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.legacyGold,
-    width: 18,
-    textAlign: 'center',
   },
   userName: {
     fontSize: 13,

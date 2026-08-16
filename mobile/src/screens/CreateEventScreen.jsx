@@ -26,6 +26,7 @@ import { householdApi } from '../shared/api/household';
 import { eventApi } from '../shared/api/event';
 import { useAuthStore } from '../shared/store/authStore';
 import { colors, fonts, withAlpha } from '../shared/theme';
+import Avatar from '../components/Avatar';
 const REPEAT_OPTIONS = [
   {
     key: 'none',
@@ -44,16 +45,6 @@ const REPEAT_OPTIONS = [
     label: 'Monthly',
   },
 ];
-const AVATAR_COLORS = [colors.gold, colors.success, colors.goldSoft, colors.info];
-function getInitials(name) {
-  return (name ?? '')
-    .split(' ')
-    .filter(Boolean)
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-}
 export default function CreateEventScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const householdId = useAuthStore((s) => s.householdId);
@@ -206,18 +197,13 @@ export default function CreateEventScreen({ navigation }) {
                   onPress={() => toggleInvitee(m.userId)}
                   activeOpacity={0.7}
                 >
-                  <View
-                    style={[
-                      styles.chipAvatar,
-                      {
-                        backgroundColor: sel
-                          ? colors.gold
-                          : AVATAR_COLORS[i % AVATAR_COLORS.length],
-                      },
-                    ]}
-                  >
-                    <Text style={styles.chipAvatarText}>{getInitials(m.displayName)}</Text>
-                  </View>
+                  <Avatar
+                    url={m.avatarUrl}
+                    emoji={m.avatarEmoji}
+                    name={m.displayName}
+                    id={m.userId}
+                    size={24}
+                  />
                   <Text style={[styles.chipText, sel && styles.chipTextSelected]}>
                     {m.displayName}
                   </Text>
@@ -384,18 +370,6 @@ const styles = StyleSheet.create({
   },
   chipSelected: {
     backgroundColor: colors.goldLight,
-  },
-  chipAvatar: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  chipAvatarText: {
-    fontSize: 9,
-    fontFamily: fonts.bodySemiBold,
-    color: colors.surface,
   },
   chipText: {
     fontSize: 13,

@@ -22,6 +22,7 @@ import PhoneSignUpScreen from '../screens/PhoneSignUpScreen';
 import PhoneVerificationScreen from '../screens/PhoneVerificationScreen';
 import SignupStepNameScreen from '../screens/SignupStepNameScreen';
 import SignupStepBirthdayScreen from '../screens/SignupStepBirthdayScreen';
+import SignupStepPhoneScreen from '../screens/SignupStepPhoneScreen';
 import SignupStepAddressScreen from '../screens/SignupStepAddressScreen';
 import SignupStepAvatarScreen from '../screens/SignupStepAvatarScreen';
 import ReadyScreen from '../screens/ReadyScreen';
@@ -56,7 +57,6 @@ import CreateExpenseScreen from '../screens/CreateExpenseScreen';
 import VaultUploadScreen from '../screens/VaultUploadScreen';
 import VaultSetupScreen from '../screens/VaultSetupScreen';
 import VaultViewerScreen from '../screens/VaultViewerScreen';
-import VaultKeyCeremonyScreen from '../screens/VaultKeyCeremonyScreen';
 import VaultListScreen from '../screens/VaultListScreen';
 import ChatScreen from '../screens/ChatScreen';
 import GroupMembersScreen from '../screens/GroupMembersScreen';
@@ -71,7 +71,7 @@ const ChatNav = createNativeStackNavigator();
 const MoreNav = createNativeStackNavigator();
 
 /* Vault screens are a fully immersive dark experience — no floating tab dock. */
-const VAULT_ROUTES = ['Vault', 'VaultUpload', 'VaultSetup', 'VaultViewer', 'VaultKeyCeremony'];
+const VAULT_ROUTES = ['Vault', 'VaultUpload', 'VaultSetup', 'VaultViewer'];
 
 
 function AuthNavigator() {
@@ -88,6 +88,7 @@ function AuthNavigator() {
       <AuthStack.Screen name="PhoneVerification" component={PhoneVerificationScreen} />
       <AuthStack.Screen name="SignupStepName" component={SignupStepNameScreen} />
       <AuthStack.Screen name="SignupStepBirthday" component={SignupStepBirthdayScreen} />
+      <AuthStack.Screen name="SignupStepPhone" component={SignupStepPhoneScreen} />
       <AuthStack.Screen name="SignupStepAddress" component={SignupStepAddressScreen} />
       <AuthStack.Screen name="SignupStepAvatar" component={SignupStepAvatarScreen} />
       <AuthStack.Screen name="HouseholdSetup" component={HouseholdSetupScreen} />
@@ -147,7 +148,6 @@ function MoreNavigator() {
       />
       <MoreNav.Screen name="VaultSetup" component={VaultSetupScreen} />
       <MoreNav.Screen name="VaultViewer" component={VaultViewerScreen} />
-      <MoreNav.Screen name="VaultKeyCeremony" component={VaultKeyCeremonyScreen} />
       <MoreNav.Screen name="Calendar" component={CalendarScreen} />
       <MoreNav.Screen name="CheckIn" component={CheckInScreen} />
       <MoreNav.Screen

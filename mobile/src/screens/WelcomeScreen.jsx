@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import Svg, { Path, Circle, Ellipse, Rect, G } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import HoppingKangarooMark from '../components/HoppingKangarooMark';
 import { colors, fonts, radius, withAlpha } from '../shared/theme';
 const { width: W } = Dimensions.get('window');
 const BREATHE_DURATION = 3600; // mockup: breathe 3.6s
@@ -98,86 +99,22 @@ function PulsingDot({ xPct, yPct, r, color, delay = 0, boxW = 300, boxH = 210 })
 }
 
 /* ------------------------------------------------------------------ */
-/* SLIDE 1 — Family coordination: kangaroo family (from the mockup)    */
+/* SLIDE 1 — Family coordination: same hopping kangaroo mark + hop      */
+/* animation as the splash screen (mobile/src/components/               */
+/* HoppingKangarooMark.jsx), for a consistent brand moment.             */
 /* ------------------------------------------------------------------ */
 function KangarooHero() {
-  const scale = useBreathe();
   return (
-    <Animated.View
+    <View
       style={{
         width: '100%',
         height: '100%',
-        transform: [
-          {
-            scale,
-          },
-        ],
+        alignItems: 'center',
+        justifyContent: 'center',
       }}
     >
-      <Svg width="100%" height="100%" viewBox="0 0 300 210">
-        <Ellipse cx="130" cy="195" rx="60" ry="9" fill={withAlpha(colors.ink, 0.07)} />
-        {/* Joey */}
-        <Path
-          d="M172 195 Q210 200 206 160 Q204 145 188 153 Q196 172 180 189 Z"
-          fill={colors.goldDeep}
-        />
-        <Path d="M160 195 Q178 195 182 213 Q168 220 152 214 Z" fill={colors.goldDeep} />
-        {/* Adult body */}
-        <Path d="M108 198 Q92 202 88 216 Q102 222 116 214 Z" fill={colors.gold} />
-        <Path
-          d="M98 130 Q86 162 100 190 Q124 206 152 190 Q168 158 156 126 Q132 108 98 130 Z"
-          fill={colors.gold}
-        />
-        {/* Chest */}
-        <Ellipse
-          cx="128"
-          cy="168"
-          rx="34"
-          ry="24"
-          fill={colors.canvasIvory}
-          stroke={colors.ink}
-          strokeWidth="2"
-        />
-        {/* Ears */}
-        <Ellipse cx="113" cy="52" rx="10" ry="18" rotation={-16} fill={colors.gold} />
-        <Ellipse cx="150" cy="52" rx="10" ry="18" rotation={16} fill={colors.gold} />
-        {/* Head */}
-        <Circle cx="131" cy="86" r="33" fill={colors.gold} />
-        <Ellipse cx="131" cy="98" rx="14" ry="11" fill={colors.canvasIvory} />
-        <Circle cx="122" cy="82" r="2.8" fill={colors.ink} />
-        <Circle cx="140" cy="82" r="2.8" fill={colors.ink} />
-        <Path
-          d="M124 103 Q131 108 138 103"
-          stroke={colors.ink}
-          strokeWidth="2"
-          fill="none"
-          strokeLinecap="round"
-        />
-        {/* Phone */}
-        <G transform="translate(232,150)">
-          <Path
-            d="M-22 0l22-19 22 19"
-            stroke={colors.inkMuted}
-            strokeWidth="2.4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            fill="none"
-          />
-          <Path
-            d="M-16 -3v33h32v-33"
-            stroke={colors.inkMuted}
-            strokeWidth="2.4"
-            strokeLinejoin="round"
-            fill={colors.borderCool}
-          />
-          <Rect x="-5" y="12" width="10" height="18" fill={colors.inkMuted} opacity="0.5" />
-        </G>
-      </Svg>
-      {/* Chest dots — pulsing */}
-      <PulsingDot xPct={118} yPct={166} r={3} color={colors.goldLight} />
-      <PulsingDot xPct={130} yPct={162} r={3} color={colors.goldLight} delay={300} />
-      <PulsingDot xPct={140} yPct={167} r={3} color={colors.goldLight} delay={600} />
-    </Animated.View>
+      <HoppingKangarooMark size={132} color={colors.gold} />
+    </View>
   );
 }
 

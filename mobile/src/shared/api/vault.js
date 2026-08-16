@@ -59,41 +59,4 @@ export const vaultApi = {
     apiClient
       .get('/vault/keys/me')
       .then((r) => r.data.data),
-
-  getHouseholdKeys: () =>
-    apiClient
-      .get('/vault/keys')
-      .then((r) => r.data.data),
-
-  getKeyStatus: () =>
-    apiClient
-      .get('/vault/keys/status')
-      .then((r) => r.data.data),
-
-  // Key ceremony
-  performKeyCeremony: (documentId, wrappedKeys) =>
-    apiClient
-      .post(
-        `/vault/${documentId}/key-ceremony`,
-        { wrappedKeys }
-      )
-      .then((r) => r.data.data),
-
-  // Key rotation
-  rotateVaultKey: (documents) =>
-    apiClient
-      .post(
-        '/vault/keys/rotate',
-        { documents }
-      )
-      .then((r) => r.data.data),
-
-  // Revoke member and rekey all documents (admin only)
-  revokeAndRekey: (
-    revokedUserId,
-    documents
-  ) =>
-    apiClient
-      .post('/vault/keys/revoke', { revokedUserId, documents })
-      .then((r) => r.data.data),
 };

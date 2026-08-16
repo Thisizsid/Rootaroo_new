@@ -12,14 +12,7 @@ import {
 } from 'react-native';
 import { expenseApi } from '../shared/api/expense';
 import { colors, withAlpha } from '../shared/theme';
-function getInitials(name) {
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-}
+import Avatar from '../components/Avatar';
 function formatCurrency(amount) {
   return new Intl.NumberFormat('en-IN', {
     style: 'currency',
@@ -93,16 +86,24 @@ export default function ExpenseSettlementScreen({ navigation }) {
         <View style={styles.cardHeader}>
           <View style={styles.userGroup}>
             <View style={styles.userChip}>
-              <Text style={styles.userInitials}>
-                {getInitials(item.fromUser?.displayName || 'Unknown')}
-              </Text>
+              <Avatar
+                url={item.fromUser?.avatarUrl}
+                emoji={item.fromUser?.avatarEmoji}
+                name={item.fromUser?.displayName || 'Unknown'}
+                id={item.fromUserId}
+                size={18}
+              />
               <Text style={styles.userName}>{item.fromUser?.displayName || 'Unknown'}</Text>
             </View>
             <Text style={styles.arrow}>→</Text>
             <View style={styles.userChip}>
-              <Text style={styles.userInitials}>
-                {getInitials(item.toUser?.displayName || 'Unknown')}
-              </Text>
+              <Avatar
+                url={item.toUser?.avatarUrl}
+                emoji={item.toUser?.avatarEmoji}
+                name={item.toUser?.displayName || 'Unknown'}
+                id={item.toUserId}
+                size={18}
+              />
               <Text style={styles.userName}>{item.toUser?.displayName || 'Unknown'}</Text>
             </View>
           </View>
@@ -252,13 +253,6 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 10,
     gap: 4,
-  },
-  userInitials: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.legacyGold,
-    width: 16,
-    textAlign: 'center',
   },
   userName: {
     fontSize: 12,

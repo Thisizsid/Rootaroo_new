@@ -48,11 +48,15 @@ export const colors = {
   info: '#5A6B7D',
   infoSoft: '#4A5A6B',
 
-  /* ---- Splash / dark surfaces (from 02-Auth-Onboarding SCREEN 01) ---- */
+  /* ---- Splash (original flat dark background + illustrated mark) ---- */
   splashBg: '#1B1E24',
+  splashMarkFill: '#33241A',
+  splashMarkRim: '#F0C878',
+  splashShadow: '#1A1108',
+
+  /* ---- RootarooKangarooAnimation (shared: SplashScreen + ReadyScreen) ---- */
   splashKangarooTail: '#333944',
   splashKangarooBody: '#3A3F48',
-  splashTrack: '#242830',
   splashDot: '#C79A4B',
 
   /* ---- Warm UI (from design/auth-designs/rootaro_signup_*.html) ---- */

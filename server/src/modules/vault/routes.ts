@@ -8,9 +8,6 @@ import {
   updateVaultDocumentSchema,
   vaultDocumentQuerySchema,
   storeUserKeySchema,
-  keyCeremonySchema,
-  keyRotationSchema,
-  revokeAndRekeySchema,
 } from './validation';
 
 const router = Router();
@@ -22,16 +19,9 @@ router.post('/', vaultUpload, validate(createVaultDocumentSchema), ctrl.uploadDo
 router.get('/', validate(vaultDocumentQuerySchema), ctrl.listDocumentsCtrl);
 router.get('/summary', ctrl.getStorageUsageCtrl);
 
-// Key management
-router.get('/keys/status', ctrl.getHouseholdKeyStatusCtrl);
-router.get('/keys', ctrl.getHouseholdPublicKeysCtrl);
+// Key management (per-user only — vault documents are private, not shared)
 router.get('/keys/me', ctrl.getUserKeyCtrl);
 router.post('/keys/me', validate(storeUserKeySchema), ctrl.storeUserKeyCtrl);
-router.post('/keys/rotate', validate(keyRotationSchema), ctrl.rotateVaultKeyCtrl);
-
-// Member revocation + rekey (admin only)
-// POST body contains revokedUserId + re-wrapped keys for all remaining members
-router.post('/keys/revoke', validate(revokeAndRekeySchema), ctrl.revokeAndRekeyCtrl);
 
 // Document routes (must come after static /keys routes to avoid prefix conflicts)
 router.get('/:id', ctrl.getDocumentByIdCtrl);
@@ -43,8 +33,5 @@ router.get('/:id/key', ctrl.getDocumentKeyCtrl);
 
 // Hard delete (admin only, FR-130)
 router.delete('/:id/hard', ctrl.hardDeleteDocumentCtrl);
-
-// Key ceremony (FR-132) — client provides real RSA-wrapped AES keys
-router.post('/:id/key-ceremony', validate(keyCeremonySchema), ctrl.performKeyCeremonyCtrl);
 
 export default router;

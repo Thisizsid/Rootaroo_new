@@ -32,6 +32,23 @@ export const householdApi = {
   getHousehold: (householdId) =>
     apiClient.get(`/households/${householdId}`).then((r) => r.data.data),
 
+  uploadCoverPhoto: (householdId, fileUri) => {
+    const formData = new FormData();
+    formData.append('cover', {
+      uri: fileUri,
+      type: 'image/jpeg',
+      name: 'cover.jpg',
+    });
+    return apiClient
+      .post(`/households/${householdId}/cover-photo`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      .then((r) => r.data.data);
+  },
+
+  removeCoverPhoto: (householdId) =>
+    apiClient.delete(`/households/${householdId}/cover-photo`).then((r) => r.data.data),
+
   scheduleDeletion: (householdId, password) =>
     apiClient.post(`/households/${householdId}/schedule-deletion`, { password }).then((r) => r.data.data),
 

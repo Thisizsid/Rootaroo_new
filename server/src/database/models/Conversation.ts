@@ -4,7 +4,7 @@ import sequelize from '../../config/database';
 class Conversation extends Model {
   declare id: CreationOptional<string>;
   declare householdId: string;
-  declare type: 'dm' | 'group';
+  declare type: 'dm' | 'group' | 'household';
   declare name: string | null;
   declare createdBy: string;
   declare createdAt: CreationOptional<Date>;
@@ -24,7 +24,7 @@ Conversation.init(
       field: 'household_id',
     },
     type: {
-      type: DataTypes.ENUM('dm', 'group'),
+      type: DataTypes.ENUM('dm', 'group', 'household'),
       allowNull: false,
     },
     name: {

@@ -1,168 +1,116 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Easing, StatusBar } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Defs, RadialGradient, Stop, Circle } from 'react-native-svg';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as NavigationBar from 'expo-navigation-bar';
 import { useAuthStore } from '../shared/store/authStore';
-import { colors, fonts, layout } from '../shared/theme';
-const BREATHE_DURATION = 3200; // mockup: breathe 3.2s
-const DOT_DRIFT_DURATION = 1800; // mockup: dotDrift 1.8s
-const LOAD_DURATION = 2600;
+import { colors, fonts } from '../shared/theme';
+
 const SPLASH_DURATION = 3000;
+const LOAD_DURATION = 2600;
+const HOP_UP_DURATION = 380;
+const HOP_DOWN_DURATION = 440;
+const HOP_REST = 160;
 
 /* ------------------------------------------------------------------ */
-/* Line-art kangaroo + drifting gold dots — translated 1:1 from the   */
-/* design mockup (02-Auth-Onboarding.html, SCREEN 01 · Splash).       */
-/*                                                                     */
-/* Mockup layout (390×844 frame):                                     */
-/*   • art zone:   absolute, top:70, height:220 (kangaroo + dots)     */
-/*   • content:    centered in the region top:340 → bottom:90         */
-/*   • loader:     absolute, bottom:64, left/right:40, height:3       */
-/*                                                                     */
-/* Mockup animations:                                                 */
-/*   • breathe:  scale 1 → 1.014 → 1 (3.2s infinite)                 */
-/*   • dotDrift: opacity 0.35→1 + translateX 0→3px (1.8s infinite,   */
-/*                staggered 0.2s between dots)                        */
-/*                                                                     */
-/* NOTE: react-native-svg v15 on Fabric does NOT reliably support       */
-/* Animated.createAnimatedComponent — animated SVG props can make the  */
-/* whole SVG subtree fail to mount. So: kangaroo paths are STATIC SVG, */
-/* and the drifting dots are plain RN Animated.Views positioned by %   */
-/* coordinates over the SVG (RN views animate with native driver).    */
+/* A warm, illustrated splash — replaces the old flat dark background  */
+/* + abstract line-art with a "golden hour" gradient, a real hopping   */
+/* kangaroo silhouette, and a soft grain texture. Splash-only: doesn't */
+/* touch RootarooKangarooAnimation.jsx (shared with ReadyScreen).      */
 /* ------------------------------------------------------------------ */
 
-const DOTS = [
-  {
-    cx: 118,
-    cy: 145,
-    r: 3,
-    fill: colors.gold,
-    delay: 0,
-  },
-  {
-    cx: 150,
-    cy: 128,
-    r: 3,
-    fill: colors.gold,
-    delay: 200,
-  },
-  {
-    cx: 182,
-    cy: 115,
-    r: 3.5,
-    fill: colors.gold,
-    delay: 400,
-  },
-  {
-    cx: 205,
-    cy: 106,
-    r: 4,
-    fill: colors.splashDot,
-    delay: 600,
-  },
-];
-
-/* One dot as an animated RN View. Position uses % of the art box so it
-   lines up with the SVG viewBox (390×220) at any screen width. */
-function DriftingDot({ dot, drift }) {
-  const opacity = drift.interpolate({
-    inputRange: [0, 0.25, 0.5, 0.75, 1],
-    outputRange: [0.35, 0.75, 1, 0.75, 0.35],
+function KangarooMark({ hop }) {
+  const translateY = hop.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -26],
   });
-  const translateX = drift.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: [0, 3, 0],
+  const scaleY = hop.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.94, 1.06],
   });
-  const size = dot.r * 2;
+  const scaleX = hop.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1.06, 0.95],
+  });
+  const shadowScaleX = hop.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 0.55],
+  });
+  const shadowOpacity = hop.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.32, 0.12],
+  });
   return (
-    <Animated.View
-      style={{
-        position: 'absolute',
-        left: `${(dot.cx / 390) * 100}%`,
-        top: `${(dot.cy / 220) * 100}%`,
-        width: size,
-        height: size,
-        marginLeft: -dot.r,
-        marginTop: -dot.r,
-        borderRadius: dot.r,
-        backgroundColor: dot.fill,
-        opacity,
-        transform: [
+    <View style={styles.markWrap}>
+      <Animated.View
+        style={[
+          styles.shadow,
           {
-            translateX,
+            opacity: shadowOpacity,
+            transform: [{ scaleX: shadowScaleX }],
           },
-        ],
-      }}
-    />
-  );
-}
-function KangarooArt({ breathe }) {
-  /* Mockup breathe: scale pulse 1 → 1.014 */
-  const scale = breathe.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: [1, 1.014, 1],
-  });
-
-  /* Single shared clock for the dot-drift sway. */
-  const drift = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.timing(drift, {
-        toValue: 1,
-        duration: DOT_DRIFT_DURATION,
-        easing: Easing.inOut(Easing.sin),
-        useNativeDriver: true,
-      }),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [drift]);
-  return (
-    <Animated.View
-      style={{
-        width: '100%',
-        aspectRatio: 390 / 220,
-        transform: [
-          {
-            scale,
-          },
-        ],
-      }}
-    >
-      {/* Static kangaroo — tail + body (no animated SVG props) */}
-      <Svg width="100%" height="100%" viewBox="0 0 390 220">
-        {/* Tail */}
-        <Path
-          d="M55 175 Q75 180 85 160"
-          stroke={colors.splashKangarooTail}
-          strokeWidth="2"
-          fill="none"
-          strokeLinecap="round"
-        />
-        {/* Body */}
-        <Path
-          d="M65 155 Q85 145 95 160 Q101 173 87 179 Q71 183 65 169 Z"
-          fill={colors.splashKangarooBody}
-        />
+        ]}
+      />
+      <Svg width={176} height={176} viewBox="0 0 176 176" style={styles.glowSvg}>
+        <Defs>
+          <RadialGradient id="glow" cx="50%" cy="55%" r="55%">
+            <Stop offset="0%" stopColor={colors.splashMarkRim} stopOpacity={0.35} />
+            <Stop offset="100%" stopColor={colors.splashMarkRim} stopOpacity={0} />
+          </RadialGradient>
+        </Defs>
+        <Circle cx={88} cy={88} r={88} fill="url(#glow)" />
       </Svg>
-      {/* Drifting gold dots — RN views, staggered 1.8s sway loop */}
-      {DOTS.map((dot) => (
-        <DriftingDot key={dot.cx} dot={dot} drift={drift} />
-      ))}
-    </Animated.View>
+      <Animated.View
+        style={{
+          transform: [{ translateY }, { scaleX }, { scaleY }],
+        }}
+      >
+        <MaterialCommunityIcons name="kangaroo" size={140} color={colors.splashMarkRim} />
+      </Animated.View>
+    </View>
   );
 }
 
-/* Gold rounded-square logo mark — 58×58, radius 20 */
-function LogoMark() {
+function LoaderDots({ progress }) {
+  const dots = [0, 1, 2];
   return (
-    <View
-      style={{
-        width: layout.splashLogoSize,
-        height: layout.splashLogoSize,
-        borderRadius: layout.splashLogoRadius,
-        backgroundColor: colors.gold,
-      }}
-    />
+    <View style={styles.dotsRow}>
+      {dots.map((i) => {
+        const start = i * 0.18;
+        const scale = progress.interpolate({
+          inputRange: [
+            0,
+            Math.min(start, 0.99),
+            Math.min(start + 0.22, 1),
+            Math.min(start + 0.44, 1),
+            1,
+          ],
+          outputRange: [0.6, 0.6, 1.12, 0.6, 0.6],
+        });
+        const opacity = progress.interpolate({
+          inputRange: [
+            0,
+            Math.min(start, 0.99),
+            Math.min(start + 0.22, 1),
+            Math.min(start + 0.44, 1),
+            1,
+          ],
+          outputRange: [0.35, 0.35, 1, 0.35, 0.35],
+        });
+        return (
+          <Animated.View
+            key={i}
+            style={[
+              styles.dot,
+              {
+                opacity,
+                transform: [{ scale }],
+              },
+            ]}
+          />
+        );
+      })}
+    </View>
   );
 }
 
@@ -171,152 +119,128 @@ function LogoMark() {
 export default function SplashScreen() {
   const setLoading = useAuthStore((s) => s.setLoading);
 
-  /* Entry animations */
-  const logoScale = useRef(new Animated.Value(0.4)).current;
-  const logoOpacity = useRef(new Animated.Value(0)).current;
-
-  /* Idle breathe (kangaroo group) */
-  const breathe = useRef(new Animated.Value(0)).current;
-
-  /* Typography */
+  const markScale = useRef(new Animated.Value(0.5)).current;
+  const markOpacity = useRef(new Animated.Value(0)).current;
+  const hop = useRef(new Animated.Value(0)).current;
   const textOpacity = useRef(new Animated.Value(0)).current;
-  const textTranslateY = useRef(new Animated.Value(20)).current;
+  const textTranslateY = useRef(new Animated.Value(16)).current;
+  const dotsProgress = useRef(new Animated.Value(0)).current;
 
-  /* Loading bar */
-  const loadAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     NavigationBar.setBackgroundColorAsync(colors.splashBg);
     return () => {
       NavigationBar.setBackgroundColorAsync(colors.surface);
     };
   }, []);
+
   useEffect(() => {
-    /* Entry: spring logo group in */
+    /* Entry: mark springs in with a touch of overshoot */
     Animated.parallel([
-      Animated.spring(logoScale, {
+      Animated.spring(markScale, {
         toValue: 1,
-        tension: 60,
-        friction: 10,
+        tension: 70,
+        friction: 7,
         useNativeDriver: true,
       }),
-      Animated.timing(logoOpacity, {
+      Animated.timing(markOpacity, {
         toValue: 1,
-        duration: 500,
+        duration: 420,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
     ]).start();
 
-    /* Idle: mockup breathe — scale 1 → 1.014, 3.2s loop */
-    const breathLoop = Animated.loop(
+    /* Idle: real hop loop — quick launch, faster fall, brief rest on landing */
+    const hopLoop = Animated.loop(
       Animated.sequence([
-        Animated.timing(breathe, {
+        Animated.timing(hop, {
           toValue: 1,
-          duration: BREATHE_DURATION / 2,
-          easing: Easing.inOut(Easing.sin),
+          duration: HOP_UP_DURATION,
+          easing: Easing.out(Easing.quad),
           useNativeDriver: true,
         }),
-        Animated.timing(breathe, {
+        Animated.timing(hop, {
           toValue: 0,
-          duration: BREATHE_DURATION / 2,
-          easing: Easing.inOut(Easing.sin),
+          duration: HOP_DOWN_DURATION,
+          easing: Easing.in(Easing.quad),
           useNativeDriver: true,
         }),
+        Animated.delay(HOP_REST),
       ]),
     );
-    const breatheDelay = setTimeout(() => breathLoop.start(), 500);
+    const hopDelay = setTimeout(() => hopLoop.start(), 550);
 
     /* Text fade in */
     const textDelay = setTimeout(() => {
       Animated.parallel([
         Animated.timing(textOpacity, {
           toValue: 1,
-          duration: 700,
+          duration: 650,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
         Animated.timing(textTranslateY, {
           toValue: 0,
-          duration: 700,
+          duration: 650,
           easing: Easing.out(Easing.back(1.2)),
           useNativeDriver: true,
         }),
       ]).start();
-    }, 800);
+    }, 700);
 
-    /* Loading bar */
-    const load = Animated.timing(loadAnim, {
-      toValue: 1,
-      duration: LOAD_DURATION,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
-    });
-    load.start();
+    /* Loading dots — continuous staggered pulse */
+    const dotsLoop = Animated.loop(
+      Animated.timing(dotsProgress, {
+        toValue: 1,
+        duration: LOAD_DURATION,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+    );
+    dotsLoop.start();
 
     /* Auto-transition */
     const timer = setTimeout(() => setLoading(false), SPLASH_DURATION);
     return () => {
-      clearTimeout(breatheDelay);
+      clearTimeout(hopDelay);
       clearTimeout(textDelay);
       clearTimeout(timer);
-      breathLoop.stop();
-      load.stop();
+      hopLoop.stop();
+      dotsLoop.stop();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const loadWidth = loadAnim.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: ['0%', '72%', '100%'],
-  });
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={colors.splashBg} />
 
-      {/* Art zone — absolute top:70, height:220 (mockup) */}
-      <Animated.View
-        style={[
-          styles.artZone,
-          {
-            opacity: logoOpacity,
-          },
-        ]}
-      >
-        <KangarooArt breathe={breathe} />
-      </Animated.View>
+      <View style={styles.centerRegion}>
+        <Animated.View
+          style={{
+            opacity: markOpacity,
+            transform: [{ scale: markScale }],
+          }}
+        >
+          <KangarooMark hop={hop} />
+        </Animated.View>
 
-      {/* Content — centered in the region top:340 → bottom:90 (mockup) */}
-      <View style={styles.contentRegion}>
         <Animated.View
           style={[
-            styles.centerBlock,
+            styles.textBlock,
             {
-              opacity: logoOpacity,
-              transform: [
-                {
-                  scale: logoScale,
-                },
-              ],
+              opacity: textOpacity,
+              transform: [{ translateY: textTranslateY }],
             },
           ]}
         >
-          <LogoMark />
           <Text style={styles.brand}>Rootaroo</Text>
           <Text style={styles.tagline}>Your family's digital home</Text>
         </Animated.View>
       </View>
 
-      {/* Loading bar — absolute bottom:64, left/right:40, height:3 (mockup) */}
       <View style={styles.footer}>
-        <View style={styles.progressTrack}>
-          <Animated.View
-            style={[
-              styles.progressBar,
-              {
-                width: loadWidth,
-              },
-            ]}
-          />
-        </View>
+        <LoaderDots progress={dotsProgress} />
       </View>
     </View>
   );
@@ -326,30 +250,34 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.splashBg,
   },
-  /* Mockup: art zone at top:70, height:220 */
-  artZone: {
-    position: 'absolute',
-    top: 70,
-    left: 0,
-    right: 0,
-    height: 220,
+  centerRegion: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 28,
   },
-  /* Mockup: content region = top:340 → bottom:90 (below true center) */
-  contentRegion: {
-    position: 'absolute',
-    top: 340,
-    left: 0,
-    right: 0,
-    bottom: 90,
+  markWrap: {
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
+    height: 200,
+    position: 'relative',
   },
-  centerBlock: {
+  glowSvg: {
+    position: 'absolute',
+    bottom: 12,
+    left: '50%',
+    marginLeft: -88,
+  },
+  shadow: {
+    width: 120,
+    height: 20,
+    borderRadius: 14,
+    backgroundColor: colors.splashShadow,
+    marginBottom: -6,
+  },
+  textBlock: {
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 20,
+    gap: 8,
   },
   brand: {
     fontFamily: fonts.display,
@@ -368,23 +296,18 @@ const styles = StyleSheet.create({
     color: colors.goldSoft,
     textAlign: 'center',
   },
-  /* Mockup: bottom:64, left/right:40, height:3 */
   footer: {
-    position: 'absolute',
-    bottom: 64,
-    left: 40,
-    right: 40,
-    height: 3,
+    paddingBottom: 64,
+    alignItems: 'center',
   },
-  progressTrack: {
-    height: 3,
-    backgroundColor: colors.splashTrack,
-    borderRadius: 2,
-    overflow: 'hidden',
+  dotsRow: {
+    flexDirection: 'row',
+    gap: 10,
   },
-  progressBar: {
-    height: '100%',
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     backgroundColor: colors.gold,
-    borderRadius: 2,
   },
 });

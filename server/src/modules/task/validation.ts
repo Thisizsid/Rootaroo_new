@@ -10,7 +10,7 @@ export const createTaskSchema: ValidationSchemas = {
       .regex(/^\d{4}-\d{2}-\d{2}$/, 'Due date must be YYYY-MM-DD')
       .optional(),
     assigneeIds: z.array(z.string().uuid()).max(20, 'Max 20 assignees').optional(),
-    recurrence: z.enum(['none', 'daily', 'weekly', 'monthly']).default('none'),
+    recurrence: z.enum(['none', 'daily', 'weekly', 'biweekly', 'monthly']).default('none'),
     recurrenceEndDate: z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -28,7 +28,7 @@ export const updateTaskSchema: ValidationSchemas = {
       .regex(/^\d{4}-\d{2}-\d{2}$/)
       .nullable()
       .optional(),
-    recurrence: z.enum(['none', 'daily', 'weekly', 'monthly']).optional(),
+    recurrence: z.enum(['none', 'daily', 'weekly', 'biweekly', 'monthly']).optional(),
     recurrenceEndDate: z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/)

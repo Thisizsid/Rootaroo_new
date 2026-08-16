@@ -19,6 +19,7 @@ import { taskApi } from '../shared/api/task';
 import { useAuthStore } from '../shared/store/authStore';
 import { householdApi } from '../shared/api/household';
 import { colors, radius, fonts, withAlpha } from '../shared/theme';
+import Avatar from '../components/Avatar';
 const RECURRENCE_OPTIONS = [
   {
     label: 'None',
@@ -31,6 +32,10 @@ const RECURRENCE_OPTIONS = [
   {
     label: 'Weekly',
     value: 'weekly',
+  },
+  {
+    label: 'Biweekly',
+    value: 'biweekly',
   },
   {
     label: 'Monthly',
@@ -283,7 +288,12 @@ export default function CreateTaskScreen({ route, navigation }) {
   const [showRecurrence, setShowRecurrence] = useState(false);
   const insets = useSafeAreaInsets();
   const householdId = useAuthStore((s) => s.householdId);
+  const userId = useAuthStore((s) => s.user?.id);
   const canPost = title.trim().length > 0 && !posting;
+  const isSelfOnly = selectedAssignees.length === 1 && selectedAssignees[0] === userId;
+  useEffect(() => {
+    if (isSelfOnly) setPoints('1');
+  }, [isSelfOnly]);
   useEffect(() => {
     if (householdId) {
       householdApi
@@ -434,14 +444,20 @@ export default function CreateTaskScreen({ route, navigation }) {
             <View style={styles.fieldGroup}>
               <Text style={styles.fieldLabel}>Points</Text>
               <TextInput
-                style={styles.fieldInput}
+                style={[styles.fieldInput, isSelfOnly && styles.fieldInputDisabled]}
                 value={points}
                 onChangeText={(t) => setPoints(t.replace(/[^0-9]/g, ''))}
                 keyboardType="number-pad"
                 placeholder="1"
                 placeholderTextColor={colors.textMuted}
                 maxLength={4}
+                editable={!isSelfOnly}
               />
+              {isSelfOnly && (
+                <Text style={styles.fieldHelper}>
+                  Points aren't awarded for tasks assigned only to yourself.
+                </Text>
+              )}
             </View>
 
             <View style={styles.fieldGroup}>
@@ -521,9 +537,13 @@ export default function CreateTaskScreen({ route, navigation }) {
                   activeOpacity={0.7}
                 >
                   <View style={styles.pickAvatar}>
-                    <Text style={styles.pickAvatarText}>
-                      {item.avatarEmoji || item.displayName.charAt(0).toUpperCase()}
-                    </Text>
+                    <Avatar
+                      url={item.avatarUrl}
+                      emoji={item.avatarEmoji}
+                      name={item.displayName}
+                      id={item.userId}
+                      size={40}
+                    />
                   </View>
                   <View style={styles.pickInfo}>
                     <Text style={styles.pickName}>{item.displayName}</Text>
@@ -748,6 +768,15 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
     textAlignVertical: 'top',
   },
+  fieldInputDisabled: {
+    opacity: 0.5,
+  },
+  fieldHelper: {
+    fontSize: 11,
+    fontFamily: fonts.body,
+    color: colors.textMuted,
+    marginTop: 6,
+  },
   fieldValue: {
     fontSize: 14,
     fontFamily: fonts.bodyMedium,
@@ -826,11 +855,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceWarm,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  pickAvatarText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.goldDeep,
   },
   pickInfo: {
     flex: 1,

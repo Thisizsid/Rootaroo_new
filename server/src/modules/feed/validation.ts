@@ -37,6 +37,7 @@ export const feedQuerySchema: ValidationSchemas = {
     cursor: z.string().optional(),
     limit: z.coerce.number().int().min(1).max(50).default(20),
     since: z.string().datetime({ offset: true }).optional(),
+    authorId: z.string().uuid().optional(),
   }),
 };
 

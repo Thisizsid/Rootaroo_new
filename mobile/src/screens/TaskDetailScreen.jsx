@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { taskApi } from '../shared/api/task';
 import { useAuthStore } from '../shared/store/authStore';
 import { colors, spacing, radius, fonts } from '../shared/theme';
+import Avatar from '../components/Avatar';
 function formatDueDate(dateStr) {
   if (!dateStr) return 'No due date';
   const d = new Date(dateStr + 'T00:00:00');
@@ -153,7 +154,27 @@ export default function TaskDetailScreen({ route, navigation }) {
 
         {/* Meta rows (SCREEN 18): Assigned to / Due date / Created by / Points / Status */}
         <View style={styles.metaList}>
-          <MetaRow label="Assigned to" value={assigneeNames || 'Unassigned'} />
+          <View style={styles.metaRow}>
+            <Text style={styles.metaLabel}>Assigned to</Text>
+            {task.assignees.length > 0 ? (
+              <View style={styles.assigneeStack}>
+                {task.assignees.map((a, i) => (
+                  <Avatar
+                    key={a.id}
+                    url={a.avatarUrl}
+                    emoji={a.avatarEmoji}
+                    name={a.displayName}
+                    id={a.id}
+                    size={26}
+                    style={i > 0 && styles.assigneeStackOverlap}
+                  />
+                ))}
+                <Text style={styles.metaValue}>{assigneeNames}</Text>
+              </View>
+            ) : (
+              <Text style={styles.metaValue}>Unassigned</Text>
+            )}
+          </View>
           <MetaRow label="Due date" value={formatDueDate(task.dueDate)} />
           <MetaRow label="Created by" value={task.createdBy.displayName} />
           <MetaRow label="Points" value={String(task.points)} mono />
@@ -293,6 +314,14 @@ const styles = StyleSheet.create({
   },
   metaRowLast: {
     borderBottomWidth: 0,
+  },
+  assigneeStack: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  assigneeStackOverlap: {
+    marginLeft: -10,
   },
   metaLabel: {
     fontSize: 13,

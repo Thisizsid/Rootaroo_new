@@ -8,6 +8,7 @@ export interface HouseholdResponse {
   inviteCode: string;
   memberCount: number;
   role: string;
+  coverPhotoUrl: string | null;
   createdAt: string;
   scheduledDeletionAt: string | null;
 }
@@ -29,6 +30,7 @@ export interface MemberResponse {
   email: string;
   avatarUrl: string | null;
   avatarEmoji: string | null;
+  dateOfBirth: string | null;
   role: string;
   joinedAt: string;
 }

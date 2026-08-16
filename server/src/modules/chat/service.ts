@@ -85,6 +85,23 @@ export async function createConversation(
     }
   }
 
+  // 'household' conversations are singletons — one per household, membership
+  // auto-synced with actual household membership elsewhere (household join/
+  // leave/remove flows). Reuse the existing one instead of creating a
+  // duplicate if a member has already started it.
+  if (body.type === 'household') {
+    const existing = await Conversation.findOne({ where: { householdId, type: 'household' } });
+    if (existing) {
+      const full = await Conversation.findByPk(existing.id, {
+        include: [
+          { model: User, as: 'participants' },
+          { model: ChatMessage, as: 'messages', limit: 1, order: [['createdAt', 'DESC']], include: [{ model: User, as: 'sender' }] },
+        ],
+      });
+      if (full) return toConversationResponse(full);
+    }
+  }
+
   const conv = await Conversation.create({
     id: uuidv4(),
     householdId,

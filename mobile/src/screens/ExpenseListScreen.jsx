@@ -15,14 +15,7 @@ import { householdApi } from '../shared/api/household';
 import { useAuthStore } from '../shared/store/authStore';
 import { useExpenseStore } from '../shared/store/expenseStore';
 import { colors, fonts, withAlpha } from '../shared/theme';
-function getInitials(name) {
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-}
+import Avatar from '../components/Avatar';
 function formatMoney(n) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -236,9 +229,15 @@ export default function ExpenseListScreen({ navigation }) {
             <Text style={styles.familyLabel}>{familyName}</Text>
             <View style={styles.avatarStack}>
               {avatarMembers.map((m) => (
-                <View key={m.userId} style={styles.stackAvatar}>
-                  <Text style={styles.stackAvatarText}>{getInitials(m.displayName)}</Text>
-                </View>
+                <Avatar
+                  key={m.userId}
+                  url={m.avatarUrl}
+                  emoji={m.avatarEmoji}
+                  name={m.displayName}
+                  id={m.userId}
+                  size={24}
+                  style={styles.stackAvatar}
+                />
               ))}
             </View>
           </View>
@@ -300,9 +299,13 @@ export default function ExpenseListScreen({ navigation }) {
           const neg = nb.netBalance < 0;
           return (
             <View key={nb.userId} style={styles.peopleRow}>
-              <View style={styles.peopleAvatar}>
-                <Text style={styles.peopleAvatarText}>{getInitials(nb.displayName)}</Text>
-              </View>
+              <Avatar
+                url={nb.avatarUrl}
+                emoji={nb.avatarEmoji}
+                name={nb.displayName}
+                id={nb.userId}
+                size={40}
+              />
               <Text style={styles.peopleName}>{nb.displayName}</Text>
               <View style={styles.peopleRight}>
                 <Text
@@ -454,11 +457,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.surface,
   },
-  stackAvatarText: {
-    fontSize: 8,
-    fontWeight: '700',
-    color: colors.goldDeep,
-  },
   balanceAmount: {
     fontSize: 46,
     fontWeight: '800',
@@ -551,20 +549,6 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
-  },
-  peopleAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.borderCool,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  peopleAvatarText: {
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: fonts.bodySemiBold,
-    color: colors.inkMuted,
   },
   peopleName: {
     flex: 1,

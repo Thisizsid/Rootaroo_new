@@ -22,14 +22,7 @@ import { useAuthStore } from '../shared/store/authStore';
 import ConfirmSheet from '../components/ConfirmSheet';
 import { useExpenseStore } from '../shared/store/expenseStore';
 import { colors, radius, fonts, withAlpha } from '../shared/theme';
-function getInitials(name) {
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-}
+import Avatar from '../components/Avatar';
 function formatMoney(n) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -294,15 +287,28 @@ export default function ExpenseDetailScreen({ navigation, route }) {
 
         {/* Paid by */}
         <Text style={styles.metaLabel}>Paid by</Text>
-        <Text style={styles.metaValue}>{expense.payer?.displayName || 'You'}</Text>
+        <View style={styles.paidByRow}>
+          <Avatar
+            url={expense.payer?.avatarUrl}
+            emoji={expense.payer?.avatarEmoji}
+            name={expense.payer?.displayName || 'You'}
+            id={expense.payer?.id}
+            size={22}
+          />
+          <Text style={styles.metaValue}>{expense.payer?.displayName || 'You'}</Text>
+        </View>
 
         {/* Split */}
         <Text style={[styles.metaLabel, styles.spaced]}>Split</Text>
         {expense.participants.map((p) => (
           <View key={p.userId} style={styles.splitRow}>
-            <View style={styles.splitAvatar}>
-              <Text style={styles.splitAvatarText}>{getInitials(p.user?.displayName || '?')}</Text>
-            </View>
+            <Avatar
+              url={p.user?.avatarUrl}
+              emoji={p.user?.avatarEmoji}
+              name={p.user?.displayName || '?'}
+              id={p.userId}
+              size={32}
+            />
             <Text style={styles.splitName}>{p.user?.displayName || 'Unknown'}</Text>
             <Text style={styles.splitAmount}>{formatMoney(p.shareAmount ?? 0)}</Text>
           </View>
@@ -450,7 +456,13 @@ export default function ExpenseDetailScreen({ navigation, route }) {
                       onPress={() => handleToggleParticipant(m.userId)}
                       activeOpacity={0.7}
                     >
-                      <Text style={styles.editAvatarText}>{getInitials(m.displayName)}</Text>
+                      <Avatar
+                        url={m.avatarUrl}
+                        emoji={m.avatarEmoji}
+                        name={m.displayName}
+                        id={m.userId}
+                        size={38}
+                      />
                     </TouchableOpacity>
                   );
                 })}
@@ -573,9 +585,13 @@ export default function ExpenseDetailScreen({ navigation, route }) {
                     }}
                     activeOpacity={0.7}
                   >
-                    <View style={styles.pickAvatar}>
-                      <Text style={styles.pickAvatarText}>{getInitials(item.displayName)}</Text>
-                    </View>
+                    <Avatar
+                      url={item.avatarUrl}
+                      emoji={item.avatarEmoji}
+                      name={item.displayName}
+                      id={item.userId}
+                      size={36}
+                    />
                     <Text style={styles.pickName}>{item.displayName}</Text>
                     {sel && <Text style={styles.pickCheck}>✓</Text>}
                   </TouchableOpacity>
@@ -703,19 +719,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
-  splitAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.borderCool,
+  paidByRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  splitAvatarText: {
-    fontSize: 12,
-    fontWeight: '600',
-    fontFamily: fonts.bodySemiBold,
-    color: colors.inkMuted,
+    gap: 8,
   },
   splitName: {
     flex: 1,
@@ -930,12 +937,6 @@ const styles = StyleSheet.create({
   editAvatarSelected: {
     borderColor: colors.gold,
   },
-  editAvatarText: {
-    fontSize: 13,
-    fontWeight: '600',
-    fontFamily: fonts.bodySemiBold,
-    color: colors.inkMuted,
-  },
   editChips: {
     flexDirection: 'row',
     gap: 8,
@@ -1071,20 +1072,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     paddingVertical: 12,
-  },
-  pickAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.borderCool,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pickAvatarText: {
-    fontSize: 13,
-    fontWeight: '600',
-    fontFamily: fonts.bodySemiBold,
-    color: colors.inkMuted,
   },
   pickName: {
     flex: 1,

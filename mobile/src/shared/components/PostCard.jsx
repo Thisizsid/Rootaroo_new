@@ -14,26 +14,12 @@ import {
   Share,
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
-import apiClient from '../api/client';
 import { colors, withAlpha } from '../theme';
+import Avatar, { resolveUrl } from '../../components/Avatar';
 
 const { width: SCREEN_W } = Dimensions.get('window');
-const AVATAR_FALLBACKS = [colors.avatarBronze, colors.avatarMoss, colors.avatarSlate, colors.avatarMauve, colors.legacyGold];
 
 /* ── Helpers ─────────────────────────────────── */
-
-function getServerBase() {
-  const base = apiClient.defaults.baseURL || '';
-  return base.replace(/\/api\/v1\/?$/, '');
-}
-
-function resolveUrl(url) {
-  if (!url) return null;
-  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('file:')) {
-    return url;
-  }
-  return `${getServerBase()}${url}`;
-}
 
 function elapsed(timestamp) {
   const diff = Date.now() - new Date(timestamp).getTime();
@@ -47,21 +33,6 @@ function elapsed(timestamp) {
   return new Date(timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-function getInitials(name) {
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-}
-
-function avatarTone(id) {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
-  return AVATAR_FALLBACKS[Math.abs(hash) % AVATAR_FALLBACKS.length];
-}
-
 function parseFeeling(content) {
   if (!content) return { body: '', feeling: null };
   const match = content.match(/\n\nFeeling:\s*(.+)$/);
@@ -70,41 +41,6 @@ function parseFeeling(content) {
     body: content.slice(0, match.index).trim(),
     feeling: match[1].trim(),
   };
-}
-
-/* ── Author Avatar ──────────────────────────── */
-
-export function AuthorAvatar({
-  url,
-  emoji,
-  name,
-  id,
-  size = 40,
-}) {
-  const resolved = resolveUrl(url);
-  return (
-    <View
-      style={[
-        styles.avatar,
-        {
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          backgroundColor: avatarTone(id),
-        },
-      ]}
-    >
-      {resolved ? (
-        <Image source={{ uri: resolved }} style={{ width: size, height: size }} />
-      ) : emoji ? (
-        <Text style={{ fontSize: size * 0.48 }}>{emoji}</Text>
-      ) : (
-        <Text style={[styles.avatarInitials, { fontSize: size * 0.32 }]}>
-          {getInitials(name || 'ME')}
-        </Text>
-      )}
-    </View>
-  );
 }
 
 /* ── Heart Icon ─────────────────────────────── */
@@ -235,7 +171,7 @@ const PostCard = memo(function PostCard({
     <View style={styles.post}>
       {/* Header */}
       <View style={styles.postHead}>
-        <AuthorAvatar
+        <Avatar
           url={post.author.avatarUrl}
           emoji={post.author.avatarEmoji}
           name={post.author.displayName}
@@ -399,17 +335,6 @@ export default PostCard;
 /* ── Styles ─────────────────────────────────── */
 
 const styles = StyleSheet.create({
-  avatar: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    flexShrink: 0,
-  },
-  avatarInitials: {
-    fontWeight: '700',
-    color: colors.surface,
-  },
-
   post: {
     backgroundColor: colors.surface,
     paddingBottom: 12,

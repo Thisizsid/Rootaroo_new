@@ -1,79 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  Alert,
-  Modal,
-  FlatList,
-  SafeAreaView,
-} from 'react-native';
+import { View, Text, StyleSheet, TextInput, Alert } from 'react-native';
 import SignupWizardShell from '../shared/components/SignupWizardShell';
 import { authApi } from '../shared/api/auth';
-import { useAuthStore } from '../shared/store/authStore';
 import { loadSignupProgress, updateSignupProgress } from '../shared/store/signupProgress';
+import { navigateAfterHouseholdSetup } from '../shared/navigation/postAuthNavigation';
 import { colors, fonts } from '../shared/theme';
-const COUNTRY_CODES = [
-  {
-    code: '+1',
-    flag: '🇺🇸',
-    name: 'United States',
-  },
-  {
-    code: '+91',
-    flag: '🇮🇳',
-    name: 'India',
-  },
-  {
-    code: '+44',
-    flag: '🇬🇧',
-    name: 'United Kingdom',
-  },
-  {
-    code: '+61',
-    flag: '🇦🇺',
-    name: 'Australia',
-  },
-  {
-    code: '+1',
-    flag: '🇨🇦',
-    name: 'Canada',
-  },
-  {
-    code: '+65',
-    flag: '🇸🇬',
-    name: 'Singapore',
-  },
-  {
-    code: '+977',
-    flag: '🇳🇵',
-    name: 'Nepal',
-  },
-  {
-    code: '+971',
-    flag: '🇦🇪',
-    name: 'UAE',
-  },
-];
 export default function SignupStepAddressScreen({ navigation }) {
-  const user = useAuthStore((s) => s.user);
   const [street, setStreet] = useState('');
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
   const [zip, setZip] = useState('');
-  const [phone, setPhone] = useState('');
-  const [country, setCountry] = useState(COUNTRY_CODES[0]);
-  const [authMethod, setAuthMethod] = useState('email');
-  const [pickerVisible, setPickerVisible] = useState(false);
-  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
   const [focused, setFocused] = useState(null);
   useEffect(() => {
     loadSignupProgress().then((p) => {
       if (!p) return;
-      setAuthMethod(p.authMethod);
       if (p.draft.homeAddress) {
         // Backwards-compat: "Street, City, ST ZIP" from the old single field
         const parts = p.draft.homeAddress.split(',').map((s) => s.trim());
@@ -92,16 +33,8 @@ export default function SignupStepAddressScreen({ navigation }) {
           setStreet(p.draft.homeAddress);
         }
       }
-      if (p.draft.phone) setPhone(p.draft.phone);
-      if (p.draft.countryCode) {
-        const match = COUNTRY_CODES.find((c) => c.code === p.draft.countryCode);
-        if (match) setCountry(match);
-      }
     });
   }, []);
-  const filtered = COUNTRY_CODES.filter(
-    (c) => c.name.toLowerCase().includes(search.toLowerCase()) || c.code.includes(search),
-  );
   const fullAddress = (() => {
     const parts = [street.trim(), city.trim(), `${state.trim()} ${zip.trim()}`.trim()].filter(
       Boolean,
@@ -113,36 +46,21 @@ export default function SignupStepAddressScreen({ navigation }) {
       Alert.alert('Address required', 'Please enter your street and city.');
       return;
     }
-    if (authMethod === 'phone') {
-      const digits = phone.replace(/\D/g, '');
-      if (digits.length < 7) {
-        Alert.alert('Phone required', 'Please enter a valid phone number.');
-        return;
-      }
-    }
     setLoading(true);
     try {
-      const fullPhone = `${country.code}${phone.replace(/\D/g, '')}`;
-      if (authMethod !== 'phone' && user) {
-        await authApi.updateProfile({
-          homeAddress: fullAddress,
-          ...(phone.trim()
-            ? {
-                phone: fullPhone,
-              }
-            : {}),
-        });
-      }
+      // By this point in the flow the household has already been created
+      // (this screen only runs for creators, right after HouseholdSetup),
+      // so the account always exists for both email and phone signups.
+      await authApi.updateProfile({
+        homeAddress: fullAddress,
+      });
       await updateSignupProgress({
-        step: 'avatar',
-        phone: authMethod === 'phone' ? fullPhone : undefined,
+        step: 'address',
         draft: {
           homeAddress: fullAddress,
-          phone: authMethod === 'phone' ? phone.replace(/\D/g, '') : phone.trim() || undefined,
-          countryCode: country.code,
         },
       });
-      navigation.navigate('SignupStepAvatar');
+      await navigateAfterHouseholdSetup(navigation);
     } catch (e) {
       Alert.alert('Error', e?.response?.data?.error || e?.message || 'Could not save address');
     } finally {
@@ -151,17 +69,13 @@ export default function SignupStepAddressScreen({ navigation }) {
   };
   return (
     <SignupWizardShell
-      step={3}
+      step={6}
       stepName="Address"
       title="Where's home?"
       subtitle="Used for local weather, check-ins, and deliveries."
       onBack={() => navigation.goBack()}
       onContinue={handleContinue}
-      continueDisabled={
-        !street.trim() ||
-        !city.trim() ||
-        (authMethod === 'phone' && phone.replace(/\D/g, '').length < 7)
-      }
+      continueDisabled={!street.trim() || !city.trim()}
       loading={loading}
     >
       <View style={styles.fieldGroup}>
@@ -222,84 +136,6 @@ export default function SignupStepAddressScreen({ navigation }) {
           />
         </View>
       </View>
-
-      {/* Phone section only for phone auth — mockup has no phone field */}
-      {authMethod === 'phone' && (
-        <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Phone number</Text>
-          <View style={[styles.phoneRow, focused === 'phone' && styles.inputFocused]}>
-            <TouchableOpacity
-              style={styles.countryBtn}
-              onPress={() => setPickerVisible(true)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.flag}>{country.flag}</Text>
-              <Text style={styles.code}>{country.code}</Text>
-              <Text style={styles.chev}>▾</Text>
-            </TouchableOpacity>
-            <View style={styles.divider} />
-            <TextInput
-              style={styles.phoneInput}
-              value={phone}
-              onChangeText={(v) => setPhone(v.replace(/[^\d\s\-()]/g, ''))}
-              placeholder="555 000 0000"
-              placeholderTextColor={colors.placeholderWarm}
-              keyboardType="phone-pad"
-              onFocus={() => setFocused('phone')}
-              onBlur={() => setFocused(null)}
-            />
-          </View>
-        </View>
-      )}
-
-      <Modal
-        visible={pickerVisible}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => {
-          setPickerVisible(false);
-          setSearch('');
-        }}
-      >
-        <SafeAreaView style={styles.modal}>
-          <View style={styles.modalHead}>
-            <Text style={styles.modalTitle}>Select country</Text>
-            <TouchableOpacity
-              onPress={() => {
-                setPickerVisible(false);
-                setSearch('');
-              }}
-            >
-              <Text style={styles.modalDone}>Done</Text>
-            </TouchableOpacity>
-          </View>
-          <TextInput
-            style={styles.search}
-            value={search}
-            onChangeText={setSearch}
-            placeholder="Search"
-            placeholderTextColor={colors.placeholderWarm}
-          />
-          <FlatList
-            data={filtered}
-            keyExtractor={(item, i) => `${item.code}-${item.name}-${i}`}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.countryRow}
-                onPress={() => {
-                  setCountry(item);
-                  setPickerVisible(false);
-                  setSearch('');
-                }}
-              >
-                <Text style={styles.flag}>{item.flag}</Text>
-                <Text style={styles.rowName}>{item.name}</Text>
-                <Text style={styles.rowCode}>{item.code}</Text>
-              </TouchableOpacity>
-            )}
-          />
-        </SafeAreaView>
-      </Modal>
     </SignupWizardShell>
   );
 }
@@ -341,95 +177,5 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     gap: 14,
-  },
-  phoneRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: colors.fieldBorder,
-    overflow: 'hidden',
-  },
-  countryBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingLeft: 12,
-    paddingRight: 8,
-    gap: 4,
-    height: 52,
-  },
-  flag: {
-    fontSize: 16,
-  },
-  code: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.textPrimary,
-  },
-  chev: {
-    fontSize: 10,
-    color: colors.textSecondaryWarm,
-  },
-  divider: {
-    width: 1,
-    height: 22,
-    backgroundColor: colors.fieldBorder,
-  },
-  phoneInput: {
-    flex: 1,
-    height: 52,
-    paddingHorizontal: 12,
-    fontSize: 16,
-    color: colors.textPrimary,
-  },
-  modal: {
-    flex: 1,
-    backgroundColor: colors.bgApp,
-  },
-  modalHead: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  modalTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  modalDone: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.goldWarm,
-  },
-  search: {
-    marginHorizontal: 16,
-    marginBottom: 8,
-    height: 40,
-    backgroundColor: colors.surface,
-    borderRadius: 10,
-    paddingHorizontal: 13,
-    borderWidth: 1.5,
-    borderColor: colors.fieldBorder,
-    fontSize: 14,
-    color: colors.textPrimary,
-  },
-  countryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    gap: 12,
-  },
-  rowName: {
-    flex: 1,
-    fontSize: 14,
-    color: colors.textPrimary,
-  },
-  rowCode: {
-    fontSize: 13,
-    color: colors.textSecondaryWarm,
   },
 });

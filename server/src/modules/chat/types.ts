@@ -5,7 +5,7 @@ export type ChatReactionType = '👍' | '❤️' | '😂' | '😲' | '😢';
 export interface ConversationResponse {
   id: string;
   householdId: string;
-  type: 'dm' | 'group';
+  type: 'dm' | 'group' | 'household';
   name: string | null;
   createdBy: string;
   participants: Array<{ id: string; displayName: string; avatarUrl: string | null }>;
@@ -14,7 +14,7 @@ export interface ConversationResponse {
 }
 
 export interface CreateConversationBody {
-  type: 'dm' | 'group';
+  type: 'dm' | 'group' | 'household';
   participantIds: string[];
   name?: string;
 }

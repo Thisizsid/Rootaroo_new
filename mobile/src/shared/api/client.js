@@ -3,9 +3,22 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { useAuthStore } from '../store/authStore';
 
+// Expo's dev client already knows a reachable host for this machine — it just
+// downloaded the JS bundle from it. Deriving the API host from it means a
+// changed LAN IP (Wi-Fi reconnect, DHCP renewal) doesn't require hand-editing
+// .env and rebuilding; the app just follows wherever Metro currently is.
+function getDevServerHost() {
+  const hostUri = Constants.expoConfig?.hostUri; // e.g. "192.168.1.43:8081"
+  if (!hostUri) return null;
+  return hostUri.split(':')[0] || null;
+}
+
+const devHost = getDevServerHost();
+
 const BASE_URL =
   process.env.EXPO_PUBLIC_API_URL ||
   Constants.expoConfig?.extra?.apiBaseUrl ||
+  (devHost ? `http://${devHost}:3000/api/v1` : null) ||
   (Platform.OS === 'android' && !Constants.isDevice
     ? 'http://10.0.2.2:3000/api/v1'
     : 'http://localhost:3000/api/v1');

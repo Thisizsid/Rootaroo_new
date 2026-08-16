@@ -33,6 +33,7 @@ import { usePingStore } from '../shared/store/pingStore';
 import { useAuthStore } from '../shared/store/authStore';
 import { colors, fonts, withAlpha } from '../shared/theme';
 import { haversineDistanceKm, formatDistance } from '../shared/utils/geo';
+import Avatar from '../components/Avatar';
 const PLACE_ICON_EMOJI = {
   home: '⌂',
   office: '💼',
@@ -285,6 +286,14 @@ export default function CheckInScreen({ navigation }) {
       .catch(() => {});
   }, [setIncoming]);
 
+  // Members keyed by userId — the authoritative source for avatarUrl/avatarEmoji
+  // (check-in payloads' nested `user` isn't guaranteed to include them).
+  const membersById = React.useMemo(() => {
+    const map = new Map();
+    for (const m of members) map.set(m.userId, m);
+    return map;
+  }, [members]);
+
   // ── Member "last seen" pins — latest located check-in per member ──
   const memberPins = React.useMemo(() => {
     const latest = new Map();
@@ -295,13 +304,20 @@ export default function CheckInScreen({ navigation }) {
         latest.set(item.userId, item);
       }
     }
-    return Array.from(latest.values()).map((item) => ({
-      userId: item.userId,
-      latitude: item.latitude,
-      longitude: item.longitude,
-      initial: (item.user?.displayName || '?').charAt(0).toUpperCase(),
-    }));
-  }, [recent]);
+    return Array.from(latest.values()).map((item) => {
+      const member = membersById.get(item.userId);
+      const displayName = member?.displayName || item.user?.displayName || 'Family member';
+      return {
+        userId: item.userId,
+        latitude: item.latitude,
+        longitude: item.longitude,
+        displayName,
+        avatarUrl: member?.avatarUrl,
+        avatarEmoji: member?.avatarEmoji,
+        initial: displayName.charAt(0).toUpperCase(),
+      };
+    });
+  }, [recent, membersById]);
   const handleRequestPing = useCallback(async (member) => {
     setRequestingPingId(member.userId);
     try {
@@ -655,7 +671,13 @@ export default function CheckInScreen({ navigation }) {
           {memberPins.map((member) => (
             <Marker key={member.userId} lngLat={[member.longitude, member.latitude]}>
               <View style={styles.nativeMemberPin}>
-                <Text style={styles.nativeMemberPinText}>{member.initial}</Text>
+                <Avatar
+                  url={member.avatarUrl}
+                  emoji={member.avatarEmoji}
+                  name={member.displayName}
+                  id={member.userId}
+                  size={19}
+                />
               </View>
             </Marker>
           ))}
@@ -864,7 +886,8 @@ export default function CheckInScreen({ navigation }) {
           ItemSeparatorComponent={() => <View style={styles.recentSeparator} />}
           ListHeaderComponent={<Text style={styles.sectionLabel}>Recent</Text>}
           renderItem={({ item }) => {
-            const name = item.user?.displayName || 'Family member';
+            const member = membersById.get(item.userId);
+            const name = member?.displayName || item.user?.displayName || 'Family member';
             const hasLocation = item.latitude != null && item.longitude != null;
             const place = item.address || (hasLocation ? 'Location shared' : 'Ping sent');
             return (
@@ -874,9 +897,13 @@ export default function CheckInScreen({ navigation }) {
                 disabled={!hasLocation}
                 activeOpacity={0.65}
               >
-                <View style={styles.recentAvatar}>
-                  <Text style={styles.recentAvatarText}>{name.charAt(0).toUpperCase()}</Text>
-                </View>
+                <Avatar
+                  url={member?.avatarUrl}
+                  emoji={member?.avatarEmoji}
+                  name={name}
+                  id={item.userId}
+                  size={34}
+                />
                 <View style={styles.recentInfo}>
                   <Text style={styles.recentName} numberOfLines={1}>
                     {name}
@@ -990,9 +1017,13 @@ export default function CheckInScreen({ navigation }) {
                     activeOpacity={0.7}
                   >
                     <View style={styles.pickAvatar}>
-                      <Text style={styles.pickAvatarText}>
-                        {item.avatarEmoji || item.displayName.charAt(0).toUpperCase()}
-                      </Text>
+                      <Avatar
+                        url={item.avatarUrl}
+                        emoji={item.avatarEmoji}
+                        name={item.displayName}
+                        id={item.userId}
+                        size={40}
+                      />
                     </View>
                     <View style={styles.pickInfo}>
                       <Text style={styles.pickName}>{item.displayName}</Text>
@@ -1362,11 +1393,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  nativeMemberPinText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.ink,
-  },
   nativeFocusPinWrap: {
     alignItems: 'center',
     gap: 4,
@@ -1697,19 +1723,6 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 9,
   },
-  recentAvatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: colors.surfaceWarm,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  recentAvatarText: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 13,
-    color: colors.goldDeep,
-  },
   recentInfo: {
     flex: 1,
     gap: 3,
@@ -1957,11 +1970,6 @@ const styles = StyleSheet.create({
     borderColor: colors.gold,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  pickAvatarText: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: colors.goldDeep,
   },
   pickInfo: {
     flex: 1,

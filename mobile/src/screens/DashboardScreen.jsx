@@ -25,12 +25,13 @@ import { useAuthStore } from '../shared/store/authStore';
 import { householdApi } from '../shared/api/household';
 import { feedApi } from '../shared/api/feed';
 import { taskApi } from '../shared/api/task';
+import { todoApi } from '../shared/api/todo';
 import { expenseApi } from '../shared/api/expense';
 import { vaultApi } from '../shared/api/vault';
 import { eventApi } from '../shared/api/event';
 import { checkInApi } from '../shared/api/checkin';
 import { colors, fonts, spacing, radius, withAlpha } from '../shared/theme';
-import { loadSignupProgress } from '../shared/store/signupProgress';
+import Avatar from '../components/Avatar';
 
 // Family cover photo (Boss's pick, 2026-08-01) — default hero image
 const FAMILY_COVER = require('../../assets/images/family-cover.png');
@@ -138,7 +139,7 @@ export default function DashboardScreen() {
   const [fetchError, setFetchError] = useState(false);
 
   // Widget data
-  const [heroUri, setHeroUri] = useState(null);
+  const [coverPhotoUrl, setCoverPhotoUrl] = useState(null);
   const [pendingTasks, setPendingTasks] = useState([]);
   const [oweText, setOweText] = useState(null);
   const [oweName, setOweName] = useState(null);
@@ -159,15 +160,22 @@ export default function DashboardScreen() {
   const [customMsg, setCustomMsg] = useState('');
   const [selMembers, setSelMembers] = useState(new Set());
   const [sending, setSending] = useState(false);
+
+  // Nudge — reminder tied to a specific pending task/todo
+  const [nudgeItems, setNudgeItems] = useState([]);
+  const [nudgeItemsLoading, setNudgeItemsLoading] = useState(false);
+  const [selectedNudgeItem, setSelectedNudgeItem] = useState(null);
   const load = useCallback(async () => {
     setFetchError(false);
     try {
-      const [d, m] = await Promise.all([
+      const [d, m, hh] = await Promise.all([
         dashboardApi.get(),
         householdId ? householdApi.getMembers(householdId) : Promise.resolve([]),
+        householdId ? householdApi.getHousehold(householdId) : Promise.resolve(null),
       ]);
       setData(d);
       setMembers(m);
+      setCoverPhotoUrl(hh?.coverPhotoUrl || null);
 
       // Calendar widget — all household events (filtered per selected day in the widget)
       try {
@@ -215,13 +223,6 @@ export default function DashboardScreen() {
   useEffect(() => {
     load();
   }, [load]);
-
-  // Hero cover — saved family photo from signup, else first member avatar
-  useEffect(() => {
-    loadSignupProgress().then((p) => {
-      if (p?.draft?.familyPhoto) setHeroUri(p.draft.familyPhoto);
-    });
-  }, []);
 
   // Today's Focus — top 3 pending tasks
   useEffect(() => {
@@ -365,8 +366,8 @@ export default function DashboardScreen() {
       template: 'Heading out to grab groceries! 🛒',
     },
     {
-      glyph: '✉️',
-      label: 'Custom',
+      glyph: '🔔',
+      label: 'Nudge',
       template: '',
     },
   ];
@@ -375,20 +376,66 @@ export default function DashboardScreen() {
     setPendingAction(q?.label || action);
     setCustomMsg(q?.template || '');
     setSelMembers(new Set());
+    setNudgeItems([]);
+    setSelectedNudgeItem(null);
     setShowPicker(true);
   };
   const selectPreset = (label) => {
     const q = QUICK_ACTIONS.find((x) => x.label === label);
     setPendingAction(q?.label || '');
     setCustomMsg(q?.template || '');
+    setNudgeItems([]);
+    setSelectedNudgeItem(null);
+    if (label === 'Nudge' && selMembers.size > 1) {
+      setSelMembers(new Set(Array.from(selMembers).slice(0, 1)));
+    }
   };
+
+  // Nudge: fetch the single selected recipient's pending tasks + todos
+  useEffect(() => {
+    if (pendingAction !== 'Nudge' || selMembers.size !== 1) {
+      return;
+    }
+    const memberId = Array.from(selMembers)[0];
+    let cancelled = false;
+    setNudgeItemsLoading(true);
+    Promise.all([
+      taskApi.list({ group: 'pending' }).catch(() => []),
+      todoApi.list().catch(() => ({ pending: [] })),
+    ])
+      .then(([taskRes, todoRes]) => {
+        if (cancelled) return;
+        const tasks = Array.isArray(taskRes) ? taskRes : taskRes?.pending || [];
+        const todos = todoRes?.pending || [];
+        const items = [
+          ...tasks
+            .filter((t) => t.assignees?.some((a) => a.id === memberId))
+            .map((t) => ({ id: t.id, title: t.title, kind: 'task' })),
+          ...todos
+            .filter((t) => t.assignedTo?.id === memberId)
+            .map((t) => ({ id: t.id, title: t.title, kind: 'todo' })),
+        ];
+        setNudgeItems(items);
+      })
+      .finally(() => {
+        if (!cancelled) setNudgeItemsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [pendingAction, selMembers]);
+
+  const handleSelectNudgeItem = (item) => {
+    setSelectedNudgeItem(item);
+    setCustomMsg(`Reminder: "${item.title}" is still pending`);
+  };
+
   const canSend = selMembers.size > 0 && (customMsg.trim().length > 0 || !!pendingAction);
   const handleSendNotify = async () => {
     const ids = Array.from(selMembers);
     if (!ids.length) return;
     const msg = customMsg.trim();
-    const action =
-      pendingAction && pendingAction !== 'Custom' ? pendingAction : 'sent you a message';
+    const action = pendingAction === 'Nudge' ? 'nudged you' : pendingAction || 'sent you a message';
     setSending(true);
     setShowPicker(false);
     try {
@@ -456,12 +503,39 @@ export default function DashboardScreen() {
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
+      {/* ═══════ SELF AVATAR (top-left, pinned over the hero photo) ═══════ */}
+      <TouchableOpacity
+        style={[
+          styles.selfAvatarBtn,
+          {
+            top: insets.top + 20,
+          },
+        ]}
+        onPress={() => nav.navigate('MoreStack', { screen: 'EditProfile' })}
+        activeOpacity={0.8}
+        hitSlop={{
+          top: 8,
+          bottom: 8,
+          left: 8,
+          right: 8,
+        }}
+      >
+        <Avatar
+          url={user?.avatarUrl}
+          emoji={user?.avatarEmoji}
+          name={user?.name}
+          id={user?.id}
+          size={46}
+          style={styles.selfAvatarRing}
+        />
+      </TouchableOpacity>
+
       {/* ═══════ NOTIFICATION BELL (top-right, pinned over the hero photo) ═══════ */}
       <TouchableOpacity
         style={[
           styles.notifBtn,
           {
-            top: insets.top + 8,
+            top: insets.top + 23,
           },
         ]}
         onPress={() => nav.navigate('Notifications')}
@@ -488,9 +562,9 @@ export default function DashboardScreen() {
       >
         <Image
           source={
-            heroUri
+            coverPhotoUrl
               ? {
-                  uri: heroUri,
+                  uri: coverPhotoUrl,
                 }
               : FAMILY_COVER
           }
@@ -544,9 +618,9 @@ export default function DashboardScreen() {
             {getGreeting()} {user?.name?.split(' ')[0] || 'there'}
           </Text>
 
-          {/* Member avatars */}
+          {/* Member avatars — other household members only, not yourself */}
           <View style={styles.avatarStack}>
-            {members.slice(0, 5).map((m, i) => (
+            {members.filter((m) => m.userId !== user?.id).slice(0, 5).map((m, i) => (
               <View
                 key={m.userId}
                 style={[
@@ -1179,21 +1253,23 @@ export default function DashboardScreen() {
             />
 
             {/* Recipients */}
-            <TouchableOpacity
-              style={mo.allRow}
-              onPress={() => {
-                const o = members.filter((m) => m.userId !== user?.id);
-                selMembers.size === o.length
-                  ? setSelMembers(new Set())
-                  : setSelMembers(new Set(o.map((m) => m.userId)));
-              }}
-              activeOpacity={0.7}
-            >
-              <Text style={mo.allText}>Notify All</Text>
-              <View style={[mo.cb, selMembers.size > 0 && mo.cbOn]}>
-                {selMembers.size > 0 && <CheckIcon size={10} color={colors.surface} />}
-              </View>
-            </TouchableOpacity>
+            {pendingAction !== 'Nudge' && (
+              <TouchableOpacity
+                style={mo.allRow}
+                onPress={() => {
+                  const o = members.filter((m) => m.userId !== user?.id);
+                  selMembers.size === o.length
+                    ? setSelMembers(new Set())
+                    : setSelMembers(new Set(o.map((m) => m.userId)));
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={mo.allText}>Notify All</Text>
+                <View style={[mo.cb, selMembers.size > 0 && mo.cbOn]}>
+                  {selMembers.size > 0 && <CheckIcon size={10} color={colors.surface} />}
+                </View>
+              </TouchableOpacity>
+            )}
             <ScrollView style={mo.list} keyboardShouldPersistTaps="handled">
               {members
                 .filter((m) => m.userId !== user?.id)
@@ -1204,6 +1280,12 @@ export default function DashboardScreen() {
                       key={m.userId}
                       style={[mo.mRow, checked && mo.mRowSel]}
                       onPress={() => {
+                        if (pendingAction === 'Nudge') {
+                          setSelectedNudgeItem(null);
+                          setCustomMsg('');
+                          setSelMembers(checked ? new Set() : new Set([m.userId]));
+                          return;
+                        }
                         const n = new Set(selMembers);
                         checked ? n.delete(m.userId) : n.add(m.userId);
                         setSelMembers(n);
@@ -1217,21 +1299,13 @@ export default function DashboardScreen() {
                           gap: 12,
                         }}
                       >
-                        <View
-                          style={[
-                            mo.mAv,
-                            {
-                              backgroundColor:
-                                AVATAR_COLORS[
-                                  Math.abs(m.userId?.charCodeAt(0) || 0) % AVATAR_COLORS.length
-                                ],
-                            },
-                          ]}
-                        >
-                          <Text style={mo.mAvText}>
-                            {initials(m.displayName || m.name || m.email || '??')}
-                          </Text>
-                        </View>
+                        <Avatar
+                          url={m.avatarUrl}
+                          emoji={m.avatarEmoji}
+                          name={m.displayName || m.name || m.email || '??'}
+                          id={m.userId}
+                          size={36}
+                        />
                         <Text style={mo.mName}>{m.displayName || m.name || m.email}</Text>
                       </View>
                       <View style={[mo.cb, checked && mo.cbOn]}>
@@ -1241,6 +1315,47 @@ export default function DashboardScreen() {
                   );
                 })}
             </ScrollView>
+
+            {/* Nudge: their pending tasks/todos */}
+            {pendingAction === 'Nudge' && selMembers.size === 1 && (
+              <View style={mo.nudgeSection}>
+                <Text style={mo.nudgeSectionLabel}>PENDING FOR THEM</Text>
+                {nudgeItemsLoading ? (
+                  <ActivityIndicator size="small" color={colors.gold} style={mo.nudgeLoading} />
+                ) : nudgeItems.length === 0 ? (
+                  <Text style={mo.nudgeEmpty}>No pending tasks or todos right now.</Text>
+                ) : (
+                  <ScrollView style={mo.nudgeList} keyboardShouldPersistTaps="handled">
+                    {nudgeItems.map((item) => {
+                      const picked = selectedNudgeItem?.id === item.id && selectedNudgeItem?.kind === item.kind;
+                      return (
+                        <TouchableOpacity
+                          key={`${item.kind}-${item.id}`}
+                          style={[mo.mRow, picked && mo.mRowSel]}
+                          onPress={() => handleSelectNudgeItem(item)}
+                          activeOpacity={0.7}
+                        >
+                          <View
+                            style={{
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              gap: 12,
+                              flex: 1,
+                            }}
+                          >
+                            <Text style={mo.nudgeItemGlyph}>{item.kind === 'task' ? '📋' : '📝'}</Text>
+                            <Text style={mo.mName} numberOfLines={1}>
+                              {item.title}
+                            </Text>
+                          </View>
+                          {picked && <CheckIcon size={12} color={colors.gold} />}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                )}
+              </View>
+            )}
             <View style={mo.actions}>
               <TouchableOpacity
                 style={mo.cancelBtn}
@@ -1318,6 +1433,16 @@ const styles = StyleSheet.create({
     backgroundColor: withAlpha(colors.inkDeep, 0.45),
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  selfAvatarBtn: {
+    position: 'absolute',
+    left: 24,
+    zIndex: 30,
+    elevation: 30,
+  },
+  selfAvatarRing: {
+    borderWidth: 2,
+    borderColor: withAlpha(colors.surface, 0.85),
   },
   loadingWrap: {
     flex: 1,
@@ -1971,19 +2096,6 @@ const mo = StyleSheet.create({
   mRowSel: {
     backgroundColor: colors.goldLight,
   },
-  mAv: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  mAvText: {
-    fontSize: 13,
-    fontWeight: '700',
-    fontFamily: fonts.bodyBold,
-    color: colors.surface,
-  },
   mName: {
     fontSize: 15,
     fontWeight: '600',
@@ -2003,6 +2115,36 @@ const mo = StyleSheet.create({
   cbOn: {
     backgroundColor: colors.gold,
     borderColor: colors.gold,
+  },
+  // Nudge: pending items for the selected recipient
+  nudgeSection: {
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  nudgeSectionLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    fontFamily: fonts.bodySemiBold,
+    color: colors.textFaint,
+    letterSpacing: 0.6,
+    marginBottom: spacing.sm,
+  },
+  nudgeList: {
+    maxHeight: 180,
+  },
+  nudgeLoading: {
+    marginVertical: spacing.lg,
+  },
+  nudgeEmpty: {
+    fontSize: 13,
+    fontFamily: fonts.body,
+    color: colors.textFaint,
+    paddingVertical: spacing.md,
+  },
+  nudgeItemGlyph: {
+    fontSize: 16,
   },
   // Footer actions
   actions: {

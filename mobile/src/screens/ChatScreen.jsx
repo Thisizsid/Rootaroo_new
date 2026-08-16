@@ -89,6 +89,9 @@ export default function ChatScreen({ route }) {
     if (convType === 'dm') {
       return 'Direct Message';
     }
+    if (convType === 'household') {
+      return 'All members';
+    }
     if (convType === 'group') {
       const cnt = partCount || (members.length > 0 ? members.length : 1);
       return `${cnt} ${cnt === 1 ? 'member' : 'members'}`;
@@ -354,10 +357,11 @@ export default function ChatScreen({ route }) {
             setSelectedAnchor(anchor ?? null);
           }}
           onMediaPress={handleMediaPress}
+          showAvatar={convType === 'group' || convType === 'household'}
         />
       );
     },
-    [currentUserId, selectedMessage, handleToggleReaction, handlePressReply, handleMediaPress],
+    [currentUserId, selectedMessage, handleToggleReaction, handlePressReply, handleMediaPress, convType],
   );
   const handleStartReached = useCallback(() => {
     // Older messages load at the top of the list (non-inverted)
@@ -478,14 +482,15 @@ export default function ChatScreen({ route }) {
           style={styles.headerTitleContainer}
           activeOpacity={0.7}
           onPress={() => {
-            if (convType === 'group') {
+            if (convType === 'group' || convType === 'household') {
               nav.navigate('GroupMembers', {
                 conversationId,
                 title,
+                type: convType,
               });
             }
           }}
-          disabled={convType !== 'group'}
+          disabled={convType !== 'group' && convType !== 'household'}
         >
           <Text style={styles.headerTitle}>{title || 'Mendez House'}</Text>
           <Text style={styles.headerSubtitle}>{subtitleText}</Text>

@@ -146,50 +146,6 @@ export async function getUserKeyCtrl(
   }
 }
 
-export async function getHouseholdPublicKeysCtrl(
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> {
-  try {
-    const householdId = await vaultService.getUserHousehold(getUserId(req));
-    const keys = await vaultService.getHouseholdPublicKeys(householdId);
-    res.json({ success: true, data: keys });
-  } catch (error) {
-    next(error);
-  }
-}
-
-export async function performKeyCeremonyCtrl(
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> {
-  try {
-    const result = await vaultService.performKeyCeremony(
-      req.params.id,
-      getUserId(req),
-      req.body
-    );
-    res.json({ success: true, data: result });
-  } catch (error) {
-    next(error);
-  }
-}
-
-export async function rotateVaultKeyCtrl(
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> {
-  try {
-    const result = await vaultService.rotateVaultKey(getUserId(req), req.body);
-    res.json({ success: true, data: result });
-  } catch (error) {
-    next(error);
-  }
-}
-
 export async function getDocumentKeyCtrl(
   req: Request,
   res: Response,
@@ -198,36 +154,6 @@ export async function getDocumentKeyCtrl(
   try {
     const key = await vaultService.getDocumentKey(req.params.id, getUserId(req));
     res.json({ success: true, data: key });
-  } catch (error) {
-    next(error);
-  }
-}
-
-export async function getHouseholdKeyStatusCtrl(
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> {
-  try {
-    const status = await vaultService.getHouseholdKeyStatus(getUserId(req));
-    res.json({ success: true, data: status });
-  } catch (error) {
-    next(error);
-  }
-}
-
-export async function revokeAndRekeyCtrl(
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> {
-  try {
-    const result = await vaultService.revokeAndRekeyMember(
-      getUserId(req),
-      getUserRole(req),
-      req.body
-    );
-    res.json({ success: true, data: result });
   } catch (error) {
     next(error);
   }

@@ -254,11 +254,15 @@ export async function getFeed(
     cursor?: string;
     limit?: number;
     since?: string;
+    authorId?: string;
   },
 ): Promise<PaginatedFeedResponse> {
   const householdId = await getUserHousehold(userId);
   const limit = options.limit || 20;
   const where: any = { householdId };
+  if (options.authorId) {
+    where.userId = options.authorId;
+  }
 
   // Cursor-based: fetch posts with createdAt < cursor (older)
   if (options.cursor) {

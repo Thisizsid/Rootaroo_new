@@ -28,6 +28,7 @@ import { useVaultStore } from '../shared/store/vaultStore';
 import { useAuthStore } from '../shared/store/authStore';
 import { vaultApi } from '../shared/api/vault';
 import { getPrivateKey } from '../shared/crypto/secureKeyStore';
+import Avatar from '../components/Avatar';
 import { formatFileSize, formatDate } from '../shared/utils/format';
 import { colors, fonts, withAlpha } from '../shared/theme';
 import EmptyState from '../components/EmptyState';
@@ -259,6 +260,20 @@ export default function VaultListScreen({ navigation }) {
         <Text style={styles.cardMeta} numberOfLines={1}>
           {formatFileSize(item.sizeBytes)} · {formatDate(item.uploadedAt)}
         </Text>
+        {item.uploadedBy && (
+          <View style={styles.cardUploader}>
+            <Avatar
+              url={item.uploadedBy.avatarUrl}
+              emoji={item.uploadedBy.avatarEmoji}
+              name={item.uploadedBy.displayName}
+              id={item.uploadedBy.id}
+              size={16}
+            />
+            <Text style={styles.cardUploaderText} numberOfLines={1}>
+              {item.uploadedBy.displayName}
+            </Text>
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -727,7 +742,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.inkSoft,
     borderRadius: 18,
     padding: 16,
-    height: 122,
+    height: 142,
     justifyContent: 'space-between',
   },
   cardType: {
@@ -746,6 +761,18 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     color: colors.textMutedDark,
     marginTop: 4,
+  },
+  cardUploader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 6,
+  },
+  cardUploaderText: {
+    flex: 1,
+    fontSize: 10,
+    fontFamily: fonts.body,
+    color: colors.textMutedDark,
   },
   listFooter: {
     marginVertical: 16,

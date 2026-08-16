@@ -30,6 +30,12 @@ export const uploadAvatar = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
 }).single('avatar');
 
+export const uploadHouseholdCover = multer({
+  storage: memory,
+  fileFilter: imageFilter,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+}).single('cover');
+
 export const uploadFeedMedia = multer({
   storage: memory,
   fileFilter: mediaFilter,
