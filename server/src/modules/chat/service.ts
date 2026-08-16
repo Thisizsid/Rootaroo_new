@@ -1,0 +1,743 @@
+import { Op } from 'sequelize';
+import { v4 as uuidv4 } from 'uuid';
+import {
+  sequelize,
+  ChatMessage,
+  ChatReaction,
+  Conversation,
+  ConversationParticipant,
+  FeedMedia,
+  HouseholdMember,
+  User,
+} from '../../database/models';
+import { NotFoundError, ForbiddenError, ValidationError } from '../../shared/utils/errors';
+import { getIO } from '../../shared/utils/socket';
+import type {
+  ChatReactionType,
+  ConversationResponse,
+  CreateConversationBody,
+  CreateMessageBody,
+  MessageQuery,
+  MessageResponse,
+  PaginatedMessagesResponse,
+  ReactionCountResponse,
+} from './types';
+
+const ALLOWED_REACTIONS: ChatReactionType[] = ['👍', '❤️', '😂', '😲', '😢'];
+
+// ── Conversation Helpers ──
+
+function toConversationResponse(conv: Conversation): ConversationResponse {
+  const participants = (conv.get('participants') as User[]) || [];
+  const lastMsg = (conv.get('messages') as ChatMessage[])?.[0] || null;
+  return {
+    id: conv.id,
+    householdId: conv.householdId,
+    type: conv.type,
+    name: conv.name,
+    createdBy: conv.createdBy,
+    participants: participants.map((u: User) => ({
+      id: u.id,
+      displayName: u.displayName,
+      avatarUrl: u.avatarUrl,
+    })),
+    lastMessage: lastMsg
+      ? {
+          content: lastMsg.content,
+          createdAt: lastMsg.createdAt.toISOString(),
+          senderName: (lastMsg.get('sender') as User)?.displayName || 'Unknown',
+        }
+      : null,
+    createdAt: conv.createdAt.toISOString(),
+  };
+}
+
+export async function createConversation(
+  userId: string,
+  body: CreateConversationBody,
+): Promise<ConversationResponse> {
+  const householdId = await ensureHouseholdMember(userId);
+
+  // For DMs, check if a conversation already exists between these users
+  if (body.type === 'dm' && body.participantIds.length === 1) {
+    const otherUserId = body.participantIds[0];
+    // Query participants to find conversations where both users participate
+    const myParts = await ConversationParticipant.findAll({ where: { userId } });
+    const otherParts = await ConversationParticipant.findAll({ where: { userId: otherUserId } });
+    const myConvIds = new Set(myParts.map((p) => p.conversationId));
+    const commonConvIds = otherParts.filter((p) => myConvIds.has(p.conversationId)).map((p) => p.conversationId);
+
+    for (const cid of commonConvIds) {
+      const parts = await ConversationParticipant.findAll({ where: { conversationId: cid } });
+      const partIds = parts.map((p) => p.userId);
+      if (partIds.length === 2 && partIds.includes(userId) && partIds.includes(otherUserId)) {
+        const convType = await Conversation.findByPk(cid, { attributes: ['type'] });
+        if (convType && convType.type === 'dm') {
+          const full = await Conversation.findByPk(cid, {
+            include: [
+              { model: User, as: 'participants' },
+              { model: ChatMessage, as: 'messages', limit: 1, order: [['createdAt', 'DESC']], include: [{ model: User, as: 'sender' }] },
+            ],
+          });
+          if (full) return toConversationResponse(full);
+        }
+      }
+    }
+  }
+
+  // 'household' conversations are singletons — one per household, membership
+  // auto-synced with actual household membership elsewhere (household join/
+  // leave/remove flows). Reuse the existing one instead of creating a
+  // duplicate if a member has already started it.
+  if (body.type === 'household') {
+    const existing = await Conversation.findOne({ where: { householdId, type: 'household' } });
+    if (existing) {
+      const full = await Conversation.findByPk(existing.id, {
+        include: [
+          { model: User, as: 'participants' },
+          { model: ChatMessage, as: 'messages', limit: 1, order: [['createdAt', 'DESC']], include: [{ model: User, as: 'sender' }] },
+        ],
+      });
+      if (full) return toConversationResponse(full);
+    }
+  }
+
+  const conv = await Conversation.create({
+    id: uuidv4(),
+    householdId,
+    type: body.type,
+    name: body.name || null,
+    createdBy: userId,
+  });
+
+  // Add all participants including the creator
+  const allParticipantIds = [...new Set([userId, ...body.participantIds])];
+  await ConversationParticipant.bulkCreate(
+    allParticipantIds.map((uid) => ({
+      id: uuidv4(),
+      conversationId: conv.id,
+      userId: uid,
+    })),
+  );
+
+  const full = await Conversation.findByPk(conv.id, {
+    include: [
+      { model: User, as: 'participants' },
+      {
+        model: ChatMessage,
+        as: 'messages',
+        limit: 1,
+        order: [['createdAt', 'DESC']],
+        include: [{ model: User, as: 'sender' }],
+      },
+    ],
+  });
+  if (!full) throw new Error('Failed to create conversation');
+
+  // Join socket room for all participants
+  await joinSocketsToRoom(conv.id, allParticipantIds);
+
+  return toConversationResponse(full);
+}
+
+/** Join any currently-connected sockets for the given users to a socket room. */
+async function joinSocketsToRoom(roomId: string, userIds: string[]): Promise<void> {
+  try {
+    const sockets = await getIO().fetchSockets();
+    for (const s of sockets) {
+      if (s.data.userId && userIds.includes(s.data.userId)) s.join(roomId);
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Reuse an existing DM between two users, or create a new one. */
+async function getOrCreateDm(
+  userIdA: string,
+  userIdB: string,
+  householdId: string,
+): Promise<Conversation> {
+  const aParts = await ConversationParticipant.findAll({ where: { userId: userIdA } });
+  const bParts = await ConversationParticipant.findAll({ where: { userId: userIdB } });
+  const aConvIds = new Set(aParts.map((p) => p.conversationId));
+  const commonIds = bParts
+    .filter((p) => aConvIds.has(p.conversationId))
+    .map((p) => p.conversationId);
+
+  for (const cid of commonIds) {
+    const parts = await ConversationParticipant.findAll({ where: { conversationId: cid } });
+    if (parts.length !== 2) continue;
+    const partIds = parts.map((p) => p.userId);
+    if (!partIds.includes(userIdA) || !partIds.includes(userIdB)) continue;
+
+    const conv = await Conversation.findByPk(cid);
+    if (conv && conv.type === 'dm') return conv;
+  }
+
+  const conv = await Conversation.create({
+    id: uuidv4(),
+    householdId,
+    type: 'dm',
+    name: null,
+    createdBy: userIdA,
+  });
+  await ConversationParticipant.bulkCreate([
+    { id: uuidv4(), conversationId: conv.id, userId: userIdA },
+    { id: uuidv4(), conversationId: conv.id, userId: userIdB },
+  ]);
+  await joinSocketsToRoom(conv.id, [userIdA, userIdB]);
+  return conv;
+}
+
+export async function getUserConversations(userId: string): Promise<ConversationResponse[]> {
+  await ensureHouseholdMember(userId);
+
+  // Find conversations where user is a participant
+  const participations = await ConversationParticipant.findAll({
+    where: { userId },
+    attributes: ['conversationId'],
+  });
+  const convIds = participations.map((p) => p.conversationId);
+
+  if (convIds.length === 0) return [];
+
+  const convs = await Conversation.findAll({
+    where: { id: convIds },
+    include: [
+      { model: User, as: 'participants' },
+      {
+        model: ChatMessage,
+        as: 'messages',
+        limit: 1,
+        order: [['createdAt', 'DESC']],
+        include: [{ model: User, as: 'sender' }],
+      },
+    ],
+    order: [['createdAt', 'DESC']],
+  });
+
+  return convs.map(toConversationResponse);
+}
+
+// ── Helpers ──
+
+async function ensureHouseholdMember(userId: string): Promise<string> {
+  const membership = await HouseholdMember.findOne({ where: { userId } });
+  if (!membership) throw new ForbiddenError('You must belong to a household to send messages');
+  return membership.householdId;
+}
+
+async function isHouseholdAdmin(userId: string, householdId: string): Promise<boolean> {
+  const membership = await HouseholdMember.findOne({ where: { userId, householdId } });
+  return membership?.role === 'admin';
+}
+
+async function assertCanManageParticipants(
+  conversationId: string,
+  requesterId: string,
+  action: string,
+): Promise<Conversation> {
+  const householdId = await ensureHouseholdMember(requesterId);
+  const conv = await Conversation.findOne({ where: { id: conversationId, householdId } });
+  if (!conv) throw new NotFoundError('Conversation');
+  const creator = conv.createdBy === requesterId;
+  const admin = await isHouseholdAdmin(requesterId, householdId);
+  if (!creator && !admin) {
+    throw new ForbiddenError(`Only the group admin can ${action} members`);
+  }
+  return conv;
+}
+
+function toSenderResponse(
+  user: User | null,
+): { id: string; displayName: string; avatarUrl: string | null; avatarEmoji: string | null } | null {
+  if (!user) return null;
+  return {
+    id: user.get('id') as string,
+    displayName: (user.get('displayName') as string) || 'Unknown',
+    avatarUrl: user.get('avatarUrl') as string | null,
+    avatarEmoji: user.get('avatarEmoji') as string | null,
+  };
+}
+
+async function toMessageResponse(msg: ChatMessage): Promise<MessageResponse> {
+  const sender = (msg.get('sender') as User) || null;
+  const reactions = (msg.get('reactions') as ChatReaction[]) || [];
+  const replies = (msg.get('replies') as ChatMessage[]) || [];
+  const replyCount = replies.length;
+
+  // Build reaction counts
+  const reactionCounts = ALLOWED_REACTIONS.map((emoji) => ({
+    emoji,
+    count: reactions.filter((r) => r.reaction === emoji).length,
+    userReacted: false, // caller fills this in
+  }));
+
+  let replyPreview: MessageResponse['replyPreview'] = null;
+  const replyToId = msg.get('replyToId') as string | null;
+  if (replyToId) {
+    // Fetch replied-to message for preview
+    const replyToMsg = await ChatMessage.findByPk(replyToId, {
+      include: [{ model: User, as: 'sender', attributes: ['id', 'displayName', 'avatarUrl', 'avatarEmoji'] }],
+    });
+    if (replyToMsg) {
+      const replySender = (replyToMsg.get('sender') as User) || null;
+      replyPreview = {
+        id: replyToId,
+        content: replyToMsg.get('content') as string | null,
+        senderName: (replySender?.get('displayName') as string) || 'Unknown',
+      };
+    }
+  }
+
+  return {
+    id: msg.get('id') as string,
+    householdId: msg.get('householdId') as string,
+    senderId: msg.get('senderId') as string,
+    sender: toSenderResponse(sender) || { id: '', displayName: 'Deleted', avatarUrl: null, avatarEmoji: null },
+    content: msg.get('content') as string | null,
+    mediaUrl: msg.get('mediaUrl') as string | null,
+    replyToId,
+    replyPreview,
+    reactions: reactionCounts,
+    replyCount,
+    editedAt: (msg.get('editedAt') as Date | null)?.toISOString() || null,
+    createdAt: (msg.get('createdAt') as Date).toISOString(),
+    updatedAt: (msg.get('updatedAt') as Date).toISOString(),
+    deletedAt: (msg.get('deletedAt') as Date | null)?.toISOString() || null,
+  };
+}
+
+// ── Send Message (FR-140) ──
+
+export async function sendMessage(
+  userId: string,
+  body: CreateMessageBody,
+): Promise<MessageResponse> {
+  const householdId = await ensureHouseholdMember(userId);
+
+  // Verify user is a participant in the conversation
+  const participant = await ConversationParticipant.findOne({
+    where: { conversationId: body.conversationId, userId },
+  });
+  if (!participant) throw new ForbiddenError('You are not a participant in this conversation');
+
+  if (!body.content && (!body.mediaIds || body.mediaIds.length === 0)) {
+    throw new ValidationError('Message must contain content or media');
+  }
+
+  let mediaUrl: string | null = null;
+
+  // FR-143: Attach media from feed upload
+  if (body.mediaIds && body.mediaIds.length > 0) {
+    const medias = await FeedMedia.findAll({
+      where: { id: { [Op.in]: body.mediaIds }, householdId },
+    });
+    if (medias.length > 0) {
+      mediaUrl = medias[0].get('secureUrl') as string;
+    }
+  }
+
+  // FR-144: Validate replyTo exists
+  if (body.replyToId) {
+    const parentMsg = await ChatMessage.findByPk(body.replyToId);
+    if (!parentMsg) throw new NotFoundError('Message to reply to not found');
+  }
+
+  const msg = await ChatMessage.create({
+    householdId,
+    conversationId: body.conversationId,
+    senderId: userId,
+    content: body.content || null,
+    mediaUrl,
+    replyToId: body.replyToId || null,
+  });
+
+  // Reload with associations
+  const saved = await ChatMessage.findByPk(msg.get('id') as string, {
+    include: [
+      { model: User, as: 'sender', attributes: ['id', 'displayName', 'avatarUrl', 'avatarEmoji'] },
+      { model: ChatReaction, as: 'reactions' },
+      { model: ChatMessage, as: 'replies', attributes: ['id'] },
+    ],
+  });
+  if (!saved) throw new Error('Message not found after create');
+
+  const response = await toMessageResponse(saved);
+
+  // FR-141: Broadcast via Socket.io to conversation room
+  try {
+    const io = getIO();
+    io.to(body.conversationId).emit('new_message', response);
+  } catch {
+    /* socket not available */
+  }
+
+  return response;
+}
+
+// ── List Messages (FR-140) ──
+
+export async function listMessages(
+  userId: string,
+  query: MessageQuery,
+): Promise<PaginatedMessagesResponse> {
+  const householdId = await ensureHouseholdMember(userId);
+  const limit = Math.min(query.limit || 30, 50);
+
+  const where: any = {};
+  if (query.conversationId) {
+    where.conversationId = query.conversationId;
+  } else {
+    where.householdId = householdId;
+  }
+  if (query.cursor) {
+    where.createdAt = { [Op.lt]: new Date(query.cursor) };
+  }
+
+  const messages = await ChatMessage.findAll({
+    where,
+    include: [
+      { model: User, as: 'sender', attributes: ['id', 'displayName', 'avatarUrl', 'avatarEmoji'] },
+      { model: ChatReaction, as: 'reactions' },
+      { model: ChatMessage, as: 'replies', attributes: ['id'] },
+    ],
+    order: [['createdAt', 'DESC']],
+    limit: limit + 1,
+  });
+
+  const hasMore = messages.length > limit;
+  const slice = hasMore ? messages.slice(0, limit) : messages;
+
+  const messageResponses = await Promise.all(slice.map((m) => toMessageResponse(m)));
+
+  // Fill in userReacted after building responses
+  const userReactions = await ChatReaction.findAll({
+    where: {
+      userId,
+      messageId: { [Op.in]: slice.map((m) => m.get('id') as string) },
+    },
+  });
+  const userReactedSet = new Set(userReactions.map((r) => `${r.messageId}:${r.reaction}`));
+
+  for (const resp of messageResponses) {
+    for (const r of resp.reactions) {
+      r.userReacted = userReactedSet.has(`${resp.id}:${r.emoji}`);
+    }
+  }
+
+  const nextCursor = hasMore
+    ? slice[slice.length - 1].get('createdAt')?.toISOString() || null
+    : null;
+
+  return { messages: messageResponses, nextCursor, hasMore };
+}
+
+// ── Get Message By ID ──
+
+export async function getMessageById(
+  messageId: string,
+  userId: string,
+): Promise<MessageResponse> {
+  const householdId = await ensureHouseholdMember(userId);
+
+  const msg = await ChatMessage.findOne({
+    where: { id: messageId, householdId },
+    include: [
+      { model: User, as: 'sender', attributes: ['id', 'displayName', 'avatarUrl', 'avatarEmoji'] },
+      { model: ChatReaction, as: 'reactions' },
+      { model: ChatMessage, as: 'replies', attributes: ['id'] },
+    ],
+  });
+  if (!msg) throw new NotFoundError('Message not found');
+
+  const response = await toMessageResponse(msg);
+
+  // Check user reactions
+  const userReactions = await ChatReaction.findAll({ where: { userId, messageId } });
+  for (const r of response.reactions) {
+    r.userReacted = userReactions.some((ur) => ur.reaction === r.emoji);
+  }
+
+  return response;
+}
+
+// ── Update Message (FR-150: not E2EE) ──
+
+export async function updateMessage(
+  messageId: string,
+  userId: string,
+  userRole: string,
+  body: { content?: string },
+): Promise<MessageResponse> {
+  const householdId = await ensureHouseholdMember(userId);
+
+  const msg = await ChatMessage.findOne({ where: { id: messageId, householdId } });
+  if (!msg) throw new NotFoundError('Message not found');
+
+  const conversationId = msg.get('conversationId') as string;
+
+  // FR-150: Self-only edit
+  const senderId = msg.get('senderId') as string;
+  if (senderId !== userId && userRole !== 'admin') {
+    throw new ForbiddenError('Only the sender can edit a message');
+  }
+
+  await msg.update({
+    content: body.content || msg.get('content'),
+    editedAt: new Date(),
+  });
+
+  const saved = await ChatMessage.findByPk(messageId, {
+    include: [
+      { model: User, as: 'sender', attributes: ['id', 'displayName', 'avatarUrl', 'avatarEmoji'] },
+      { model: ChatReaction, as: 'reactions' },
+      { model: ChatMessage, as: 'replies', attributes: ['id'] },
+    ],
+  });
+  if (!saved) throw new NotFoundError('Message not found after update');
+
+  const response = await toMessageResponse(saved);
+
+  // Broadcast edit to conversation room
+  try {
+    const io = getIO();
+    io.to(conversationId).emit('message_edited', response);
+  } catch {
+    /* ignore */
+  }
+
+  return response;
+}
+
+// ── Delete Message (FR-145, FR-146) ──
+
+export async function deleteMessage(
+  messageId: string,
+  userId: string,
+  userRole: string,
+): Promise<void> {
+  const householdId = await ensureHouseholdMember(userId);
+
+  const msg = await ChatMessage.findOne({ where: { id: messageId, householdId } });
+  if (!msg) throw new NotFoundError('Message not found');
+
+  const senderId = msg.get('senderId') as string;
+  const conversationId = msg.get('conversationId') as string;
+  const isOwn = senderId === userId;
+  const isAdmin = userRole === 'admin';
+
+  // Allow user to delete their own message, or admin/conversation participant
+  if (!isOwn && !isAdmin) {
+    const participant = await ConversationParticipant.findOne({ where: { conversationId, userId } });
+    if (!participant) {
+      throw new ForbiddenError('You can only delete messages in your conversations');
+    }
+  }
+
+  await sequelize.transaction(async (transaction) => {
+    await ChatReaction.destroy({ where: { messageId }, transaction });
+    await msg.destroy({ force: true, transaction });
+  });
+
+  // Broadcast deletion event to conversation room
+  try {
+    const io = getIO();
+    io.to(conversationId).emit('message_deleted', {
+      id: messageId,
+      hardDelete: true,
+    });
+  } catch {
+    /* ignore */
+  }
+}
+
+// ── Add Reaction (FR-148) ──
+
+export async function addReaction(
+  messageId: string,
+  userId: string,
+  emoji: ChatReactionType,
+): Promise<ReactionCountResponse[]> {
+  await ensureHouseholdMember(userId);
+
+  const msg = await ChatMessage.findByPk(messageId);
+  if (!msg) throw new NotFoundError('Message not found');
+  if (!ALLOWED_REACTIONS.includes(emoji)) throw new ValidationError('Invalid reaction');
+
+  // Upsert reaction
+  await ChatReaction.upsert({
+    messageId,
+    userId,
+    reaction: emoji,
+  });
+
+  const reactions = await getReactions(messageId);
+
+  // Broadcast to conversation room
+  try {
+    const conversationId = msg.get('conversationId') as string;
+    const io = getIO();
+    io.to(conversationId).emit('reaction_added', { messageId, reactions, userId, emoji });
+  } catch {
+    /* ignore */
+  }
+
+  return reactions;
+}
+
+// ── Remove Reaction ──
+
+export async function removeReaction(
+  messageId: string,
+  userId: string,
+  emoji: ChatReactionType,
+): Promise<ReactionCountResponse[]> {
+  await ensureHouseholdMember(userId);
+
+  await ChatReaction.destroy({
+    where: { messageId, userId, reaction: emoji },
+  });
+
+  const reactions = await getReactions(messageId);
+
+  try {
+    const msg = await ChatMessage.findByPk(messageId);
+    if (msg) {
+      const conversationId = msg.get('conversationId') as string;
+      const io = getIO();
+      io.to(conversationId).emit('reaction_removed', { messageId, reactions, userId, emoji });
+    }
+  } catch {
+    /* ignore */
+  }
+
+  return reactions;
+}
+
+// ── Get Reactions ──
+
+export async function getReactions(messageId: string): Promise<ReactionCountResponse[]> {
+  const allReactions = await ChatReaction.findAll({ where: { messageId } });
+
+  const counts = ALLOWED_REACTIONS.map((emoji) => {
+    const users = allReactions.filter((r) => r.reaction === emoji);
+    return { emoji, count: users.length, userReacted: false };
+  });
+
+  return counts;
+}
+
+// ── Typing Indicator (FR-149) ──
+
+export async function typingStart(userId: string): Promise<void> {
+  const membership = await HouseholdMember.findOne({ where: { userId } });
+  if (!membership) throw new ForbiddenError('You must belong to a household');
+
+  const householdId = membership.householdId;
+
+  const user = await User.findByPk(userId, { attributes: ['id', 'displayName'] });
+  const displayName = user?.get('displayName') as string || 'Someone';
+
+  try {
+    const io = getIO();
+    io.to(householdId).emit('typing_start', { userId, displayName });
+  } catch {
+    /* ignore */
+  }
+}
+
+export async function typingStop(userId: string): Promise<void> {
+  const membership = await HouseholdMember.findOne({ where: { userId } });
+  if (!membership) return; // silently ignore if not member
+
+  const householdId = membership.householdId;
+
+  try {
+    const io = getIO();
+    io.to(householdId).emit('typing_stop', { userId });
+  } catch {
+    /* ignore */
+  }
+}
+
+// ── Participant Management ──
+
+export async function addParticipant(
+  conversationId: string,
+  userId: string,
+  requesterId: string,
+): Promise<void> {
+  await assertCanManageParticipants(conversationId, requesterId, 'add');
+  await ConversationParticipant.findOrCreate({
+    where: { conversationId, userId },
+    defaults: { id: uuidv4(), conversationId, userId },
+  });
+}
+
+/**
+ * Add a household member to a group conversation and DM them an invite
+ * message for that group (not a household invite).
+ */
+export async function inviteToGroup(
+  conversationId: string,
+  targetUserId: string,
+  requesterId: string,
+): Promise<void> {
+  const conv = await assertCanManageParticipants(conversationId, requesterId, 'add');
+
+  // Only household members can be added to this group
+  const targetMembership = await HouseholdMember.findOne({
+    where: { userId: targetUserId, householdId: conv.householdId },
+  });
+  if (!targetMembership) {
+    throw new ForbiddenError('You can only add members of your household');
+  }
+
+  // Add them to the group
+  await ConversationParticipant.findOrCreate({
+    where: { conversationId, userId: targetUserId },
+    defaults: { id: uuidv4(), conversationId, userId: targetUserId },
+  });
+
+  // DM them an invite message for this group
+  const dm = await getOrCreateDm(requesterId, targetUserId, conv.householdId);
+  const requester = await User.findByPk(requesterId, { attributes: ['id', 'displayName'] });
+  const requesterName = (requester?.get('displayName') as string) || 'Someone';
+  const groupName = conv.name || 'this group';
+
+  await sendMessage(requesterId, {
+    conversationId: dm.id,
+    content: `${requesterName} invited you to join the group "${groupName}".`,
+  });
+}
+
+export async function removeParticipant(
+  conversationId: string,
+  userId: string,
+  requesterId: string,
+): Promise<void> {
+  await assertCanManageParticipants(conversationId, requesterId, 'remove');
+  await ConversationParticipant.destroy({ where: { conversationId, userId } });
+}
+
+export async function deleteConversation(
+  conversationId: string,
+  userId: string,
+): Promise<void> {
+  const householdId = await ensureHouseholdMember(userId);
+  const conv = await Conversation.findOne({ where: { id: conversationId, householdId } });
+  if (!conv) throw new NotFoundError('Conversation not found');
+
+  await sequelize.transaction(async (transaction) => {
+    const messages = await ChatMessage.findAll({ where: { conversationId }, attributes: ['id'], transaction });
+    const msgIds = messages.map((m) => m.id);
+    if (msgIds.length > 0) {
+      await ChatReaction.destroy({ where: { messageId: { [Op.in]: msgIds } }, transaction });
+      await ChatMessage.destroy({ where: { conversationId }, force: true, transaction });
+    }
+    await ConversationParticipant.destroy({ where: { conversationId }, transaction });
+    await conv.destroy({ force: true, transaction });
+  });
+}

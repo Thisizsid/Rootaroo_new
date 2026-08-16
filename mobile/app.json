@@ -1,29 +1,65 @@
 {
   "expo": {
-    "name": "rootaroo_new",
-    "slug": "rootaroo_new",
+    "name": "Rootaroo",
+    "slug": "rootaroo",
+    "scheme": "rootaru",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "androidNavigationBar": {
+      "barStyle": "dark-content",
+      "backgroundColor": "#FFFFFF"
+    },
     "splash": {
-      "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#1B1E24"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.rootaroo.app"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#E6F4FE"
       },
-      "edgeToEdgeEnabled": true
+      "package": "com.rootaroo.app",
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT"
+      ]
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    }
+    "plugins": [
+      "expo-secure-store",
+      "expo-image-picker",
+      "expo-notifications",
+      "expo-file-system",
+      "expo-location",
+      "expo-web-browser",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Rootaroo to use your camera to scan invite QR codes."
+        }
+      ],
+      "@react-native-community/datetimepicker",
+      "@maplibre/maplibre-react-native",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "packagingOptions": {
+              "excludes": [
+                "**/libc++_shared.so"
+              ]
+            }
+          },
+          "ios": {
+            "deploymentTarget": "15.1"
+          }
+        }
+      ],
+      "expo-font"
+    ]
   }
 }

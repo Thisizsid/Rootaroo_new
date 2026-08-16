@@ -1,0 +1,566 @@
+import { v4 as uuidv4 } from 'uuid';
+import { CalendarEvent, CalendarSyncState, EventInvitee, HouseholdMember, User } from '../../database/models';
+import { Op } from 'sequelize';
+import { ForbiddenError, NotFoundError } from '../../shared/utils/errors';
+import * as notificationService from '../../shared/services/notifications';
+import {
+  exchangeCodeForTokens,
+  getValidAccessToken,
+  getPrimaryCalendarId,
+  listGoogleEvents,
+  upsertGoogleEvent,
+  deleteGoogleEvent,
+} from '../../shared/utils/googleCalendar';
+import logger from '../../shared/utils/logger';
+import type {
+  CalendarEventResponse,
+  CreateEventBody,
+  UpdateEventBody,
+  RepeatRule,
+  GoogleCalendarConnectBody,
+  GoogleCalendarStatusResponse,
+} from './types';
+
+// ── Helpers ──
+
+/** The household the user currently belongs to (same rule as tasks/expenses). */
+async function getUserHouseholdId(userId: string): Promise<string> {
+  const membership = await HouseholdMember.findOne({ where: { userId } });
+  if (!membership) {
+    throw new ForbiddenError('You must belong to a household to use the calendar');
+  }
+  return membership.householdId;
+}
+
+/** "2026-08-03T18:00:00.000Z" -> { date: "2026-08-03", time: "18:00:00" } in server-local time. */
+function splitDateTime(iso: string): { date: string; time: string } {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const date = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const time = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  return { date, time };
+}
+
+/** Rebuild an ISO timestamp from the stored DATEONLY + TIME columns. */
+function joinDateTime(eventDate: string, time: string | null): string {
+  const d = new Date(`${eventDate}T${time || '00:00:00'}`);
+  return d.toISOString();
+}
+
+function toRepeatRule(isRecurring: boolean, rule: string | null): RepeatRule {
+  if (!isRecurring) return 'none';
+  switch (rule) {
+    case 'daily':
+    case 'weekly':
+    case 'monthly':
+      return rule;
+    default:
+      return 'none';
+  }
+}
+
+function toResponse(event: CalendarEvent): CalendarEventResponse {
+  const inviteeIds = (event as any).invitees
+    ? (event as any).invitees.map((u: User) => u.id)
+    : [];
+  return {
+    id: event.id,
+    householdId: event.householdId,
+    title: event.title,
+    description: event.description,
+    startsAt: joinDateTime(String(event.eventDate), event.startTime),
+    endsAt: joinDateTime(String(event.eventDate), event.endTime ?? event.startTime),
+    inviteeIds,
+    repeats: toRepeatRule(event.isRecurring, event.recurrenceRule),
+    syncToGoogle: Boolean(event.googleEventId),
+    createdAt: event.createdAt.toISOString(),
+    createdBy: event.createdBy,
+  };
+}
+
+// ── Service ──
+
+export async function createEvent(
+  userId: string,
+  body: CreateEventBody,
+): Promise<CalendarEventResponse> {
+  const householdId = await getUserHouseholdId(userId);
+
+  // Validate invitees belong to the same household before persisting.
+  if (body.inviteeIds && body.inviteeIds.length > 0) {
+    const inviteeCount = await HouseholdMember.count({
+      where: { householdId, userId: body.inviteeIds },
+    });
+    if (inviteeCount !== body.inviteeIds.length) {
+      throw new ForbiddenError('All invitees must be members of your household');
+    }
+  }
+
+  const starts = splitDateTime(body.startsAt);
+  const ends = splitDateTime(body.endsAt);
+  const repeats = body.repeats ?? 'none';
+
+  const event = await CalendarEvent.create({
+    householdId,
+    createdBy: userId,
+    title: body.title,
+    description: body.description ?? null,
+    eventDate: starts.date as unknown as Date,
+    startTime: starts.time,
+    endTime: ends.time,
+    isRecurring: repeats !== 'none',
+    recurrenceRule: repeats === 'none' ? null : repeats,
+    googleEventId: null,
+  });
+
+  if (body.inviteeIds && body.inviteeIds.length > 0) {
+    await EventInvitee.bulkCreate(
+      body.inviteeIds.map((inviteeId) => ({
+        calendarEventId: event.id,
+        userId: inviteeId,
+      })),
+    );
+  }
+
+  if (body.syncToGoogle) {
+    pushEventToGoogleIfConnected(event, userId).catch((e: Error) =>
+      logger.warn('[Calendar] Google push failed on create:', e.message),
+    );
+  }
+
+  // Re-fetch with invitees so the response matches the mobile calendar schema.
+  const withInvitees = await CalendarEvent.findByPk(event.id, {
+    include: [{ model: User, as: 'invitees' }],
+  });
+  if (!withInvitees) throw new NotFoundError('Event not found');
+  return toResponse(withInvitees);
+}
+
+export async function listEvents(
+  userId: string,
+  query: { month?: string },
+): Promise<CalendarEventResponse[]> {
+  const householdId = await getUserHouseholdId(userId);
+
+  const where: Record<string, unknown> = { householdId };
+  if (query.month) {
+    where.eventDate = { between: [`${query.month}-01`, `${query.month}-31`] };
+  }
+
+  const events = await CalendarEvent.findAll({
+    where,
+    include: [{ model: User, as: 'invitees' }],
+    order: [
+      ['eventDate', 'ASC'],
+      ['startTime', 'ASC'],
+    ],
+  });
+
+  return events.map(toResponse);
+}
+
+export async function getEventById(
+  eventId: string,
+  userId: string,
+): Promise<CalendarEventResponse> {
+  const householdId = await getUserHouseholdId(userId);
+  const event = await CalendarEvent.findOne({
+    where: { id: eventId, householdId },
+    include: [{ model: User, as: 'invitees' }],
+  });
+  if (!event) throw new NotFoundError('Event not found');
+  return toResponse(event);
+}
+
+// ── Permissions (FR-187: own events, FR-188: admin edits any) ──
+
+async function isHouseholdAdmin(userId: string, householdId: string): Promise<boolean> {
+  const membership = await HouseholdMember.findOne({ where: { userId, householdId } });
+  return membership?.role === 'admin';
+}
+
+async function assertCanManageEvent(
+  event: CalendarEvent,
+  userId: string,
+  householdId: string,
+  action: string,
+): Promise<void> {
+  if (event.createdBy === userId) return;
+  if (await isHouseholdAdmin(userId, householdId)) return;
+  throw new ForbiddenError(`Only the creator or a household admin can ${action} this event`);
+}
+
+// ── Update (FR-187/188) ──
+
+export async function updateEvent(
+  eventId: string,
+  userId: string,
+  body: UpdateEventBody,
+): Promise<CalendarEventResponse> {
+  const householdId = await getUserHouseholdId(userId);
+  const event = await CalendarEvent.findOne({ where: { id: eventId, householdId } });
+  if (!event) throw new NotFoundError('Event not found');
+  await assertCanManageEvent(event, userId, householdId, 'edit');
+
+  if (body.title !== undefined) event.title = body.title;
+  if (body.description !== undefined) event.description = body.description;
+  if (body.startsAt !== undefined) {
+    const s = splitDateTime(body.startsAt);
+    event.eventDate = s.date as unknown as Date;
+    event.startTime = s.time;
+  }
+  if (body.endsAt !== undefined) {
+    const e = splitDateTime(body.endsAt);
+    event.endTime = e.time;
+  }
+  if (body.repeats !== undefined) {
+    event.isRecurring = body.repeats !== 'none';
+    event.recurrenceRule = body.repeats === 'none' ? null : body.repeats;
+  }
+
+  // Replace invitees when the list is explicitly provided (FR-187 edit)
+  if (body.inviteeIds !== undefined) {
+    await EventInvitee.destroy({ where: { calendarEventId: eventId } });
+    if (body.inviteeIds.length > 0) {
+      const inviteeCount = await HouseholdMember.count({
+        where: { householdId, userId: body.inviteeIds },
+      });
+      if (inviteeCount !== body.inviteeIds.length) {
+        throw new ForbiddenError('All invitees must be members of your household');
+      }
+      await EventInvitee.bulkCreate(
+        body.inviteeIds.map((inviteeId) => ({
+          calendarEventId: eventId,
+          userId: inviteeId,
+        })),
+      );
+    }
+  }
+
+  await event.save();
+
+  if (body.syncToGoogle || event.googleEventId) {
+    pushEventToGoogleIfConnected(event, userId).catch((e: Error) =>
+      logger.warn('[Calendar] Google push failed on update:', e.message),
+    );
+  }
+
+  const withInvitees = await CalendarEvent.findByPk(event.id, {
+    include: [{ model: User, as: 'invitees' }],
+  });
+  if (!withInvitees) throw new NotFoundError('Event not found');
+  return toResponse(withInvitees);
+}
+
+// ── Delete (FR-187/188) ──
+
+export async function deleteEvent(
+  eventId: string,
+  userId: string,
+): Promise<void> {
+  const householdId = await getUserHouseholdId(userId);
+  const event = await CalendarEvent.findOne({ where: { id: eventId, householdId } });
+  if (!event) throw new NotFoundError('Event not found');
+  await assertCanManageEvent(event, userId, householdId, 'delete');
+
+  if (event.googleEventId) {
+    const state = await CalendarSyncState.findOne({ where: { userId: event.createdBy, isActive: true } });
+    if (state) {
+      const accessToken = await getValidAccessToken(state);
+      await deleteGoogleEvent(accessToken, state.googleCalendarId, event.googleEventId).catch((e: Error) =>
+        logger.warn('[Calendar] Google delete failed:', e.message),
+      );
+    }
+  }
+
+  await EventInvitee.destroy({ where: { calendarEventId: eventId } });
+  await event.destroy();
+}
+
+// ── iCalendar export (FR-185) ──
+
+/** RFC 5545 line folding: lines must be ≤ 75 octets, continuation starts with a space. */
+function foldIcsLine(line: string): string {
+  if (line.length <= 75) return line;
+  const chunks: string[] = [];
+  let rest = line;
+  while (rest.length > 0) {
+    chunks.push(rest.slice(0, 75));
+    rest = rest.slice(75);
+  }
+  return chunks.join('\r\n ');
+}
+
+function escapeIcs(value: string): string {
+  return value
+    .replace(/\\/g, '\\\\')
+    .replace(/;/g, '\\;')
+    .replace(/,/g, '\\,')
+    .replace(/\r?\n/g, '\\n');
+}
+
+function toIcsDateTime(date: string, time: string | null): string {
+  // DATETIME: 20260803T180000 (local, no zone — events are household-local)
+  const t = (time || '00:00:00').replace(/:/g, '');
+  return `${date.replace(/-/g, '')}T${t}`;
+}
+
+export async function exportHouseholdIcs(userId: string): Promise<string> {
+  const householdId = await getUserHouseholdId(userId);
+  const events = await CalendarEvent.findAll({
+    where: { householdId },
+    order: [
+      ['eventDate', 'ASC'],
+      ['startTime', 'ASC'],
+    ],
+  });
+
+  const lines: string[] = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Rootaru//Family Calendar//EN',
+    'CALSCALE:GREGORIAN',
+  ];
+
+  for (const ev of events) {
+    const dtStart = toIcsDateTime(String(ev.eventDate), ev.startTime);
+    const dtEnd = toIcsDateTime(String(ev.eventDate), ev.endTime ?? ev.startTime);
+    const uid = `${ev.id}@rootaru`;
+    const summary = escapeIcs(ev.title);
+    const description = ev.description ? escapeIcs(ev.description) : '';
+
+    lines.push('BEGIN:VEVENT');
+    lines.push(`UID:${uid}`);
+    lines.push(`DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')}`);
+    lines.push(`DTSTART:${dtStart}`);
+    lines.push(`DTEND:${dtEnd}`);
+    lines.push(`SUMMARY:${summary}`);
+    if (description) lines.push(`DESCRIPTION:${description}`);
+    if (ev.isRecurring && ev.recurrenceRule) {
+      const freq = ev.recurrenceRule.toUpperCase();
+      lines.push(`RRULE:FREQ=${freq}`);
+    }
+    lines.push('END:VEVENT');
+  }
+
+  lines.push('END:VCALENDAR');
+  return lines.map(foldIcsLine).join('\r\n') + '\r\n';
+}
+
+// ── 1-hour reminder (FR-186) ──
+
+/**
+ * Send a push to every household member for events starting within the next
+ * hour. Called by a scheduled cron. Uses household event rows directly.
+ */
+export async function notifyUpcomingEvents(): Promise<number> {
+  const now = new Date();
+  const inOneHour = new Date(now.getTime() + 60 * 60 * 1000);
+
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const dateStr = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+  const events = await CalendarEvent.findAll({
+    where: {
+      // Both boundary dates in case the [now, now+1h] window crosses midnight.
+      eventDate: { [Op.in]: [...new Set([dateStr(now), dateStr(inOneHour)])] },
+    },
+  });
+
+  let sent = 0;
+  for (const ev of events) {
+    const startTime = ev.startTime || '00:00:00';
+    // Combine the event's own date + time into a real Date so the window
+    // check is correct across a midnight boundary (comparing time-of-day
+    // strings alone breaks when now/now+1h span two different days).
+    const startsAt = new Date(`${ev.eventDate}T${startTime}`);
+    if (startsAt < now || startsAt > inOneHour) continue;
+
+    const householdId = ev.householdId;
+    const title = ev.title;
+    notificationService
+      .notifyHousehold(
+        householdId,
+        'calendar',
+        'Event starting soon',
+        `${title} starts at ${startTime.slice(0, 5)}`,
+        { type: 'calendar', eventId: ev.id },
+      )
+      .catch((e: Error) => logger.warn('[Calendar] Reminder push failed:', e.message));
+    sent += 1;
+  }
+  return sent;
+}
+
+// ── Google Calendar two-way sync ──
+//
+// Each user who connects their own Google Calendar gets their own
+// CalendarSyncState row. Sync is scoped per-connected-user: events they
+// create in Rootaroo are pushed to *their* Google Calendar (stored on the
+// event's single `googleEventId` column — so only the creator's connection
+// owns the Google-side copy of a given event), and events pulled in from
+// their Google Calendar are attributed to them as the creator. This matches
+// the existing single-`googleEventId`-per-event schema rather than trying
+// to fan a push out to every connected household member.
+
+function toGoogleSyncStatusResponse(state: CalendarSyncState | null): GoogleCalendarStatusResponse {
+  if (!state || !state.isActive) {
+    return { connected: false, googleCalendarId: null, lastSyncedAt: null };
+  }
+  return {
+    connected: true,
+    googleCalendarId: state.googleCalendarId,
+    lastSyncedAt: state.lastSyncedAt ? state.lastSyncedAt.toISOString() : null,
+  };
+}
+
+export async function getGoogleSyncStatus(userId: string): Promise<GoogleCalendarStatusResponse> {
+  const state = await CalendarSyncState.findOne({ where: { userId } });
+  return toGoogleSyncStatusResponse(state);
+}
+
+/**
+ * Exchange the authorization code from the mobile client's incremental-scope
+ * consent flow, resolve the user's primary calendar, and store the
+ * connection. Kicks off an initial sync so events show up immediately.
+ */
+export async function connectGoogleCalendar(
+  userId: string,
+  body: GoogleCalendarConnectBody,
+): Promise<GoogleCalendarStatusResponse> {
+  const tokens = await exchangeCodeForTokens(body.code, body.redirectUri);
+  const calendarId = await getPrimaryCalendarId(tokens.accessToken);
+
+  let state = await CalendarSyncState.findOne({ where: { userId } });
+  if (state) {
+    state.googleCalendarId = calendarId;
+    state.accessToken = tokens.accessToken;
+    state.refreshToken = tokens.refreshToken;
+    state.tokenExpiresAt = tokens.expiresAt;
+    state.syncToken = null; // force a fresh full sync on reconnect
+    state.isActive = true;
+    await state.save();
+  } else {
+    state = await CalendarSyncState.create({
+      id: uuidv4(),
+      userId,
+      googleCalendarId: calendarId,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      tokenExpiresAt: tokens.expiresAt,
+      isActive: true,
+    });
+  }
+
+  syncUserCalendar(userId).catch((e: Error) => logger.warn('[Calendar] Initial Google sync failed:', e.message));
+
+  return toGoogleSyncStatusResponse(state);
+}
+
+export async function disconnectGoogleCalendar(userId: string): Promise<void> {
+  await CalendarSyncState.destroy({ where: { userId } });
+}
+
+/** Push a single Rootaroo event to its creator's connected Google Calendar, if any. */
+async function pushEventToGoogleIfConnected(event: CalendarEvent, userId: string): Promise<void> {
+  const state = await CalendarSyncState.findOne({ where: { userId, isActive: true } });
+  if (!state) return;
+
+  const accessToken = await getValidAccessToken(state);
+  const startIso = joinDateTime(String(event.eventDate), event.startTime);
+  const endIso = joinDateTime(String(event.eventDate), event.endTime ?? event.startTime);
+
+  const googleEventId = await upsertGoogleEvent(
+    accessToken,
+    state.googleCalendarId,
+    {
+      title: event.title,
+      description: event.description,
+      startIso,
+      endIso,
+      recurrenceRule: event.isRecurring ? event.recurrenceRule : null,
+    },
+    event.googleEventId,
+  );
+
+  if (event.googleEventId !== googleEventId) {
+    event.googleEventId = googleEventId;
+    await event.save();
+  }
+}
+
+/**
+ * Pull the connected user's Google Calendar events into Rootaroo (creating/
+ * updating/deleting local `CalendarEvent` rows tagged by `googleEventId`),
+ * then push any locally-created, not-yet-synced events of theirs back out.
+ * Called on connect and by the periodic `calendar-sync` cron job.
+ */
+export async function syncUserCalendar(userId: string): Promise<void> {
+  const state = await CalendarSyncState.findOne({ where: { userId, isActive: true } });
+  if (!state) return;
+
+  const householdId = await getUserHouseholdId(userId);
+  const accessToken = await getValidAccessToken(state);
+
+  // ── Pull ──
+  const { events, nextSyncToken } = await listGoogleEvents(accessToken, state.googleCalendarId, state.syncToken);
+
+  for (const gEvent of events) {
+    const existing = await CalendarEvent.findOne({ where: { googleEventId: gEvent.id, householdId } });
+
+    if (gEvent.status === 'cancelled') {
+      if (existing) await existing.destroy();
+      continue;
+    }
+
+    const startIso = gEvent.start?.dateTime || (gEvent.start?.date ? `${gEvent.start.date}T00:00:00` : null);
+    const endIso = gEvent.end?.dateTime || (gEvent.end?.date ? `${gEvent.end.date}T00:00:00` : startIso);
+    if (!startIso) continue; // malformed event, skip
+
+    const starts = splitDateTime(new Date(startIso).toISOString());
+    const ends = splitDateTime(new Date(endIso || startIso).toISOString());
+    const recurrenceFreq = gEvent.recurrence?.[0]?.match(/FREQ=([A-Z]+)/)?.[1]?.toLowerCase();
+    const repeats = toRepeatRule(!!recurrenceFreq, recurrenceFreq || null);
+
+    if (existing) {
+      existing.title = gEvent.summary || existing.title;
+      existing.description = gEvent.description ?? null;
+      existing.eventDate = starts.date as unknown as Date;
+      existing.startTime = starts.time;
+      existing.endTime = ends.time;
+      existing.isRecurring = repeats !== 'none';
+      existing.recurrenceRule = repeats === 'none' ? null : repeats;
+      await existing.save();
+    } else {
+      await CalendarEvent.create({
+        id: uuidv4(),
+        householdId,
+        createdBy: userId,
+        title: gEvent.summary || 'Untitled event',
+        description: gEvent.description ?? null,
+        eventDate: starts.date as unknown as Date,
+        startTime: starts.time,
+        endTime: ends.time,
+        isRecurring: repeats !== 'none',
+        recurrenceRule: repeats === 'none' ? null : repeats,
+        googleEventId: gEvent.id,
+      });
+    }
+  }
+
+  state.syncToken = nextSyncToken;
+  state.lastSyncedAt = new Date();
+  await state.save();
+
+  // ── Push ──
+  // Events this user created locally that were never sent to Google yet
+  // (e.g. created with syncToGoogle before this connection existed).
+  const unsynced = await CalendarEvent.findAll({
+    where: { householdId, createdBy: userId, googleEventId: { [Op.is]: null } as any },
+  });
+  for (const ev of unsynced) {
+    await pushEventToGoogleIfConnected(ev, userId).catch((e: Error) =>
+      logger.warn('[Calendar] Sync push failed for event', ev.id, e.message),
+    );
+  }
+}

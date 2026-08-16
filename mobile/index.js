@@ -1,8 +1,8 @@
-import { registerRootComponent } from 'expo';
+// Polyfill WebCrypto (crypto.subtle / getRandomValues) BEFORE any module that
+// touches vault crypto is evaluated — Hermes has no WebCrypto by default.
+import './src/shared/crypto/cryptoPolyfill';
 
+import { registerRootComponent } from 'expo';
 import App from './App';
 
-// registerRootComponent calls AppRegistry.registerComponent('main', () => App);
-// It also ensures that whether you load the app in Expo Go or in a native build,
-// the environment is set up appropriately
 registerRootComponent(App);
