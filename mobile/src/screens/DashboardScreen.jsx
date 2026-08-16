@@ -18,7 +18,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import { SvgXml } from 'react-native-svg';
+import Svg, { Circle, SvgXml } from 'react-native-svg';
 import { dashboardApi } from '../shared/api/dashboard';
 import * as NavigationBar from 'expo-navigation-bar';
 import { useAuthStore } from '../shared/store/authStore';
@@ -37,19 +37,40 @@ import Avatar from '../components/Avatar';
 const FAMILY_COVER = require('../../assets/images/family-cover.png');
 
 /* ═══════════════════════════════════════════════
-   Mockup: 03-Home-Feed.html SCREEN 11 · Dashboard
-   Canvas #E9E6E0 · white r22 cards · hero cover +
-   frosted glass greeting card · 10 widgets
+   Dashboard · Night glass
+   Deep navy ambient field · frosted translucent
+   cards · gold ember accents. Same widgets and
+   data as before — restyled for the dark theme.
    ═══════════════════════════════════════════════ */
 
-const AVATAR_COLORS = [colors.goldSoft, colors.avatarLilac, colors.avatarSage, colors.avatarSky, colors.avatarPeach];
-const MEDALS = ['🥇', '🥈', '🥉'];
-const GOLD = colors.gold;
-const INK = colors.ink;
+const GOLD = colors.goldGlow;
+
+/* Ambient navy field — radial washes behind the glass. Stretched to fill. */
+const AMBIENT_SVG = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+  <defs>
+    <radialGradient id="lift" cx="0.12" cy="-0.06" r="0.75">
+      <stop offset="0" stop-color="${colors.navyLift}" stop-opacity="1"/>
+      <stop offset="1" stop-color="${colors.navyLift}" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="ember" cx="0.96" cy="0.10" r="0.55">
+      <stop offset="0" stop-color="${colors.goldGlow}" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="${colors.goldGlow}" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="floor" cx="0.5" cy="1.05" r="0.65">
+      <stop offset="0" stop-color="${colors.navyMid}" stop-opacity="1"/>
+      <stop offset="1" stop-color="${colors.navyMid}" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="100" height="100" fill="${colors.navyBase}"/>
+  <rect width="100" height="100" fill="url(#lift)"/>
+  <rect width="100" height="100" fill="url(#ember)"/>
+  <rect width="100" height="100" fill="url(#floor)"/>
+</svg>`;
 
 // Notification bell (Feather "bell") — Dashboard top-right, over the hero photo.
 const BELL_SVG = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="${colors.surface}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="${colors.textOnDark}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
   <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
 </svg>`;
@@ -94,8 +115,8 @@ function sameDay(a, b) {
   );
 }
 
-/* ── Widget label (mockup: 11px w600 ls 0.4 #A6ABB0) ── */
-function WidgetLabel({ children, color = colors.textMuted, style }) {
+/* ── Widget label (11px w600 ls 0.5, muted slate) ── */
+function WidgetLabel({ children, color = colors.textOnDarkLabel, style }) {
   return (
     <Text
       style={[
@@ -111,7 +132,7 @@ function WidgetLabel({ children, color = colors.textMuted, style }) {
   );
 }
 
-/* ── Card (mockup: white, r22, soft double shadow) ── */
+/* ── Glass card (translucent white over the navy field) ── */
 function Card({ children, style, radius = 22 }) {
   return (
     <View
@@ -124,6 +145,44 @@ function Card({ children, style, radius = 22 }) {
       ]}
     >
       {children}
+    </View>
+  );
+}
+
+/* ── Streak ring — SVG arc, gold sweep over a faint track ── */
+function StreakRing({ value, progress }) {
+  const size = 92;
+  const stroke = 7;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const pct = Math.max(0, Math.min(1, progress));
+  return (
+    <View style={styles.ringWrap}>
+      <Svg width={size} height={size}>
+        <Circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          stroke={withAlpha(colors.white, 0.1)}
+          strokeWidth={stroke}
+          fill="none"
+        />
+        <Circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          stroke={GOLD}
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={`${c * pct} ${c}`}
+          fill="none"
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        />
+      </Svg>
+      <View style={styles.ringInner} pointerEvents="none">
+        <Text style={styles.ringNum}>{value}</Text>
+        <Text style={styles.ringUnit}>DAYS</Text>
+      </View>
     </View>
   );
 }
@@ -153,6 +212,9 @@ export default function DashboardScreen() {
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [latestCheckIn, setLatestCheckIn] = useState(null);
   const [checkedInTodayCount, setCheckedInTodayCount] = useState(0);
+
+  // Streak strip — which of the 7 days the detail line describes (6 = today)
+  const [streakIdx, setStreakIdx] = useState(6);
 
   // Quick notify
   const [showPicker, setShowPicker] = useState(false);
@@ -288,8 +350,9 @@ export default function DashboardScreen() {
   }, []);
   useEffect(() => {
     if (Platform.OS !== 'android') return;
-    NavigationBar.setBackgroundColorAsync(colors.surface);
-    NavigationBar.setButtonStyleAsync('dark');
+    // Dark screen → dark system nav bar; restore the light chrome on the way out.
+    NavigationBar.setBackgroundColorAsync(colors.navyDeep);
+    NavigationBar.setButtonStyleAsync('light');
     return () => {
       NavigationBar.setBackgroundColorAsync(colors.surface);
       NavigationBar.setButtonStyleAsync('dark');
@@ -299,7 +362,7 @@ export default function DashboardScreen() {
   const recentActivity = data?.recentActivity || [];
   const completedToday = data?.tasks.completedToday || 0;
 
-  /* ── Streak: 7 bars ── */
+  /* ── Streak: 7 day pills ── */
   const streakDays = (() => {
     const days = activity.slice(-7);
     while (days.length < 7)
@@ -314,7 +377,9 @@ export default function DashboardScreen() {
       const isToday = i === days.length - 1;
       const done = total > 0 || (isToday && completedToday > 0);
       return {
-        bg: done ? GOLD : isToday ? colors.goldSoft : colors.canvasElevated,
+        done,
+        isToday,
+        total,
         label: d.date
           ? new Date(d.date).toLocaleDateString('en-US', {
               weekday: 'narrow',
@@ -323,6 +388,17 @@ export default function DashboardScreen() {
       };
     });
   })();
+  const doneCount = streakDays.filter((d) => d.done).length;
+  const selDay = streakDays[streakIdx] || streakDays[6];
+  const streakDetail = selDay?.isToday
+    ? completedToday > 0
+      ? `${completedToday} task${completedToday > 1 ? 's' : ''} completed today — keep it going.`
+      : 'No completions yet today — complete a task to keep the streak alive.'
+    : selDay?.total > 0
+      ? `${selDay.total} activit${selDay.total === 1 ? 'y' : 'ies'} completed this day.`
+      : 'No activity recorded this day.';
+  const streakDetailMeta = selDay?.isToday ? 'TODAY' : selDay?.label || '';
+  const bestStreak = data?.streak?.longest ?? data?.streak?.best ?? null;
 
   /* ── Harmony score ── */
   const weekTotal = activity.reduce(
@@ -468,7 +544,8 @@ export default function DashboardScreen() {
           },
         ]}
       >
-        <StatusBar barStyle="dark-content" backgroundColor={colors.canvasDeep} />
+        <StatusBar barStyle="light-content" backgroundColor={colors.navyDeep} />
+        <SvgXml xml={AMBIENT_SVG} width="100%" height="100%" style={styles.ambient} />
         <View style={styles.loadingWrap}>
           <ActivityIndicator color={GOLD} size="large" />
           <Text style={styles.loadingText}>Loading your home…</Text>
@@ -491,7 +568,7 @@ export default function DashboardScreen() {
       }),
       num: d.getDate(),
       bg: isToday ? GOLD : 'transparent',
-      color: isToday ? colors.surface : INK,
+      color: isToday ? colors.navyDeep : colors.textOnDarkBody,
       dot: events.some((e) => sameDay(new Date(e.startsAt), d)) ? GOLD : 'transparent',
       isSelected,
     };
@@ -502,6 +579,9 @@ export default function DashboardScreen() {
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+
+      {/* ═══════ AMBIENT NAVY FIELD (behind everything) ═══════ */}
+      <SvgXml xml={AMBIENT_SVG} width="100%" height="100%" style={styles.ambient} />
 
       {/* ═══════ SELF AVATAR (top-left, pinned over the hero photo) ═══════ */}
       <TouchableOpacity
@@ -550,12 +630,12 @@ export default function DashboardScreen() {
         <SvgXml xml={BELL_SVG} width={22} height={22} />
       </TouchableOpacity>
 
-      {/* ═══════ FIXED LAYER: family photo sticks while cards scroll over it ═══════ */}
+      {/* ═══════ FIXED LAYER: family photo dissolves into the navy field ═══════ */}
       <View
         style={[
           styles.photoLayer,
           {
-            height: 320,
+            height: 300,
           },
         ]}
         pointerEvents="none"
@@ -572,7 +652,11 @@ export default function DashboardScreen() {
           resizeMode="cover"
         />
         <LinearGradient
-          colors={[withAlpha(colors.inkDeep, 0.05), withAlpha(colors.inkDeep, 0.10), withAlpha(colors.inkDeep, 0.55)]}
+          colors={[
+            withAlpha(colors.navyDeep, 0.55),
+            withAlpha(colors.navyDeep, 0.82),
+            colors.navyDeep,
+          ]}
           style={styles.heroOverlay}
         />
       </View>
@@ -594,114 +678,73 @@ export default function DashboardScreen() {
           />
         }
       >
-        {/* Spacer keeps the photo visible above the scroll body (photo height) */}
+        {/* Spacer keeps the photo visible above the scroll body */}
         <View
           style={{
-            height: 320 - insets.top + 4,
+            height: 168 - insets.top,
           }}
         />
 
-        {/* ═══════ FROSTED GLASS CARD (overlaps photo, scrolls with content) ═══════ */}
-        <BlurView
-          intensity={0}
-          tint="light"
-          style={[
-            styles.frost,
-            {
-              marginTop: -122,
-              borderRadius: 26,
-            },
-          ]}
-        >
-          <Text style={styles.frostDate}>{formatDate()}</Text>
-          <Text style={styles.frostGreeting} numberOfLines={1}>
-            {getGreeting()} {user?.name?.split(' ')[0] || 'there'}
-          </Text>
+        {/* ═══════ GREETING (sits directly on the field) ═══════ */}
+        <View style={styles.greetBlock}>
+          <Text style={styles.greetDate}>{formatDate()}</Text>
+          <View style={styles.greetRow}>
+            <Text style={styles.greetTitle} numberOfLines={2}>
+              {getGreeting()} {user?.name?.split(' ')[0] || 'there'}
+            </Text>
 
-          {/* Member avatars — other household members only, not yourself */}
-          <View style={styles.avatarStack}>
-            {members.filter((m) => m.userId !== user?.id).slice(0, 5).map((m, i) => (
-              <View
-                key={m.userId}
-                style={[
-                  styles.avatarWrap,
-                  i > 0 && {
-                    marginLeft: -8,
-                  },
-                ]}
-              >
-                {m.avatarUrl ? (
-                  <Image
-                    source={{
-                      uri: m.avatarUrl,
-                    }}
-                    style={styles.avatarCircle}
-                  />
-                ) : m.avatarEmoji ? (
-                  <View
-                    style={[
-                      styles.avatarCircle,
-                      {
-                        backgroundColor: AVATAR_COLORS[i % AVATAR_COLORS.length],
-                      },
-                    ]}
-                  >
-                    <Text style={styles.avatarEmoji}>{m.avatarEmoji}</Text>
-                  </View>
-                ) : (
-                  <View
-                    style={[
-                      styles.avatarCircle,
-                      {
-                        backgroundColor: AVATAR_COLORS[i % AVATAR_COLORS.length],
-                      },
-                    ]}
-                  >
-                    <Text style={styles.avatarInitials}>
-                      {initials(m.displayName || m.name || '??')}
-                    </Text>
-                  </View>
-                )}
-                <View style={styles.onlineDot} />
-              </View>
-            ))}
+            {/* Member avatars — other household members only, not yourself */}
+            <View style={styles.avatarStack}>
+              {members.filter((m) => m.userId !== user?.id).slice(0, 5).map((m, i) => (
+                <View
+                  key={m.userId}
+                  style={[
+                    styles.avatarWrap,
+                    i > 0 && {
+                      marginLeft: -8,
+                    },
+                  ]}
+                >
+                  {m.avatarUrl ? (
+                    <Image
+                      source={{
+                        uri: m.avatarUrl,
+                      }}
+                      style={styles.avatarCircle}
+                    />
+                  ) : m.avatarEmoji ? (
+                    <View
+                      style={[
+                        styles.avatarCircle,
+                        {
+                          backgroundColor: withAlpha(colors.white, 0.1),
+                        },
+                      ]}
+                    >
+                      <Text style={styles.avatarEmoji}>{m.avatarEmoji}</Text>
+                    </View>
+                  ) : (
+                    <View
+                      style={[
+                        styles.avatarCircle,
+                        {
+                          backgroundColor: withAlpha(colors.white, 0.1),
+                        },
+                      ]}
+                    >
+                      <Text style={styles.avatarInitials}>
+                        {initials(m.displayName || m.name || '??')}
+                      </Text>
+                    </View>
+                  )}
+                  <View style={styles.onlineDot} />
+                </View>
+              ))}
+            </View>
           </View>
+        </View>
 
-          <View style={styles.frostDivider} />
-
-          {/* Family streak */}
-          <View style={styles.streakTop}>
-            <WidgetLabel>FAMILY STREAK</WidgetLabel>
-            <Text style={styles.streakNum}>{data?.streak?.current ?? 0} days</Text>
-          </View>
-          <View style={styles.streakBars}>
-            {streakDays.map((d, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.streakBar,
-                  {
-                    backgroundColor: d.bg,
-                  },
-                ]}
-              />
-            ))}
-          </View>
-          <View style={styles.streakLabels}>
-            {streakDays.map((d, i) => (
-              <Text key={i} style={styles.streakLabel}>
-                {d.label || ''}
-              </Text>
-            ))}
-          </View>
-          <Text style={styles.streakSub}>
-            {completedToday > 0
-              ? `${completedToday} task${completedToday > 1 ? 's' : ''} completed today — keep it going.`
-              : 'No completions yet today — complete a task to keep the streak alive.'}
-          </Text>
-        </BlurView>
-
-        {/* ═══════ BODY (cards scroll up over the photo) ═══════ */}
+        {/* ═══════ BODY ═══════ */}
         <View style={styles.body}>
           {fetchError && (
             <Card
@@ -713,7 +756,7 @@ export default function DashboardScreen() {
               <Text
                 style={{
                   fontSize: 13,
-                  color: colors.textSecondary,
+                  color: colors.textOnDarkMuted,
                 }}
               >
                 Couldn't load your dashboard
@@ -732,6 +775,82 @@ export default function DashboardScreen() {
 
           {!fetchError && data && (
             <>
+              {/* ── Family Streak (hero) ── */}
+              <BlurView intensity={22} tint="dark" style={styles.streakCard}>
+                <View style={styles.rowBetween}>
+                  <WidgetLabel>FAMILY STREAK</WidgetLabel>
+                  {bestStreak != null && (
+                    <View style={styles.bestChip}>
+                      <Text style={styles.bestChipText}>BEST {bestStreak}</Text>
+                    </View>
+                  )}
+                </View>
+
+                <View style={styles.streakBody}>
+                  <StreakRing value={data?.streak?.current ?? 0} progress={doneCount / 7} />
+                  <View style={styles.streakCopy}>
+                    <Text style={styles.streakHeadline}>
+                      {doneCount >= 7
+                        ? 'Perfect week — everyone showed up.'
+                        : `${7 - doneCount} more day${7 - doneCount === 1 ? '' : 's'} to a full week`}
+                    </Text>
+                    <Text style={styles.streakSub}>
+                      {doneCount} of the last 7 days had activity.
+                    </Text>
+                    <View style={styles.progressTrack}>
+                      <LinearGradient
+                        colors={[colors.goldGlowDeep, GOLD]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={[
+                          styles.progressFill,
+                          {
+                            width: `${Math.round((doneCount / 7) * 100)}%`,
+                          },
+                        ]}
+                      />
+                    </View>
+                  </View>
+                </View>
+
+                {/* 7 day pills */}
+                <View style={styles.pillRow}>
+                  {streakDays.map((d, i) => {
+                    const sel = i === streakIdx;
+                    return (
+                      <TouchableOpacity
+                        key={i}
+                        style={styles.pillCol}
+                        onPress={() => setStreakIdx(i)}
+                        activeOpacity={0.7}
+                      >
+                        <View
+                          style={[
+                            styles.pill,
+                            d.done && styles.pillDone,
+                            sel && styles.pillSelected,
+                          ]}
+                        >
+                          <Text style={[styles.pillGlyph, d.done && styles.pillGlyphDone]}>
+                            {d.done ? '✓' : '·'}
+                          </Text>
+                        </View>
+                        <Text style={[styles.pillLabel, sel && styles.pillLabelSel]}>
+                          {d.label || '·'}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                <View style={styles.streakFooter}>
+                  <Text style={styles.streakDetail}>{streakDetail}</Text>
+                  {!!streakDetailMeta && (
+                    <Text style={styles.streakDetailMeta}>{streakDetailMeta}</Text>
+                  )}
+                </View>
+              </BlurView>
+
               {/* ── Family Harmony Score ── */}
               <TouchableOpacity
                 style={[
@@ -752,7 +871,10 @@ export default function DashboardScreen() {
                   <Text style={styles.scoreMeta}>weekly progress {weeklyPct}%</Text>
                 </View>
                 <View style={styles.progressTrack}>
-                  <View
+                  <LinearGradient
+                    colors={[colors.goldGlowDeep, GOLD]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
                     style={[
                       styles.progressFill,
                       {
@@ -766,7 +888,9 @@ export default function DashboardScreen() {
                 </Text>
                 {leaderboard.map((p, i) => (
                   <View key={i} style={styles.lbRow}>
-                    <Text style={styles.lbMedal}>{MEDALS[i] || '•'}</Text>
+                    <Text style={[styles.lbRank, i === 0 && styles.lbRankTop]}>
+                      {String(i + 1).padStart(2, '0')}
+                    </Text>
                     <Text style={styles.lbName} numberOfLines={1}>
                       {p.name}
                     </Text>
@@ -1020,7 +1144,7 @@ export default function DashboardScreen() {
                     </View>
                   )}
                   <LinearGradient
-                    colors={[withAlpha(colors.inkDeep, 0), withAlpha(colors.inkDeep, 0.55)]}
+                    colors={[withAlpha(colors.navyDark, 0), withAlpha(colors.navyDark, 0.8)]}
                     style={styles.feedGradient}
                   />
                   <Text style={styles.feedCaption} numberOfLines={1}>
@@ -1143,14 +1267,7 @@ export default function DashboardScreen() {
                             style={styles.actAvatar}
                           />
                         ) : (
-                          <View
-                            style={[
-                              styles.actAvatar,
-                              {
-                                backgroundColor: AVATAR_COLORS[i % AVATAR_COLORS.length],
-                              },
-                            ]}
-                          >
+                          <View style={styles.actAvatar}>
                             <Text style={styles.actAvatarText}>
                               {a.avatarEmoji || initials(a.displayName)}
                             </Text>
@@ -1172,7 +1289,7 @@ export default function DashboardScreen() {
 
               {/* ── Vault · LOCKED ── */}
               <TouchableOpacity
-                style={[styles.card20, styles.vaultCard]}
+                style={styles.vaultCard}
                 onPress={() =>
                   nav.navigate('MoreStack', {
                     screen: 'Vault',
@@ -1186,20 +1303,28 @@ export default function DashboardScreen() {
                   }}
                 >
                   <Text style={styles.vaultLabel}>VAULT · LOCKED</Text>
-                  <Text style={styles.vaultTitle}>{latestDoc || 'No documents yet'}</Text>
+                  <Text style={styles.vaultTitle} numberOfLines={1}>
+                    {latestDoc || 'No documents yet'}
+                  </Text>
                 </View>
                 <Text style={styles.vaultTime}>{latestDocTime || ''}</Text>
               </TouchableOpacity>
 
               {/* ── This Week ── */}
-              <View style={styles.insightsCard}>
-                <Text style={styles.insightsLabel}>THIS WEEK</Text>
+              <Card radius={20} style={{ padding: 20 }}>
+                <WidgetLabel
+                  style={{
+                    marginBottom: 10,
+                  }}
+                >
+                  THIS WEEK
+                </WidgetLabel>
                 <Text style={styles.insightsText}>
                   Family completed {activitiesThisWeek} activit
                   {activitiesThisWeek === 1 ? 'y' : 'ies'} this week
                   {topMemberName ? `. ${topMemberName.split(' ')[0]} was the most active.` : ''}
                 </Text>
-              </View>
+              </Card>
             </>
           )}
         </View>
@@ -1247,7 +1372,7 @@ export default function DashboardScreen() {
               value={customMsg}
               onChangeText={setCustomMsg}
               placeholder="Type a custom message…"
-              placeholderTextColor={colors.textMuted}
+              placeholderTextColor={colors.textOnDarkDim}
               multiline
               maxLength={500}
             />
@@ -1266,7 +1391,7 @@ export default function DashboardScreen() {
               >
                 <Text style={mo.allText}>Notify All</Text>
                 <View style={[mo.cb, selMembers.size > 0 && mo.cbOn]}>
-                  {selMembers.size > 0 && <CheckIcon size={10} color={colors.surface} />}
+                  {selMembers.size > 0 && <CheckIcon size={10} color={colors.navyDeep} />}
                 </View>
               </TouchableOpacity>
             )}
@@ -1309,7 +1434,7 @@ export default function DashboardScreen() {
                         <Text style={mo.mName}>{m.displayName || m.name || m.email}</Text>
                       </View>
                       <View style={[mo.cb, checked && mo.cbOn]}>
-                        {checked && <CheckIcon size={10} color={colors.surface} />}
+                        {checked && <CheckIcon size={10} color={colors.navyDeep} />}
                       </View>
                     </TouchableOpacity>
                   );
@@ -1371,7 +1496,7 @@ export default function DashboardScreen() {
                 activeOpacity={0.7}
               >
                 {sending ? (
-                  <ActivityIndicator size="small" color={colors.surface} />
+                  <ActivityIndicator size="small" color={colors.navyDeep} />
                 ) : (
                   <Text style={mo.sendText}>Notify ({selMembers.size})</Text>
                 )}
@@ -1383,7 +1508,7 @@ export default function DashboardScreen() {
     </View>
   );
 }
-function CheckIcon({ size = 10, color = colors.surface }) {
+function CheckIcon({ size = 10, color = colors.navyDeep }) {
   return (
     <View
       style={{
@@ -1413,10 +1538,21 @@ function CheckIcon({ size = 10, color = colors.surface }) {
 }
 
 /* ═══════════════════ Styles ═══════════════════ */
+/* Glass recipe: translucent white fill + hairline white border + deep drop
+   shadow. Repeated on every card so they read as one material. */
+const GLASS_FILL = withAlpha(colors.white, 0.045);
+const GLASS_FILL_LIFT = withAlpha(colors.white, 0.055);
+const GLASS_BORDER = withAlpha(colors.white, 0.09);
+const GLASS_BORDER_LIFT = withAlpha(colors.white, 0.1);
+const GLASS_HAIRLINE = withAlpha(colors.white, 0.06);
+
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.canvasDeep,
+    backgroundColor: colors.navyDeep,
+  },
+  ambient: {
+    ...StyleSheet.absoluteFillObject,
   },
   scroll: {
     flex: 1,
@@ -1430,7 +1566,9 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: withAlpha(colors.inkDeep, 0.45),
+    backgroundColor: withAlpha(colors.white, 0.1),
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1452,43 +1590,47 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 13,
-    color: colors.textSecondary,
+    color: colors.textOnDarkMuted,
   },
-  /* Cards */
+  /* Glass cards */
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: GLASS_FILL,
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
     padding: 22,
     marginBottom: 14,
-    shadowColor: INK,
+    shadowColor: colors.navyDark,
     shadowOffset: {
       width: 0,
-      height: 10,
+      height: 18,
     },
-    shadowOpacity: 0.06,
-    shadowRadius: 28,
-    elevation: 3,
+    shadowOpacity: 0.4,
+    shadowRadius: 40,
+    elevation: 6,
   },
   card20: {
-    backgroundColor: colors.surface,
+    backgroundColor: GLASS_FILL,
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
     borderRadius: 20,
     padding: 18,
     marginBottom: 14,
-    shadowColor: INK,
+    shadowColor: colors.navyDark,
     shadowOffset: {
       width: 0,
-      height: 10,
+      height: 18,
     },
-    shadowOpacity: 0.06,
-    shadowRadius: 28,
-    elevation: 3,
+    shadowOpacity: 0.4,
+    shadowRadius: 40,
+    elevation: 6,
   },
   widgetLabel: {
     fontSize: 11,
     fontWeight: '600',
-    letterSpacing: 0.4,
+    letterSpacing: 0.5,
     fontFamily: 'Inter_600SemiBold',
   },
-  /* Photo layer — fixed behind scroll content, sticks at top */
+  /* Photo layer — fixed behind scroll content, fades into the navy field */
   photoLayer: {
     position: 'absolute',
     top: 0,
@@ -1502,39 +1644,34 @@ const styles = StyleSheet.create({
   heroOverlay: {
     ...StyleSheet.absoluteFillObject,
   },
-  /* Frosted glass card */
-  frost: {
-    borderRadius: 26,
-    marginHorizontal: 20,
-    paddingTop: 18,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    backgroundColor: withAlpha(colors.white, 0.84),
-    shadowColor: INK,
-    shadowOffset: {
-      width: 0,
-      height: 12,
-    },
-    shadowOpacity: 0.14,
-    shadowRadius: 32,
-    elevation: 8,
+  /* Greeting */
+  greetBlock: {
+    paddingHorizontal: 24,
+    paddingBottom: 18,
   },
-  frostDate: {
+  greetDate: {
     fontSize: 11,
-    color: colors.taupeDeep,
-    marginBottom: 5,
+    letterSpacing: 0.3,
+    color: colors.textOnDarkFaint,
+    marginBottom: 8,
   },
-  frostGreeting: {
-    fontSize: 22,
+  greetRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  greetTitle: {
+    flex: 1,
+    fontSize: 24,
+    lineHeight: 29,
     fontWeight: '700',
-    color: INK,
-    letterSpacing: -0.2,
-    marginBottom: 12,
+    color: colors.textOnDark,
+    letterSpacing: -0.4,
     fontFamily: 'PlusJakartaSans_700Bold',
   },
   avatarStack: {
     flexDirection: 'row',
-    marginBottom: 18,
   },
   avatarWrap: {
     position: 'relative',
@@ -1546,12 +1683,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: withAlpha(colors.white, 0.7),
+    borderColor: withAlpha(colors.navyDeep, 0.9),
   },
   avatarInitials: {
     fontSize: 11,
     fontWeight: '600',
-    color: colors.surface,
+    color: colors.textOnDarkBody,
   },
   avatarEmoji: {
     fontSize: 15,
@@ -1563,57 +1700,12 @@ const styles = StyleSheet.create({
     width: 9,
     height: 9,
     borderRadius: 4.5,
-    backgroundColor: colors.successBright,
+    backgroundColor: colors.successOnDark,
     borderWidth: 2,
-    borderColor: withAlpha(colors.white, 0.7),
+    borderColor: colors.navyDeep,
   },
-  frostDivider: {
-    height: 1,
-    backgroundColor: withAlpha(colors.ink, 0.1),
-    marginBottom: 16,
-  },
-  streakTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  streakNum: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: INK,
-    fontFamily: 'PlusJakartaSans_700Bold',
-  },
-  streakBars: {
-    flexDirection: 'row',
-    gap: 6,
-    marginBottom: 8,
-  },
-  streakBar: {
-    flex: 1,
-    height: 6,
-    borderRadius: 3,
-  },
-  streakLabels: {
-    flexDirection: 'row',
-    gap: 6,
-    marginBottom: 12,
-  },
-  streakLabel: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: 10,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  streakSub: {
-    fontSize: 12,
-    lineHeight: 17,
-    color: colors.taupeDeep,
-  },
-  /* Body — cards scroll over the photo */
+  /* Body */
   body: {
-    paddingTop: 14,
     paddingHorizontal: 20,
     paddingBottom: 0,
   },
@@ -1626,7 +1718,7 @@ const styles = StyleSheet.create({
   retryText: {
     fontSize: 13,
     fontWeight: '700',
-    color: colors.surface,
+    color: colors.navyDeep,
   },
   rowBetween: {
     flexDirection: 'row',
@@ -1634,116 +1726,262 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 4,
   },
+  /* ── Streak hero ── */
+  streakCard: {
+    borderRadius: 26,
+    overflow: 'hidden',
+    padding: 20,
+    marginBottom: 14,
+    backgroundColor: GLASS_FILL_LIFT,
+    borderWidth: 1,
+    borderColor: GLASS_BORDER_LIFT,
+  },
+  bestChip: {
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: withAlpha(colors.goldGlow, 0.12),
+    borderWidth: 1,
+    borderColor: withAlpha(colors.goldGlow, 0.25),
+  },
+  bestChipText: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: GOLD,
+    fontFamily: fonts.mono,
+  },
+  streakBody: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 18,
+    marginTop: 12,
+    marginBottom: 18,
+  },
+  ringWrap: {
+    width: 92,
+    height: 92,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ringInner: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ringNum: {
+    fontSize: 30,
+    fontWeight: '800',
+    color: colors.textOnDark,
+    letterSpacing: -0.6,
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+  },
+  ringUnit: {
+    fontSize: 9,
+    letterSpacing: 1,
+    fontWeight: '500',
+    color: colors.textOnDarkMuted,
+    marginTop: 2,
+  },
+  streakCopy: {
+    flex: 1,
+  },
+  streakHeadline: {
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: '600',
+    color: colors.textOnDark,
+    marginBottom: 6,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+  },
+  streakSub: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.textOnDarkMuted,
+    marginBottom: 12,
+  },
+  pillRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 14,
+  },
+  pillCol: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 7,
+  },
+  pill: {
+    width: '100%',
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: withAlpha(colors.white, 0.06),
+    borderWidth: 1,
+    borderColor: GLASS_BORDER_LIFT,
+  },
+  pillDone: {
+    backgroundColor: withAlpha(colors.goldGlow, 0.2),
+    borderColor: withAlpha(colors.goldGlow, 0.32),
+  },
+  pillSelected: {
+    borderColor: withAlpha(colors.goldGlow, 0.75),
+  },
+  pillGlyph: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textOnDarkFaint,
+    fontFamily: 'PlusJakartaSans_700Bold',
+  },
+  pillGlyphDone: {
+    color: colors.goldGlowPale,
+  },
+  pillLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.textOnDarkFaint,
+  },
+  pillLabelSel: {
+    color: GOLD,
+  },
+  streakFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    borderTopWidth: 1,
+    borderTopColor: withAlpha(colors.white, 0.08),
+    paddingTop: 12,
+  },
+  streakDetail: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 17,
+    color: colors.textOnDarkLabel,
+  },
+  streakDetailMeta: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: GOLD,
+    fontFamily: fonts.mono,
+  },
+  /* ── Harmony ── */
   greenDelta: {
     fontSize: 11,
     fontWeight: '600',
-    color: colors.success,
+    color: colors.successOnDark,
   },
   scoreRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
     gap: 10,
-    marginBottom: 6,
+    marginBottom: 8,
   },
   scoreNum: {
     fontSize: 40,
     fontWeight: '800',
-    color: INK,
+    color: colors.textOnDark,
     letterSpacing: -0.8,
     fontFamily: 'PlusJakartaSans_800ExtraBold',
   },
   scoreMeta: {
     fontSize: 13,
-    color: colors.textSecondary,
+    color: colors.textOnDarkMuted,
   },
   progressTrack: {
     height: 6,
     borderRadius: 3,
-    backgroundColor: colors.canvasElevated,
-    marginBottom: 6,
+    backgroundColor: withAlpha(colors.white, 0.1),
+    marginBottom: 8,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
     borderRadius: 3,
-    backgroundColor: GOLD,
   },
   scoreCaption: {
     fontSize: 12,
     lineHeight: 17,
-    color: colors.textSecondary,
-    marginBottom: 18,
+    color: colors.textOnDarkMuted,
+    marginBottom: 14,
   },
   lbRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: GLASS_HAIRLINE,
   },
-  lbMedal: {
-    fontSize: 16,
-    fontWeight: '600',
+  lbRank: {
     width: 20,
-    fontFamily: 'Inter_600SemiBold',
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.textOnDarkLabel,
+    fontFamily: fonts.mono,
+  },
+  lbRankTop: {
+    color: GOLD,
   },
   lbName: {
     flex: 1,
     fontSize: 14,
     fontWeight: '500',
-    color: INK,
+    color: colors.textOnDarkBody,
   },
   lbPts: {
     fontSize: 13,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    fontFamily: 'Inter_500Medium',
+    fontWeight: '500',
+    color: colors.textOnDarkMuted,
+    fontFamily: fonts.mono,
   },
   emptyText: {
     fontSize: 13,
-    color: colors.textSecondary,
+    color: colors.textOnDarkMuted,
     paddingVertical: 6,
   },
+  /* ── Focus ── */
   focusRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 10,
+    paddingVertical: 11,
   },
   focusRowBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: colors.canvasElevated,
+    borderBottomColor: GLASS_HAIRLINE,
   },
   focusTitle: {
     flex: 1,
     fontSize: 15,
     fontWeight: '500',
-    color: INK,
-    fontFamily: 'Inter_500Medium',
+    color: colors.textOnDarkSoft,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
     marginRight: 10,
   },
   focusMeta: {
     fontSize: 13,
-    color: colors.textSecondary,
+    color: colors.textOnDarkMuted,
   },
+  /* ── Calendar ── */
   calMonth: {
     fontSize: 12,
     fontWeight: '500',
-    color: colors.textSecondary,
+    color: colors.textOnDarkMuted,
   },
   weekStrip: {
     flexDirection: 'row',
     marginBottom: 14,
-    marginTop: 14,
+    marginTop: 16,
   },
   weekCol: {
     flex: 1,
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
   },
   weekLabel: {
     fontSize: 10,
     fontWeight: '600',
-    color: colors.textMuted,
+    color: colors.textOnDarkDim,
   },
   weekDay: {
     width: 28,
@@ -1763,19 +2001,18 @@ const styles = StyleSheet.create({
   },
   calDivider: {
     height: 1,
-    backgroundColor: colors.canvasElevated,
+    backgroundColor: withAlpha(colors.white, 0.08),
     marginBottom: 12,
   },
   calEvent: {
     fontSize: 15,
     fontWeight: '700',
-    color: INK,
-    marginBottom: 3,
+    color: colors.textOnDarkSoft,
     fontFamily: 'PlusJakartaSans_700Bold',
   },
   calMeta: {
     fontSize: 12,
-    color: colors.textSecondary,
+    color: colors.textOnDarkMuted,
   },
   calControls: {
     flexDirection: 'row',
@@ -1785,7 +2022,7 @@ const styles = StyleSheet.create({
   calArrow: {
     fontSize: 20,
     fontWeight: '600',
-    color: INK,
+    color: colors.textOnDarkBody,
     lineHeight: 22,
   },
   weekDaySelected: {
@@ -1806,9 +2043,10 @@ const styles = StyleSheet.create({
   },
   calEventTime: {
     fontSize: 12,
-    color: colors.textMuted,
+    color: colors.textOnDarkDim,
     marginLeft: 'auto',
   },
+  /* ── Two-up ── */
   twoUp: {
     flexDirection: 'row',
     gap: 14,
@@ -1816,32 +2054,34 @@ const styles = StyleSheet.create({
   },
   halfCard: {
     flex: 1,
-    backgroundColor: colors.surface,
+    backgroundColor: GLASS_FILL,
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
     borderRadius: 20,
     padding: 18,
-    shadowColor: INK,
+    shadowColor: colors.navyDark,
     shadowOffset: {
       width: 0,
-      height: 10,
+      height: 18,
     },
-    shadowOpacity: 0.06,
-    shadowRadius: 28,
-    elevation: 3,
+    shadowOpacity: 0.4,
+    shadowRadius: 40,
+    elevation: 6,
   },
   halfNum: {
     fontSize: 24,
     fontWeight: '700',
-    color: INK,
-    marginBottom: 4,
+    color: colors.textOnDark,
+    marginBottom: 5,
     fontFamily: 'PlusJakartaSans_700Bold',
   },
   balanceNum: {
-    color: colors.danger,
+    color: colors.dangerOnDark,
     fontSize: 20,
   },
   halfMeta: {
     fontSize: 12,
-    color: colors.textSecondary,
+    color: colors.textOnDarkMuted,
   },
   feedCard: {
     flex: 1.2,
@@ -1849,13 +2089,15 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: 'hidden',
     height: 130,
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
   },
   feedImage: {
     width: '100%',
     height: '100%',
   },
   feedPlaceholder: {
-    backgroundColor: colors.borderCool,
+    backgroundColor: colors.navySurface,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1869,25 +2111,27 @@ const styles = StyleSheet.create({
     right: 14,
     fontSize: 12,
     fontWeight: '600',
-    color: colors.surface,
-    fontFamily: 'Inter_600SemiBold',
+    color: colors.white,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
   },
   hhCard: {
     padding: 18,
     marginBottom: 0,
     flex: 1,
+    justifyContent: 'space-between',
   },
   hhTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: INK,
+    color: colors.textOnDarkSoft,
     marginBottom: 4,
     fontFamily: 'PlusJakartaSans_700Bold',
   },
   hhMeta: {
     fontSize: 12,
-    color: colors.textSecondary,
+    color: colors.textOnDarkMuted,
   },
+  /* ── Quick actions ── */
   qaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1901,109 +2145,119 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.borderCool,
+    backgroundColor: withAlpha(colors.white, 0.07),
+    borderWidth: 1,
+    borderColor: withAlpha(colors.white, 0.12),
     alignItems: 'center',
     justifyContent: 'center',
   },
   qaGlyphText: {
     fontSize: 18,
     fontWeight: '700',
-    color: colors.inkMuted,
+    color: GOLD,
     fontFamily: 'PlusJakartaSans_700Bold',
   },
   qaLabel: {
     fontSize: 10,
     fontWeight: '500',
-    color: colors.textSecondary,
+    color: colors.textOnDarkMuted,
     textAlign: 'center',
   },
+  /* ── Activity ── */
   actRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingVertical: 9,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: GLASS_HAIRLINE,
   },
   actAvatar: {
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: colors.borderCool,
+    backgroundColor: withAlpha(colors.white, 0.09),
     alignItems: 'center',
     justifyContent: 'center',
   },
   actAvatarText: {
     fontSize: 11,
     fontWeight: '600',
-    color: colors.inkMuted,
+    color: colors.textOnDarkBody,
   },
   actText: {
     flex: 1,
     fontSize: 13,
-    color: INK,
+    color: colors.textOnDarkBody,
   },
   actTime: {
     fontSize: 11,
-    color: colors.textMuted,
+    color: colors.textOnDarkDim,
   },
+  /* ── Vault (gold-tinted glass) ── */
   vaultCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.inkDeep,
+    gap: 12,
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 14,
+    backgroundColor: withAlpha(colors.goldGlow, 0.07),
+    borderWidth: 1,
+    borderColor: withAlpha(colors.goldGlow, 0.22),
+    shadowColor: colors.navyDark,
+    shadowOffset: {
+      width: 0,
+      height: 18,
+    },
+    shadowOpacity: 0.4,
+    shadowRadius: 40,
+    elevation: 6,
   },
   vaultLabel: {
     fontSize: 11,
     fontWeight: '600',
-    letterSpacing: 0.4,
-    color: colors.textFaint,
+    letterSpacing: 0.5,
+    color: colors.goldGlowDim,
     marginBottom: 8,
+    fontFamily: 'Inter_600SemiBold',
   },
   vaultTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.surface,
-    fontFamily: 'Inter_600SemiBold',
+    color: colors.textOnDark,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
   },
   vaultTime: {
     fontSize: 11,
     fontWeight: '500',
     color: GOLD,
-    fontFamily: 'Inter_500Medium',
-  },
-  insightsCard: {
-    borderRadius: 20,
-    padding: 20,
-    backgroundColor: colors.canvasDeep,
-    marginBottom: 14,
-  },
-  insightsLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    letterSpacing: 0.4,
-    color: colors.inkMuted,
-    marginBottom: 10,
+    fontFamily: fonts.mono,
   },
   insightsText: {
     fontSize: 15,
-    lineHeight: 21,
+    lineHeight: 22,
     fontWeight: '600',
-    color: INK,
-    fontFamily: 'Inter_600SemiBold',
+    color: colors.textOnDarkSoft,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
   },
 });
 
 /* ── Modal ── */
-/* Notify Members sheet — design-system tokens (colors/fonts/spacing/radius) */
+/* Notify Members sheet — night glass to match the screen it opens from. */
 const mo = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: withAlpha(colors.inkDeep, 0.55),
+    backgroundColor: withAlpha(colors.navyDark, 0.7),
     justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.navyBase,
     borderTopLeftRadius: radius.xl + 4,
     borderTopRightRadius: radius.xl + 4,
+    borderTopWidth: 1,
+    borderColor: GLASS_BORDER,
     paddingTop: spacing.sm,
     paddingHorizontal: spacing.xxl,
     maxHeight: '85%',
@@ -2012,7 +2266,7 @@ const mo = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: colors.border,
+    backgroundColor: withAlpha(colors.white, 0.18),
     alignSelf: 'center',
     marginBottom: spacing.xxl,
   },
@@ -2020,7 +2274,7 @@ const mo = StyleSheet.create({
     fontSize: 20,
     fontWeight: '800',
     fontFamily: fonts.display,
-    color: colors.ink,
+    color: colors.textOnDark,
     marginBottom: spacing.lg,
   },
   // Preset action chips
@@ -2034,35 +2288,35 @@ const mo = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: radius.pill,
-    backgroundColor: colors.canvas,
+    backgroundColor: withAlpha(colors.white, 0.06),
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: GLASS_BORDER,
   },
   chipActive: {
-    backgroundColor: colors.gold,
-    borderColor: colors.gold,
+    backgroundColor: colors.goldGlow,
+    borderColor: colors.goldGlow,
   },
   chipText: {
     fontSize: 13,
     fontWeight: '600',
     fontFamily: fonts.bodySemiBold,
-    color: colors.ink,
+    color: colors.textOnDarkBody,
   },
   chipTextActive: {
-    color: colors.surface,
+    color: colors.navyDeep,
   },
   // Custom message input
   input: {
     minHeight: 72,
-    backgroundColor: colors.canvas,
+    backgroundColor: withAlpha(colors.white, 0.05),
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: GLASS_BORDER,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     fontSize: 14,
     fontFamily: fonts.body,
-    color: colors.ink,
+    color: colors.textOnDark,
     textAlignVertical: 'top',
     marginBottom: spacing.lg,
   },
@@ -2073,13 +2327,13 @@ const mo = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: GLASS_BORDER,
   },
   allText: {
     fontSize: 15,
     fontWeight: '700',
     fontFamily: fonts.displayBold,
-    color: colors.ink,
+    color: colors.textOnDark,
   },
   list: {
     maxHeight: 240,
@@ -2091,30 +2345,30 @@ const mo = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 4,
     borderBottomWidth: 1,
-    borderBottomColor: colors.borderCool,
+    borderBottomColor: GLASS_HAIRLINE,
   },
   mRowSel: {
-    backgroundColor: colors.goldLight,
+    backgroundColor: withAlpha(colors.goldGlow, 0.1),
   },
   mName: {
     fontSize: 15,
     fontWeight: '600',
     fontFamily: fonts.bodySemiBold,
-    color: colors.ink,
+    color: colors.textOnDarkBody,
   },
   cb: {
     width: 24,
     height: 24,
     borderRadius: radius.pill,
     borderWidth: 2,
-    borderColor: colors.divider,
+    borderColor: withAlpha(colors.white, 0.2),
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surface,
+    backgroundColor: 'transparent',
   },
   cbOn: {
-    backgroundColor: colors.gold,
-    borderColor: colors.gold,
+    backgroundColor: colors.goldGlow,
+    borderColor: colors.goldGlow,
   },
   // Nudge: pending items for the selected recipient
   nudgeSection: {
@@ -2156,20 +2410,20 @@ const mo = StyleSheet.create({
     flex: 1,
     paddingVertical: 15,
     borderRadius: radius.md,
-    backgroundColor: colors.canvasElevated,
+    backgroundColor: withAlpha(colors.white, 0.07),
     alignItems: 'center',
   },
   cancelText: {
     fontSize: 15,
     fontWeight: '700',
     fontFamily: fonts.bodySemiBold,
-    color: colors.textSecondary,
+    color: colors.textOnDarkMuted,
   },
   sendBtn: {
     flex: 1,
     paddingVertical: 15,
     borderRadius: radius.md,
-    backgroundColor: colors.gold,
+    backgroundColor: colors.goldGlow,
     alignItems: 'center',
   },
   sendBtnDisabled: {
@@ -2179,6 +2433,6 @@ const mo = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     fontFamily: fonts.displayBold,
-    color: colors.surface,
+    color: colors.navyDeep,
   },
 });
