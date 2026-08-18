@@ -51,7 +51,7 @@ export default function ConfirmSheet({
             activeOpacity={0.85}
           >
             {loading ? (
-              <ActivityIndicator size="small" color={colors.surface} />
+              <ActivityIndicator size="small" color={colors.onAccent} />
             ) : (
               <Text style={styles.confirmText}>{confirmLabel}</Text>
             )}
@@ -66,15 +66,18 @@ export default function ConfirmSheet({
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: withAlpha(colors.inkDeep, 0.55), justifyContent: 'flex-end' },
+  overlay: { flex: 1, backgroundColor: withAlpha(colors.shadow, 0.55), justifyContent: 'flex-end' },
   sheet: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.canvas,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderBottomWidth: 0,
     paddingHorizontal: 24,
     paddingTop: 26,
     alignItems: 'center',
-    shadowColor: colors.inkDeep,
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: -8 },
     shadowOpacity: 0.14,
     shadowRadius: 40,
@@ -143,7 +146,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     fontFamily: fonts.displayBold,
-    color: colors.surface,
+    color: colors.onAccent,
   },
   cancelBtn: {
     width: '100%',

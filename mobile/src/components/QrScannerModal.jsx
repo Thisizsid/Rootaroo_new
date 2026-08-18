@@ -87,7 +87,7 @@ export default function QrScannerModal({ visible, onClose, onScanned }) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.ink,
+    backgroundColor: colors.surfaceRaised,
   },
   permissionWrap: {
     flex: 1,
@@ -99,14 +99,14 @@ const styles = StyleSheet.create({
     fontFamily: fonts.displayBold,
     fontSize: 18,
     fontWeight: '700',
-    color: colors.surface,
+    color: colors.onAccent,
     marginBottom: 8,
     textAlign: 'center',
   },
   permissionText: {
     fontFamily: fonts.body,
     fontSize: 14,
-    color: colors.surfaceMuted || colors.surface,
+    color: colors.onAccent,
     textAlign: 'center',
     marginBottom: 24,
   },
@@ -122,7 +122,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     fontFamily: fonts.bodySemiBold,
-    color: colors.surface,
+    color: colors.onAccent,
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
     fontFamily: fonts.body,
     fontSize: 13,
-    color: colors.surface,
+    color: colors.onAccent,
     textAlign: 'center',
     paddingHorizontal: 40,
   },
@@ -157,6 +157,6 @@ const styles = StyleSheet.create({
   closeIcon: {
     fontSize: 16,
     fontWeight: '700',
-    color: colors.surface,
+    color: colors.onAccent,
   },
 });

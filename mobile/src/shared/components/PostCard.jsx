@@ -47,7 +47,7 @@ function parseFeeling(content) {
 
 function HeartIcon({ filled, size = 24 }) {
   return (
-    <Text style={{ fontSize: size, color: filled ? colors.dangerHeart : colors.legacyNavy, lineHeight: size + 2 }}>
+    <Text style={{ fontSize: size, color: filled ? colors.dangerHeart : colors.ink, lineHeight: size + 2 }}>
       {filled ? '♥' : '♡'}
     </Text>
   );
@@ -64,7 +64,7 @@ function CommentIcon({ size = 22 }) {
           height: size * 0.7,
           borderRadius: size * 0.28,
           borderWidth: 1.6,
-          borderColor: colors.legacyNavy,
+          borderColor: colors.ink,
         }}
       />
       <View
@@ -79,7 +79,7 @@ function CommentIcon({ size = 22 }) {
           borderTopWidth: 5,
           borderLeftColor: 'transparent',
           borderRightColor: 'transparent',
-          borderTopColor: colors.legacyNavy,
+          borderTopColor: colors.ink,
         }}
       />
     </View>
@@ -319,7 +319,7 @@ const PostCard = memo(function PostCard({
                     <Image source={{ uri }} style={styles.viewerMedia} resizeMode="contain" />
                   )
                 ) : (
-                  <Text style={{ color: colors.surface }}>Unavailable</Text>
+                  <Text style={{ color: colors.onAccent }}>Unavailable</Text>
                 )}
               </View>
             );
@@ -359,18 +359,18 @@ const styles = StyleSheet.create({
   authorName: {
     fontSize: 14,
     fontWeight: '700',
-    color: colors.legacyNavy,
+    color: colors.ink,
     flexShrink: 1,
   },
   feelingInline: {
     fontSize: 13,
-    color: withAlpha(colors.legacyNavy, 0.45),
+    color: withAlpha(colors.ink, 0.45),
     marginLeft: 4,
     flexShrink: 1,
   },
   timestamp: {
     fontSize: 12,
-    color: withAlpha(colors.legacyNavy, 0.38),
+    color: withAlpha(colors.ink, 0.38),
     marginTop: 1,
   },
   pinChip: {
@@ -392,7 +392,7 @@ const styles = StyleSheet.create({
   moreDots: {
     fontSize: 18,
     fontWeight: '700',
-    color: withAlpha(colors.legacyNavy, 0.35),
+    color: withAlpha(colors.ink, 0.35),
     letterSpacing: 1,
   },
 
@@ -419,7 +419,7 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 2.5,
-    backgroundColor: withAlpha(colors.legacyNavy, 0.18),
+    backgroundColor: withAlpha(colors.ink, 0.18),
   },
   dotOn: {
     backgroundColor: colors.legacyGold,
@@ -429,13 +429,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 12,
     right: 12,
-    backgroundColor: withAlpha(colors.legacyNavy, 0.55),
+    backgroundColor: withAlpha(colors.shadow, 0.55),
     borderRadius: 10,
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
   countBadgeText: {
-    color: colors.surface,
+    color: colors.onAccent,
     fontSize: 11,
     fontWeight: '700',
   },
@@ -463,11 +463,11 @@ const styles = StyleSheet.create({
   actionCount: {
     fontSize: 13,
     fontWeight: '700',
-    color: colors.legacyNavy,
+    color: colors.ink,
   },
   actionSep: {
     height: 1,
-    backgroundColor: withAlpha(colors.legacyNavy, 0.08),
+    backgroundColor: withAlpha(colors.ink, 0.08),
     marginHorizontal: 22,
     marginTop: 10,
   },
@@ -478,7 +478,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     lineHeight: 22,
-    color: colors.legacyNavy,
+    color: colors.ink,
   },
   captionBlock: {
     paddingHorizontal: 22,
@@ -488,7 +488,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     lineHeight: 20,
-    color: colors.legacyNavy,
+    color: colors.ink,
     paddingHorizontal: 5,
     paddingBottom : 12,
   },
@@ -518,7 +518,7 @@ const styles = StyleSheet.create({
   },
   subHeaderText: {
     fontSize: 12,
-    color: withAlpha(colors.legacyNavy, 0.45),
+    color: withAlpha(colors.ink, 0.45),
   },
 
   /* ── Full-screen media viewer ────────────────── */
@@ -540,12 +540,12 @@ const styles = StyleSheet.create({
   },
   viewerClose: {
     fontSize: 16,
-    color: colors.surface,
+    color: colors.onAccent,
     fontWeight: '600',
   },
   viewerDots: {
     fontSize: 16,
-    color: colors.surface,
+    color: colors.onAccent,
     fontWeight: '700',
     letterSpacing: 2,
   },

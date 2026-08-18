@@ -55,6 +55,7 @@ import { formatFileSize } from '../shared/utils/format';
 import * as ScreenCapture from 'expo-screen-capture';
 import { colors, fonts, withAlpha } from '../shared/theme';
 import ConfirmSheet from '../components/ConfirmSheet';
+import { KeyboardAvoider } from '../shared/components/KeyboardAware';
 function categorize(mimeType) {
   if (mimeType.startsWith('image/')) return 'image';
   if (mimeType === 'application/pdf') return 'pdf';
@@ -406,7 +407,7 @@ export default function VaultViewerScreen({ navigation, route }) {
   if (loading || decrypting) {
     return (
       <View style={[styles.root, styles.center]}>
-        <StatusBar barStyle="light-content" backgroundColor={colors.inkDeep} />
+        <StatusBar barStyle="light-content" backgroundColor={colors.shadow} />
         <ActivityIndicator size="large" color={colors.gold} />
         <Text style={styles.statusText}>{statusMessage}</Text>
       </View>
@@ -492,7 +493,7 @@ export default function VaultViewerScreen({ navigation, route }) {
               activeOpacity={0.85}
             >
               {exporting ? (
-                <ActivityIndicator size="small" color={colors.surface} />
+                <ActivityIndicator size="small" color={colors.onAccent} />
               ) : (
                 <Text style={styles.openBtnText}>Open with another app</Text>
               )}
@@ -503,7 +504,7 @@ export default function VaultViewerScreen({ navigation, route }) {
   };
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.inkDeep} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.shadow} />
 
       {/* Content — always full-bleed, header/footer float above it */}
       <View style={styles.content}>{renderContent()}</View>
@@ -616,8 +617,10 @@ export default function VaultViewerScreen({ navigation, route }) {
         transparent
         animationType="fade"
         onRequestClose={() => setRenaming(false)}
+        statusBarTranslucent
+        navigationBarTranslucent
       >
-        <View style={styles.renameOverlay}>
+        <KeyboardAvoider style={styles.renameOverlay}>
           <View style={styles.renameCard}>
             <Text style={styles.renameTitle}>Rename document</Text>
             <TextInput
@@ -646,7 +649,7 @@ export default function VaultViewerScreen({ navigation, route }) {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoider>
       </Modal>
 
       {/* Delete confirmation */}
@@ -665,7 +668,7 @@ export default function VaultViewerScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.inkDeep,
+    backgroundColor: colors.surfaceRaised,
   },
   center: {
     justifyContent: 'center',
@@ -692,7 +695,7 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 16,
     paddingBottom: 10,
-    backgroundColor: withAlpha(colors.inkDeep, 0.72),
+    backgroundColor: withAlpha(colors.shadow, 0.72),
   },
   headerBtn: {
     width: 32,
@@ -703,20 +706,20 @@ const styles = StyleSheet.create({
   backIcon: {
     fontSize: 20,
     fontWeight: '700',
-    color: colors.surface,
+    color: colors.onAccent,
     lineHeight: 20,
   },
   optionsIcon: {
     fontSize: 20,
     fontWeight: '700',
-    color: colors.surface,
+    color: colors.onAccent,
     lineHeight: 20,
   },
   headerTitle: {
     flex: 1,
     fontSize: 15,
     fontFamily: fonts.displayBold,
-    color: colors.surface,
+    color: colors.onAccent,
   },
   footer: {
     position: 'absolute',
@@ -730,7 +733,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: fonts.mono,
     color: colors.gold,
-    backgroundColor: withAlpha(colors.inkDeep, 0.72),
+    backgroundColor: withAlpha(colors.shadow, 0.72),
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 9999,
@@ -741,7 +744,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 32,
     paddingHorizontal: 24,
-    backgroundColor: colors.inkSoft,
+    backgroundColor: colors.surfaceRaised,
     borderRadius: 20,
   },
   fileIcon: {
@@ -751,7 +754,7 @@ const styles = StyleSheet.create({
   fileCardTitle: {
     fontSize: 15,
     fontFamily: fonts.displayBold,
-    color: colors.surface,
+    color: colors.onAccent,
     textAlign: 'center',
     marginBottom: 6,
   },
@@ -781,7 +784,7 @@ const styles = StyleSheet.create({
   openBtnText: {
     fontSize: 14,
     fontFamily: fonts.displayBold,
-    color: colors.surface,
+    color: colors.onAccent,
   },
   playBtn: {
     marginTop: 16,
@@ -795,7 +798,7 @@ const styles = StyleSheet.create({
   playBtnText: {
     fontSize: 14,
     fontFamily: fonts.displayBold,
-    color: colors.surface,
+    color: colors.onAccent,
   },
   // ── Options action sheet ──
   overlay: {
@@ -804,7 +807,7 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: withAlpha(colors.inkDeep, 0.55),
+    backgroundColor: withAlpha(colors.shadow, 0.55),
   },
   sheet: {
     backgroundColor: colors.surface,
@@ -812,7 +815,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 32,
     paddingTop: 14,
     paddingHorizontal: 24,
-    shadowColor: colors.inkDeep,
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: -8,
@@ -846,7 +849,7 @@ const styles = StyleSheet.create({
   // ── Rename modal ──
   renameOverlay: {
     flex: 1,
-    backgroundColor: withAlpha(colors.inkDeep, 0.55),
+    backgroundColor: withAlpha(colors.shadow, 0.55),
     justifyContent: 'center',
     paddingHorizontal: 32,
   },
@@ -896,7 +899,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gold,
   },
   renameSaveText: {
-    color: colors.surface,
+    color: colors.onAccent,
     fontSize: 14,
     fontFamily: fonts.displayBold,
   },

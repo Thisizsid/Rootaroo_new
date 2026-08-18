@@ -38,6 +38,7 @@ import { getPrivateKey } from '../shared/crypto/secureKeyStore';
 import { verifyPublicKey } from '../shared/crypto/keyPinStore';
 import { setupVaultKeys } from '../shared/crypto/vaultSetup';
 import { colors, fonts, withAlpha } from '../shared/theme';
+import { KeyboardAvoider } from '../shared/components/KeyboardAware';
 const MAX_SIZE = 20 * 1024 * 1024;
 
 /** Normalize a document-picker or image-picker asset into { uri, name, mimeType, size }. */
@@ -303,7 +304,7 @@ export default function VaultUploadScreen({ navigation }) {
   if (showBackupChoice) {
     return (
       <View style={[styles.root, styles.backupScreen]}>
-        <StatusBar barStyle="light-content" backgroundColor={colors.inkDeep} />
+        <StatusBar barStyle="light-content" backgroundColor={colors.shadow} />
         <View style={styles.backupContent}>
           <Text style={styles.backupTitle}>Vault Key Backup</Text>
           <Text style={styles.backupSubtitle}>
@@ -356,7 +357,7 @@ export default function VaultUploadScreen({ navigation }) {
   if (keyState === 'checking') {
     return (
       <View style={[styles.root, styles.checkingScreen]}>
-        <StatusBar barStyle="light-content" backgroundColor={colors.inkDeep} />
+        <StatusBar barStyle="light-content" backgroundColor={colors.shadow} />
         <ActivityIndicator size="large" color={colors.gold} />
       </View>
     );
@@ -470,8 +471,10 @@ export default function VaultUploadScreen({ navigation }) {
         transparent
         animationType="fade"
         onRequestClose={() => closeNamePrompt(namePrompt.value)}
+        statusBarTranslucent
+        navigationBarTranslucent
       >
-        <View style={styles.namePromptOverlay}>
+        <KeyboardAvoider style={styles.namePromptOverlay}>
           <View style={styles.namePromptCard}>
             <Text style={styles.namePromptTitle}>Name this document</Text>
             <TextInput
@@ -500,7 +503,7 @@ export default function VaultUploadScreen({ navigation }) {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoider>
       </Modal>
     </View>
   );
@@ -512,7 +515,7 @@ const styles = StyleSheet.create({
   // ── Overlay + sheet (SCREEN 29) ──
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: withAlpha(colors.inkDeep, 0.55),
+    backgroundColor: withAlpha(colors.shadow, 0.55),
   },
   sheet: {
     position: 'absolute',
@@ -524,7 +527,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 32,
     paddingTop: 14,
     paddingHorizontal: 24,
-    shadowColor: colors.inkDeep,
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: -8,
@@ -591,7 +594,7 @@ const styles = StyleSheet.create({
   },
   // ── Backup choice (dark) ──
   backupScreen: {
-    backgroundColor: colors.inkDeep,
+    backgroundColor: colors.surfaceRaised,
   },
   backupContent: {
     flex: 1,
@@ -601,7 +604,7 @@ const styles = StyleSheet.create({
   backupTitle: {
     fontSize: 22,
     fontFamily: fonts.displayBold,
-    color: colors.surface,
+    color: colors.onAccent,
     marginBottom: 8,
   },
   backupSubtitle: {
@@ -612,7 +615,7 @@ const styles = StyleSheet.create({
     marginBottom: 22,
   },
   backupOption: {
-    backgroundColor: colors.inkSoft,
+    backgroundColor: colors.surfaceRaised,
     borderWidth: 1,
     borderColor: 'transparent',
     borderRadius: 18,
@@ -625,7 +628,7 @@ const styles = StyleSheet.create({
   backupOptionTitle: {
     fontSize: 15,
     fontFamily: fonts.displayBold,
-    color: colors.surface,
+    color: colors.onAccent,
     marginBottom: 8,
   },
   backupOptionDesc: {
@@ -645,14 +648,14 @@ const styles = StyleSheet.create({
   },
   // ── Checking (dark) ──
   checkingScreen: {
-    backgroundColor: colors.inkDeep,
+    backgroundColor: colors.surfaceRaised,
     justifyContent: 'center',
     alignItems: 'center',
   },
   // ── Name this document ──
   namePromptOverlay: {
     flex: 1,
-    backgroundColor: withAlpha(colors.inkDeep, 0.55),
+    backgroundColor: withAlpha(colors.shadow, 0.55),
     justifyContent: 'center',
     paddingHorizontal: 32,
   },
@@ -702,7 +705,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gold,
   },
   namePromptSaveText: {
-    color: colors.surface,
+    color: colors.onAccent,
     fontSize: 14,
     fontFamily: fonts.displayBold,
   },

@@ -219,7 +219,7 @@ export default function TaskListScreen({ navigation }) {
         },
       ]}
     >
-      <StatusBar barStyle="dark-content" backgroundColor={colors.canvas} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.canvas} />
 
       {/* ── Header: title + add task link (SCREEN 16) ── */}
       <View style={styles.header}>

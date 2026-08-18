@@ -1,135 +1,157 @@
 /**
- * Rootaroo design tokens — extracted from design/screenshots/rootaroo-design/
- * 01-Design-System.html (warm family-first language).
+ * Rootaroo design tokens — Design System Dark.
  *
- * Palette roles:
- *  - Ink ramp: dark neutral text / deep surfaces (#1B1E24 .. #2A2E33)
- *  - Canvas: warm cream backgrounds (#F3F1EC)
- *  - Gold ramp: brand accent, action fills, highlights
- *  - Semantic: danger terracotta, success sage, info slate
+ * THE SINGLE SOURCE OF TRUTH. Every colour in the app resolves here; changing a
+ * value in this file changes that colour everywhere.
+ *
+ * ── The language ────────────────────────────────────────────────────────────
+ * A deep navy ambient field. Translucent glass surfaces float on it, defined by
+ * thin specular rims rather than hard borders. One honey accent, used only
+ * where it is earned. Typography carries the hierarchy, not chrome.
+ *
+ * ── Reading this file ───────────────────────────────────────────────────────
+ * Token NAMES are historical (they were coined for the old cream/ink theme) but
+ * their ROLES are stable and are what the app depends on:
+ *
+ *   canvas*  → the field a screen sits on          (darkest)
+ *   surface* → a card/sheet floating on the field  (translucent glass)
+ *   ink*     → PRIMARY TEXT (not a fill — see note)
+ *   text*    → the secondary/tertiary text ramp
+ *   border   → hairline rims and dividers
+ *   gold*    → the honey accent
+ *   onAccent → text/icons sitting ON an accent or dark fill (always light)
+ *   shadow   → a fixed near-black; never inverts
+ *
+ * NOTE ON `ink`: in the light theme it meant "dark text on light". It is now
+ * light text on dark. It is a TEXT token in both. Sites that used it as a dark
+ * *fill* were migrated to `surfaceRaised`, and shadow sites to `shadow`, so the
+ * role stayed pure through the flip.
  */
 export const colors = {
-  /* ---- Brand ---- */
-  gold: '#B88A3E',
-  goldSoft: '#D9B87A',
-  goldDeep: '#96742F',
-  goldLight: '#F5E6C8',
+  /* ---- Brand: the honey accent ---- */
+  gold: '#E0B563',
+  goldSoft: '#F0CB86',
+  goldDeep: '#E0B563',
+  goldLight: '#FFE7BC',
 
-  /* ---- Ink (text + dark surfaces) ---- */
-  ink: '#2A2E33',
-  inkSoft: '#242830',
-  inkDeep: '#1B1E24',
-  inkMuted: '#45566B',
+  /* ---- Ink ramp — PRIMARY TEXT on the dark field (bright → dim) ---- */
+  ink: '#F2F5FA',
+  inkSoft: '#EAEFF7',
+  inkDeep: '#DCE4F0',
+  inkMuted: '#93A2B8',
 
-  /* ---- Canvas / surfaces ---- */
-  canvas: '#F3F1EC',
-  canvasElevated: '#ECEAE5',
-  surface: '#FFFFFF',
-  surfaceWarm: '#EFEAE1',
-  surfaceDark: '#E3E1DB',
+  /* ---- Canvas: the ambient navy field ---- */
+  canvas: '#0B1220',
+  canvasElevated: '#101A2E',
+  /* Glass: translucent white over the field. Reads as a lit pane, not a slab. */
+  surface: 'rgba(255, 255, 255, 0.062)',
+  surfaceWarm: 'rgba(255, 255, 255, 0.05)',
+  surfaceDark: 'rgba(255, 255, 255, 0.035)',
+  /* Opaque raised surface — for fills that must stay solid (avatars, sheets). */
+  surfaceRaised: '#16243F',
 
-  /* ---- Neutrals ---- */
-  textSecondary: '#757A80',
-  textMuted: '#A6ABB0',
-  textFaint: '#9CA3AC',
-  /* Dark-theme (vault) muted text — from 05-Bills-Vault.html card meta */
-  textMutedDark: '#7A828C',
-  border: '#E3E1DB',
-  borderCool: '#E1E6EA',
-  divider: '#D8DADC',
-  skeleton: '#E1E6EA',
+  /* ---- Neutrals: the secondary text ramp + rims ---- */
+  textSecondary: '#8A99B0',
+  textMuted: '#6C7A90',
+  textFaint: '#5A6880',
+  textMutedDark: '#7F8FA8',
+  border: 'rgba(255, 255, 255, 0.14)',
+  borderCool: 'rgba(255, 255, 255, 0.10)',
+  divider: 'rgba(255, 255, 255, 0.10)',
+  skeleton: 'rgba(255, 255, 255, 0.08)',
 
-  /* ---- Semantic ---- */
-  danger: '#B54B3A',
-  dangerDark: '#5C2B2E',
-  dangerSoft: '#2A1215',
-  success: '#6B8F5A',
-  successSoft: '#7A8871',
-  info: '#5A6B7D',
-  infoSoft: '#4A5A6B',
+  /* ---- Semantic (tuned for legibility on navy) ---- */
+  danger: '#E08876',
+  dangerDark: '#C56A57',
+  dangerSoft: 'rgba(224, 136, 118, 0.14)',
+  success: '#7FB07A',
+  successSoft: '#6F9C6A',
+  info: '#93A2B8',
+  infoSoft: '#7F8FA8',
 
-  /* ---- Splash (original flat dark background + illustrated mark) ---- */
-  splashBg: '#1B1E24',
+  /* ---- Fixed absolutes — these never invert ---- */
+  /* Text/icons sitting on an accent fill or a dark surface. */
+  onAccent: '#FFFFFF',
+  /* Shadow colour. Stays near-black so elevation reads on a dark field. */
+  shadow: '#03070F',
+  black: '#000000',
+  white: '#FFFFFF',
+
+  /* ---- Splash ---- */
+  splashBg: '#06090F',
   splashMarkFill: '#33241A',
   splashMarkRim: '#F0C878',
-  splashShadow: '#1A1108',
-
-  /* ---- RootarooKangarooAnimation (shared: SplashScreen + ReadyScreen) ---- */
+  splashShadow: '#03070F',
   splashKangarooTail: '#333944',
   splashKangarooBody: '#3A3F48',
   splashDot: '#C79A4B',
 
-  /* ---- Warm UI (from design/auth-designs/rootaro_signup_*.html) ---- */
-  bgApp: '#EDEAE2',
-  textPrimary: '#1E1B16',
-  textSecondaryWarm: '#7A756A',
-  labelWarm: '#4A463D',
-  errorWarm: '#B3402A',
-  errorBg: '#FBF4F2',
-  fieldBorder: '#D8D3C7',
-  fieldFocus: '#A79E8A',
-  placeholderWarm: '#B7B2A5',
-  btnDisabledBg: '#DEDAD0',
-  btnDisabledText: '#A6A196',
-  /* Active/CTA gold from rootaro_signup_valid.html */
-  goldWarm: '#B4812E',
-  goldWarmDark: '#A3762A',
-  goldTint: '#FBF3E6',
+  /* ---- Auth / signup surfaces ---- */
+  bgApp: '#0B1220',
+  textPrimary: '#F2F5FA',
+  textSecondaryWarm: '#8A99B0',
+  labelWarm: '#93A2B8',
+  errorWarm: '#E08876',
+  errorBg: 'rgba(224, 136, 118, 0.10)',
+  fieldBorder: 'rgba(255, 255, 255, 0.14)',
+  fieldFocus: '#E0B563',
+  placeholderWarm: '#6C7A90',
+  btnDisabledBg: 'rgba(255, 255, 255, 0.10)',
+  btnDisabledText: '#6C7A90',
+  goldWarm: '#E0B563',
+  goldWarmDark: '#C98F3C',
+  goldTint: 'rgba(224, 181, 99, 0.14)',
 
-  /* ---- Legacy (pre-theme) ---- */
-  legacyNavy: '#0D0D1A',
-  legacyNavyTop: '#15152A',
-  legacyNavySoft: '#1A1A2A',
-  legacyGold: '#D4A017',
-  legacyGoldDark: '#8A6A0A',
+  /* ---- Legacy names, remapped onto the dark system ---- */
+  legacyNavy: '#F2F5FA',
+  legacyNavyTop: '#101A2E',
+  legacyNavySoft: '#16243F',
+  legacyGold: '#E0B563',
+  legacyGoldDark: '#C98F3C',
 
-  /* ---- Absolutes ---- */
-  black: '#000000',
-  white: '#FFFFFF',
-
-  /* ---- Canvas variants (screen-specific warm backgrounds) ---- */
-  canvasSoft: '#F0EDE6',
-  canvasDeep: '#E9E6E0',
-  canvasCool: '#F7F7FA',
-  canvasPaper: '#F5F2EB',
-  canvasGray: '#F3F4F6',
-  canvasIvory: '#F1EEE7',
-  canvasFlat: '#F0F0F0',
-  canvasWarm: '#F1EFEA',
-  canvasBright: '#F9F8F5',
+  /* ---- Canvas variants (screen-specific fields) ---- */
+  canvasSoft: '#0A1120',
+  canvasDeep: '#070C17',
+  canvasCool: '#0C1524',
+  canvasPaper: '#0B1220',
+  canvasGray: '#0E1727',
+  canvasIvory: '#0B1220',
+  canvasFlat: '#0A1120',
+  canvasWarm: '#0C1422',
+  canvasBright: '#101A2E',
 
   /* ---- Extra neutrals / grays ---- */
-  grayMuted: '#6B7280',
-  grayCool: '#9CA3AF',
-  grayDeep: '#374151',
-  inkCool: '#2C313C',
-  taupeDeep: '#6B6153',
+  grayMuted: '#8A99B0',
+  grayCool: '#6C7A90',
+  grayDeep: '#B6C2D4',
+  inkCool: '#DCE4F0',
+  taupeDeep: '#A7A090',
   taupeMid: '#8A8578',
-  sandLight: '#E5DECF',
-  sandPale: '#EFE9DD',
-  sandMuted: '#E4DFD2',
-  sandDim: '#D8D4CA',
+  sandLight: 'rgba(255, 255, 255, 0.05)',
+  sandPale: 'rgba(255, 255, 255, 0.06)',
+  sandMuted: 'rgba(255, 255, 255, 0.08)',
+  sandDim: 'rgba(255, 255, 255, 0.10)',
   avatarNavy: '#33507A',
 
-  /* ---- Extra semantic (danger/success variants used in specific screens) ---- */
-  dangerBright: '#DC3545',
-  dangerStrong: '#DC2626',
-  dangerVivid: '#D0342C',
-  dangerDeep2: '#B91C1C',
-  dangerHeart: '#C0392B',
-  successDeep: '#5B8F6C',
-  successBright: '#22C55E',
+  /* ---- Extra semantic variants ---- */
+  dangerBright: '#E08876',
+  dangerStrong: '#E08876',
+  dangerVivid: '#E5806B',
+  dangerDeep2: '#C56A57',
+  dangerHeart: '#E08876',
+  successDeep: '#7FB07A',
+  successBright: '#8CC486',
   coralSoft: '#E8917F',
-  blushPale: '#F5E3DE',
+  blushPale: 'rgba(232, 145, 127, 0.14)',
   blushDeep: '#E8B0A2',
-  sagePale: '#E8F0E4',
-  amberPale: '#FEF3C7',
+  sagePale: 'rgba(127, 176, 122, 0.14)',
+  amberPale: 'rgba(224, 181, 99, 0.16)',
   goldPale: '#F0D9A8',
-  tanPale: '#F0DCC8',
-  rustDeep: '#B8632F',
-  brownDeep: '#6B5738',
+  tanPale: '#D9BFA6',
+  rustDeep: '#C97A45',
+  brownDeep: '#A08A63',
 
-  /* ---- Avatar / initials pastel palette (used across member-list screens) ---- */
+  /* ---- Avatar / initials pastels (legible on navy) ---- */
   avatarSage: '#A8C8A0',
   avatarSky: '#A0B8D4',
   avatarLilac: '#C4A0D4',
@@ -143,12 +165,11 @@ export const colors = {
   avatarMauve: '#A888A0',
 
   /* ---- Overlay-only bases (used exclusively via withAlpha()) ---- */
-  overlaySlate: '#2B3547',
-  overlayInk: '#0F172B',
+  overlaySlate: '#03070F',
+  overlayInk: '#03070F',
   overlayCream: '#EFE3D3',
 
-  /* ═══ Night surfaces — dark glass theme (Dashboard) ═══ */
-  /* Deep navy field the frosted cards float on. */
+  /* ═══ Night surfaces — the ambient field the glass floats on ═══ */
   navyDeep: '#0A1120',
   navyBase: '#0B1220',
   navyDark: '#070C17',
@@ -179,10 +200,16 @@ export const colors = {
 };
 
 /**
- * Apply an alpha channel to a `#RRGGBB` token, e.g. withAlpha(colors.inkDeep, 0.55).
+ * Apply an alpha channel to a `#RRGGBB` token, e.g. withAlpha(colors.shadow, 0.55).
  * Keeps every translucent overlay/scrim sourced from the same token as its opaque use.
+ *
+ * Tokens that are ALREADY `rgba(...)` (the glass fills) cannot be re-alpha'd —
+ * pass the base you want tinted instead (e.g. colors.white).
  */
 export function withAlpha(hex, alpha) {
+  // Glass tokens are already rgba(); re-alpha'ing them would yield NaN and RN
+  // would silently drop the colour. Return them untouched instead.
+  if (typeof hex !== 'string' || !hex.startsWith('#')) return hex;
   const clean = hex.replace('#', '');
   const r = parseInt(clean.substring(0, 2), 16);
   const g = parseInt(clean.substring(2, 4), 16);

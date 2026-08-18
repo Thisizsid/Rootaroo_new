@@ -14,6 +14,7 @@ import {
 import { useAuthStore } from '../shared/store/authStore';
 import { authApi } from '../shared/api/auth';
 import { colors, withAlpha } from '../shared/theme';
+import { KeyboardAvoider, keyboardScrollProps } from '../shared/components/KeyboardAware';
 export default function AccountDeletionScreen({ navigation }) {
   const logout = useAuthStore((s) => s.logout);
   const [password, setPassword] = useState('');
@@ -98,8 +99,12 @@ export default function AccountDeletionScreen({ navigation }) {
   }
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.canvasSoft} />
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+      <StatusBar barStyle="light-content" backgroundColor={colors.canvasSoft} />
+      <KeyboardAvoider>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        {...keyboardScrollProps}
+      >
         {step === 'confirm' && (
           <>
             <Text style={styles.dangerIcon}>{'\u26A0\uFE0F'}</Text>
@@ -127,7 +132,7 @@ export default function AccountDeletionScreen({ navigation }) {
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color={colors.surface} />
+                <ActivityIndicator color={colors.onAccent} />
               ) : (
                 <Text style={styles.dangerText}>SCHEDULE DELETION</Text>
               )}
@@ -171,6 +176,7 @@ export default function AccountDeletionScreen({ navigation }) {
           </>
         )}
       </ScrollView>
+      </KeyboardAvoider>
     </View>
   );
 }
@@ -282,7 +288,7 @@ const styles = StyleSheet.create({
   dangerText: {
     fontSize: 14,
     fontWeight: '700',
-    color: colors.surface,
+    color: colors.onAccent,
     letterSpacing: 0.8,
   },
   linkBtn: {

@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { authApi } from '../shared/api/auth';
 import { colors, fonts } from '../shared/theme';
+import { KEYBOARD_BEHAVIOR } from '../shared/components/KeyboardAware';
 const OTP_LENGTH = 6;
 export default function ForgotPasswordScreen({ navigation }) {
   const [step, setStep] = useState('email');
@@ -119,10 +120,10 @@ export default function ForgotPasswordScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.bgApp} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.bgApp} />
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={KEYBOARD_BEHAVIOR}
       >
         <ScrollView
           contentContainerStyle={styles.scroll}
@@ -228,7 +229,7 @@ export default function ForgotPasswordScreen({ navigation }) {
                 disabled={loading}
               >
                 {loading ? (
-                  <ActivityIndicator color={colors.surface} />
+                  <ActivityIndicator color={colors.onAccent} />
                 ) : (
                   <Text style={styles.primaryText}>Send reset link</Text>
                 )}
@@ -269,7 +270,7 @@ export default function ForgotPasswordScreen({ navigation }) {
                 disabled={loading}
               >
                 {loading ? (
-                  <ActivityIndicator color={colors.surface} />
+                  <ActivityIndicator color={colors.onAccent} />
                 ) : (
                   <Text style={styles.primaryText}>Update password</Text>
                 )}
@@ -440,7 +441,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyBold,
     fontSize: 16,
     fontWeight: '700',
-    color: colors.surface,
+    color: colors.onAccent,
     letterSpacing: 0.2,
   },
   // Back to sign in — mockup .link-center: centered 14px w600 gold-dark, mt 16

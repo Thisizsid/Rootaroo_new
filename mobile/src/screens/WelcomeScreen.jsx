@@ -11,97 +11,17 @@ import {
   PanResponder,
   Dimensions,
 } from 'react-native';
-import Svg, { Path, Circle, Ellipse, Rect, G } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import HoppingKangarooMark from '../components/HoppingKangarooMark';
-import { colors, fonts, radius, withAlpha } from '../shared/theme';
+import LottieView from 'lottie-react-native';
+import { colors, fonts, radius } from '../shared/theme';
 const { width: W } = Dimensions.get('window');
-const BREATHE_DURATION = 3600; // mockup: breathe 3.6s
-const PULSE_DURATION = 2200; // mockup: softPulse 2.2s
 const AUTOPLAY_INTERVAL = 4200;
 const SLIDE_DURATION = 460; // eased forward/loop transition
 const SWIPE_THRESHOLD = W * 0.22;
 
 /* ------------------------------------------------------------------ */
-/* Shared: breathing wrapper + pulsing accent dots (Fabric-safe:       */
-/* static SVG paths + RN Animated.Views for anything animated).        */
-/* ------------------------------------------------------------------ */
-function useBreathe(duration = BREATHE_DURATION) {
-  const breathe = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(breathe, {
-          toValue: 1,
-          duration: duration / 2,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-        Animated.timing(breathe, {
-          toValue: 0,
-          duration: duration / 2,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [breathe, duration]);
-  return breathe.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: [1, 1.014, 1],
-  });
-}
-function PulsingDot({ xPct, yPct, r, color, delay = 0, boxW = 300, boxH = 210 }) {
-  const pulse = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.delay(delay),
-        Animated.timing(pulse, {
-          toValue: 1,
-          duration: PULSE_DURATION / 2,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulse, {
-          toValue: 0,
-          duration: PULSE_DURATION / 2,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [pulse, delay]);
-  const opacity = pulse.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: [1, 0.45, 1],
-  });
-  return (
-    <Animated.View
-      style={{
-        position: 'absolute',
-        left: `${(xPct / boxW) * 100}%`,
-        top: `${(yPct / boxH) * 100}%`,
-        width: r * 2,
-        height: r * 2,
-        marginLeft: -r,
-        marginTop: -r,
-        borderRadius: r,
-        backgroundColor: color,
-        opacity,
-      }}
-    />
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* SLIDE 1 — Family coordination: same hopping kangaroo mark + hop      */
-/* animation as the splash screen (mobile/src/components/               */
-/* HoppingKangarooMark.jsx), for a consistent brand moment.             */
+/* SLIDE 1 — Family coordination: same kangaroo.json Lottie animation   */
+/* as the splash screen, for a consistent brand moment.                 */
 /* ------------------------------------------------------------------ */
 function KangarooHero() {
   return (
@@ -113,186 +33,58 @@ function KangarooHero() {
         justifyContent: 'center',
       }}
     >
-      <HoppingKangarooMark size={132} color={colors.gold} />
+      <LottieView
+        source={require('../../assets/animations/kangaroo.json')}
+        autoPlay
+        loop
+        style={{ width: 176, height: 176 }}
+      />
     </View>
   );
 }
 
 /* ------------------------------------------------------------------ */
-/* SLIDE 2 — Harmonious organization: checklist + calendar card        */
+/* SLIDE 2 — Harmonious organization: todo.json Lottie animation        */
 /* ------------------------------------------------------------------ */
 function OrganizeHero() {
-  const scale = useBreathe();
-  return (
-    <Animated.View
-      style={{
-        width: '100%',
-        height: '100%',
-        transform: [
-          {
-            scale,
-          },
-        ],
-      }}
-    >
-      <Svg width="100%" height="100%" viewBox="0 0 300 210">
-        {/* Ground shadow */}
-        <Ellipse cx="150" cy="192" rx="80" ry="9" fill={withAlpha(colors.ink, 0.07)} />
-        {/* Checklist card */}
-        <Rect
-          x="78"
-          y="48"
-          width="144"
-          height="136"
-          rx="16"
-          fill={colors.surface}
-          stroke={colors.ink}
-          strokeWidth="2.5"
-        />
-        <Rect x="78" y="48" width="144" height="34" rx="16" fill={colors.gold} />
-        <Rect x="78" y="66" width="144" height="16" fill={colors.gold} />
-        {/* Checked rows */}
-        <Circle cx="104" cy="106" r="10" fill={colors.gold} />
-        <Path
-          d="M99 106 l4 4 l8 -8"
-          stroke={colors.surface}
-          strokeWidth="2.4"
-          fill="none"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <Rect x="122" y="101" width="82" height="10" rx="5" fill={colors.ink} opacity="0.85" />
-        <Circle cx="104" cy="136" r="10" fill="none" stroke={colors.ink} strokeWidth="2.4" />
-        <Rect x="122" y="131" width="66" height="10" rx="5" fill={colors.divider} />
-        <Circle cx="104" cy="166" r="10" fill="none" stroke={colors.ink} strokeWidth="2.4" />
-        <Rect x="122" y="161" width="74" height="10" rx="5" fill={colors.divider} />
-        {/* Small calendar peeking */}
-        <G transform="translate(232,140)">
-          <Rect
-            x="0"
-            y="0"
-            width="44"
-            height="48"
-            rx="8"
-            fill={colors.surface}
-            stroke={colors.ink}
-            strokeWidth="2.4"
-          />
-          <Rect x="0" y="0" width="44" height="14" rx="8" fill={colors.gold} />
-          <Circle cx="12" cy="26" r="3" fill={colors.gold} />
-          <Circle cx="22" cy="26" r="3" fill={colors.divider} />
-          <Circle cx="32" cy="26" r="3" fill={colors.divider} />
-          <Circle cx="12" cy="38" r="3" fill={colors.divider} />
-          <Circle cx="22" cy="38" r="3" fill={colors.divider} />
-        </G>
-      </Svg>
-      {/* Floating gold sparkles */}
-      <PulsingDot xPct={60} yPct={40} r={3} color={colors.gold} delay={0} />
-      <PulsingDot xPct={245} yPct={60} r={3.5} color={colors.gold} delay={400} />
-      <PulsingDot xPct={52} yPct={150} r={3} color={colors.goldSoft} delay={800} />
-    </Animated.View>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* SLIDE 3 — Private by design: shield + lock with pulsing aura        */
-/* ------------------------------------------------------------------ */
-function SecurityHero() {
-  const scale = useBreathe();
-  const aura = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(aura, {
-          toValue: 1,
-          duration: 2600,
-          easing: Easing.out(Easing.sin),
-          useNativeDriver: true,
-        }),
-        Animated.timing(aura, {
-          toValue: 0,
-          duration: 2600,
-          easing: Easing.in(Easing.sin),
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [aura]);
-  const auraScale = aura.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 1.35],
-  });
-  const auraOpacity = aura.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.5, 0],
-  });
   return (
     <View
       style={{
         width: '100%',
         height: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
       }}
     >
-      <Animated.View
-        pointerEvents="none"
-        style={{
-          position: 'absolute',
-          left: '50%',
-          top: '50%',
-          width: 150,
-          height: 170,
-          marginLeft: -75,
-          marginTop: -85,
-          borderRadius: 85,
-          borderWidth: 2,
-          borderColor: colors.gold,
-          opacity: auraOpacity,
-          transform: [
-            {
-              scale: auraScale,
-            },
-          ],
-        }}
+      <LottieView
+        source={require('../../assets/animations/todo.json')}
+        autoPlay
+        loop
+        style={{ width: 220, height: 220 }}
       />
-      <Animated.View
-        style={{
-          width: '100%',
-          height: '100%',
-          transform: [
-            {
-              scale,
-            },
-          ],
-        }}
-      >
-        <Svg width="100%" height="100%" viewBox="0 0 300 210">
-          {/* Ground shadow */}
-          <Ellipse cx="150" cy="192" rx="64" ry="9" fill={withAlpha(colors.ink, 0.07)} />
-          {/* Shield */}
-          <Path d="M150 42 L212 66 V118 Q212 164 150 186 Q88 164 88 118 V66 Z" fill={colors.gold} />
-          <Path
-            d="M150 54 L200 73 V118 Q200 156 150 175 Q100 156 100 118 V73 Z"
-            fill={colors.surface}
-          />
-          {/* Lock */}
-          <Path
-            d="M126 108 h48 v-8 a24 24 0 0 0 -48 0 z"
-            fill="none"
-            stroke={colors.ink}
-            strokeWidth="4"
-            strokeLinecap="round"
-          />
-          <Rect x="126" y="106" width="48" height="36" rx="8" fill={colors.ink} />
-          <Circle cx="150" cy="124" r="5" fill={colors.gold} />
-        </Svg>
-        {/* Keyhole sparkle */}
-        <PulsingDot xPct={150} yPct={124} r={2.5} color={colors.gold} delay={0} />
-        <PulsingDot xPct={110} yPct={60} r={3} color={colors.gold} delay={300} />
-        <PulsingDot xPct={195} yPct={55} r={3} color={colors.gold} delay={600} />
-        <PulsingDot xPct={90} yPct={150} r={3} color={colors.goldSoft} delay={900} />
-      </Animated.View>
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* SLIDE 3 — Private by design: Vault.json Lottie animation             */
+/* ------------------------------------------------------------------ */
+function SecurityHero() {
+  return (
+    <View
+      style={{
+        width: '100%',
+        height: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <LottieView
+        source={require('../../assets/animations/Vault.json')}
+        autoPlay
+        loop
+        style={{ width: 220, height: 220 }}
+      />
     </View>
   );
 }
@@ -402,7 +194,7 @@ export default function WelcomeScreen({ navigation }) {
         },
       ]}
     >
-      <StatusBar barStyle="dark-content" backgroundColor={colors.canvas} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.canvas} />
 
       {/* Hero carousel — eased slide-in-from-right / release-to-left transition */}
       <View style={styles.carousel} {...panResponder.panHandlers}>
@@ -587,7 +379,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.xl,
     padding: 22,
     marginBottom: 16,
-    shadowColor: colors.ink,
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: 10,
@@ -627,7 +419,7 @@ const styles = StyleSheet.create({
     width: 20,
     height: 6,
     borderRadius: 3,
-    backgroundColor: colors.ink,
+    backgroundColor: colors.surfaceRaised,
   },
   privacyPill: {
     alignSelf: 'center',
@@ -670,7 +462,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodySemiBold,
     fontSize: 15,
     lineHeight: 15,
-    color: colors.surface,
+    color: colors.onAccent,
   },
   existingLink: {
     fontFamily: fonts.bodyMedium,

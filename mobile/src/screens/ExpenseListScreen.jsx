@@ -181,7 +181,7 @@ export default function ExpenseListScreen({ navigation }) {
         },
       ]}
     >
-      <StatusBar barStyle="dark-content" backgroundColor={colors.canvas} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.canvas} />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -212,9 +212,9 @@ export default function ExpenseListScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* ── Balance card (glass) ── */}
+        {/* ── Balance card (Visa-style dark card) ── */}
         <LinearGradient
-          colors={[withAlpha(colors.white, 0.9), withAlpha(colors.overlayCream, 0.55)]}
+          colors={[colors.canvasElevated, colors.canvas]}
           start={{
             x: 0,
             y: 0,
@@ -226,7 +226,10 @@ export default function ExpenseListScreen({ navigation }) {
           style={styles.balanceCard}
         >
           <View style={styles.cardTop}>
-            <Text style={styles.familyLabel}>{familyName}</Text>
+            <View style={styles.chip}>
+              <View style={styles.chipLine} />
+              <View style={[styles.chipLine, styles.chipLineMid]} />
+            </View>
             <View style={styles.avatarStack}>
               {avatarMembers.map((m) => (
                 <Avatar
@@ -241,6 +244,7 @@ export default function ExpenseListScreen({ navigation }) {
               ))}
             </View>
           </View>
+          <Text style={styles.familyLabel}>{familyName}</Text>
           <Text style={styles.balanceAmount}>{balanceText}</Text>
           <Text
             style={[
@@ -414,34 +418,54 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyMedium,
     color: colors.goldDeep,
   },
-  // Balance card (SCREEN 22)
+  // Balance card (SCREEN 22) — Visa-style dark card
   balanceCard: {
     borderRadius: 28,
     padding: 24,
     marginTop: 8,
     marginBottom: 20,
-    shadowColor: colors.inkDeep,
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: 20,
     },
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.3,
     shadowRadius: 40,
     elevation: 8,
     borderWidth: 1,
-    borderColor: withAlpha(colors.white, 0.6),
+    borderColor: withAlpha(colors.gold, 0.3),
   },
   cardTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 22,
+    marginBottom: 26,
+  },
+  chip: {
+    width: 34,
+    height: 24,
+    borderRadius: 5,
+    backgroundColor: colors.goldSoft,
+    justifyContent: 'center',
+    gap: 4,
+    paddingHorizontal: 5,
+  },
+  chipLine: {
+    height: 1.5,
+    borderRadius: 1,
+    backgroundColor: withAlpha(colors.canvas, 0.35),
+  },
+  chipLineMid: {
+    width: '70%',
   },
   familyLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     fontFamily: fonts.bodySemiBold,
-    color: colors.ink,
+    color: colors.goldSoft,
+    textTransform: 'uppercase',
+    letterSpacing: 1.4,
+    marginBottom: 10,
   },
   avatarStack: {
     flexDirection: 'row',
@@ -455,13 +479,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginLeft: -8,
     borderWidth: 2,
-    borderColor: colors.surface,
+    borderColor: colors.canvasElevated,
   },
   balanceAmount: {
     fontSize: 46,
     fontWeight: '800',
     fontFamily: fonts.display,
-    color: colors.ink,
+    color: colors.onAccent,
     letterSpacing: -0.02,
     marginBottom: 6,
   },
@@ -475,7 +499,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     fontFamily: fonts.body,
-    color: colors.taupeDeep,
+    color: colors.textSecondary,
   },
   // Widgets (SCREEN 22)
   widgetRow: {
@@ -488,7 +512,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 14,
-    shadowColor: colors.inkDeep,
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: 1,

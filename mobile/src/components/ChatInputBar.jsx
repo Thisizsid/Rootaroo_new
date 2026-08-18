@@ -6,8 +6,6 @@ import {
   Text,
   StyleSheet,
   Keyboard,
-  Platform,
-  KeyboardAvoidingView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -99,15 +97,12 @@ export default function ChatInputBar({ onSend, replyTo, onDismissReply }) {
 
   const isDisabled = !text.trim() && !replyTo;
 
+  // No KeyboardAvoidingView here on purpose: ChatScreen already wraps this bar
+  // in one. Nesting a second avoider double-offsets the input once Android
+  // stops being a no-op under edge-to-edge.
   return (
-
-    <KeyboardAvoidingView
-      // style={styles.keyboardView}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 22}
-    >
-      <View style={[styles.wrapper, { paddingBottom: Math.max(insets.bottom, 0) }]}>
-        {replyTo && (
+    <View style={[styles.wrapper, { paddingBottom: Math.max(insets.bottom, 0) }]}>
+      {replyTo && (
           <ThreadedReplyPreview
             senderName={replyTo.senderName}
             content={replyTo.content}
@@ -139,8 +134,7 @@ export default function ChatInputBar({ onSend, replyTo, onDismissReply }) {
             </Text>
           </TouchableOpacity>
         </View>
-      </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -151,7 +145,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    marginBottom: 85
   },
   container: {
     flexDirection: 'row',
@@ -165,7 +158,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: colors.inkDeep,
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
@@ -181,7 +174,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     maxHeight: 100,
     color: colors.ink,
-    shadowColor: colors.inkDeep,
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 3,
@@ -205,7 +198,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   sendIconActive: {
-    color: colors.surface,
+    color: colors.onAccent,
   },
   sendIconDisabled: {
     color: colors.textMuted,

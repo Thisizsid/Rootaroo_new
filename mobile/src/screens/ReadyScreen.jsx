@@ -51,9 +51,9 @@ export default function ReadyScreen({ navigation }) {
           regardless of what the photo looks like underneath. */}
       <LinearGradient
         colors={[
-          withAlpha(colors.inkDeep, 0.05),
-          withAlpha(colors.inkDeep, 0.15),
-          withAlpha(colors.inkDeep, 0.78),
+          withAlpha(colors.shadow, 0.05),
+          withAlpha(colors.shadow, 0.15),
+          withAlpha(colors.shadow, 0.78),
         ]}
         locations={[0, 0.45, 1]}
         style={StyleSheet.absoluteFillObject}
@@ -90,7 +90,7 @@ export default function ReadyScreen({ navigation }) {
             activeOpacity={0.85}
           >
             {loading ? (
-              <ActivityIndicator color={colors.surface} />
+              <ActivityIndicator color={colors.onAccent} />
             ) : (
               <Text style={styles.ctaText}>Enter Rootaroo</Text>
             )}
@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
     lineHeight: 33,
     fontWeight: '800',
     letterSpacing: -0.4,
-    color: colors.surface,
+    color: colors.onAccent,
     textAlign: 'center',
     marginTop: 22,
     marginBottom: 8,
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
     fontSize: 14.5,
     lineHeight: 21,
     textAlign: 'center',
-    color: withAlpha(colors.surface, 0.85),
+    color: withAlpha(colors.white, 0.85),
   },
   cta: {
     width: '100%',
@@ -147,6 +147,6 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     fontWeight: '700',
     letterSpacing: 0.2,
-    color: colors.surface,
+    color: colors.onAccent,
   },
 });

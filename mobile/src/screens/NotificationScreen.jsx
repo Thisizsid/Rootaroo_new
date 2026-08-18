@@ -186,7 +186,7 @@ export default function NotificationScreen({ navigation }) {
         },
       ]}
     >
-      <StatusBar barStyle="dark-content" backgroundColor={colors.canvas} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.canvas} />
 
       {/* ── Header (SCREEN 41): centered title ── */}
       <View style={styles.header}>

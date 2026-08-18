@@ -114,7 +114,7 @@ export default function MoreScreen({ navigation }) {
         },
       ]}
     >
-      <StatusBar barStyle="dark-content" backgroundColor={colors.canvas} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.canvas} />
 
       <ScrollView
         style={styles.scroll}
@@ -187,8 +187,6 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: colors.canvas,
-    marginTop: 20,
-    marginBottom: 90,
     paddingHorizontal: 8,
   },
   scroll: {

@@ -38,7 +38,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 26,
   },
-  iconTileDark: { backgroundColor: colors.inkSoft },
+  iconTileDark: { backgroundColor: colors.surfaceRaised },
   title: {
     fontSize: 21,
     lineHeight: 27,
@@ -48,7 +48,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     textAlign: 'center',
   },
-  titleDark: { color: colors.surface },
+  titleDark: { color: colors.onAccent },
   subtitle: {
     fontSize: 14,
     lineHeight: 21,
@@ -75,6 +75,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     fontFamily: fonts.displayBold,
-    color: colors.surface,
+    color: colors.onAccent,
   },
 });

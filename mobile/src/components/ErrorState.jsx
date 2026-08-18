@@ -66,7 +66,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 26,
   },
-  iconTileDark: { backgroundColor: colors.inkSoft },
+  iconTileDark: { backgroundColor: colors.surfaceRaised },
   fallbackIcon: {
     fontSize: 28,
     fontWeight: '700',
@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     textAlign: 'center',
   },
-  titleDark: { color: colors.surface },
+  titleDark: { color: colors.onAccent },
   subtitle: {
     fontSize: 14,
     lineHeight: 21,
@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     fontFamily: fonts.displayBold,
-    color: colors.surface,
+    color: colors.onAccent,
   },
   secondaryBtn: {
     height: 54,
@@ -124,12 +124,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  secondaryBtnDark: { backgroundColor: colors.inkSoft, borderColor: colors.inkSoft },
+  secondaryBtnDark: { backgroundColor: colors.surfaceRaised, borderColor: colors.inkSoft },
   secondaryText: {
     fontSize: 15,
     fontWeight: '600',
     fontFamily: fonts.displayBold,
     color: colors.ink,
   },
-  secondaryTextDark: { color: colors.surface },
+  secondaryTextDark: { color: colors.onAccent },
 });

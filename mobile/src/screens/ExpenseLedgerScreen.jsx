@@ -17,6 +17,7 @@ import { householdApi } from '../shared/api/household';
 import { useAuthStore } from '../shared/store/authStore';
 import { colors, withAlpha } from '../shared/theme';
 import Avatar from '../components/Avatar';
+import { KeyboardAvoider } from '../shared/components/KeyboardAware';
 function getInitials(name) {
   return name
     .split(' ')
@@ -171,14 +172,14 @@ export default function ExpenseLedgerScreen({ navigation }) {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
+        <StatusBar barStyle="light-content" backgroundColor={colors.surface} />
         <ActivityIndicator size="large" color={colors.legacyGold} style={styles.loading} />
       </SafeAreaView>
     );
   }
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.surface} />
 
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -227,8 +228,10 @@ export default function ExpenseLedgerScreen({ navigation }) {
         animationType="slide"
         transparent
         onRequestClose={() => setShowSettleModal(false)}
+        statusBarTranslucent
+        navigationBarTranslucent
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoider style={styles.modalOverlay}>
           <View style={styles.modalSheet}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Record Settlement</Text>
@@ -325,7 +328,7 @@ export default function ExpenseLedgerScreen({ navigation }) {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoider>
       </Modal>
     </SafeAreaView>
   );
@@ -469,7 +472,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   settleButtonText: {
-    color: colors.surface,
+    color: colors.onAccent,
     fontSize: 13,
     fontWeight: '700',
   },
@@ -584,7 +587,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   saveButtonText: {
-    color: colors.surface,
+    color: colors.onAccent,
     fontSize: 15,
     fontWeight: '700',
   },

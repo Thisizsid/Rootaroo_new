@@ -76,6 +76,6 @@ const styles = StyleSheet.create({
   },
   avatarInitials: {
     fontWeight: '700',
-    color: colors.surface,
+    color: colors.onAccent,
   },
 });

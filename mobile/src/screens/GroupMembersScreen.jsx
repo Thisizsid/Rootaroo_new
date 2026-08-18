@@ -224,7 +224,7 @@ export default function GroupMembersScreen({ route }) {
             activeOpacity={0.7}
           >
             {busy ? (
-              <ActivityIndicator size="small" color={colors.surface} />
+              <ActivityIndicator size="small" color={colors.onAccent} />
             ) : (
               <Text style={styles.addBtnText}>Add</Text>
             )}
@@ -394,7 +394,7 @@ export default function GroupMembersScreen({ route }) {
                         activeOpacity={0.7}
                       >
                         {busy ? (
-                          <ActivityIndicator size="small" color={colors.surface} />
+                          <ActivityIndicator size="small" color={colors.onAccent} />
                         ) : (
                           <Text style={styles.addBtnText}>Add</Text>
                         )}
@@ -615,7 +615,7 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 15,
     fontWeight: '700',
-    color: colors.surface,
+    color: colors.onAccent,
   },
   rowContent: {
     flex: 1,
@@ -659,7 +659,7 @@ const styles = StyleSheet.create({
   addBtnText: {
     fontSize: 13,
     fontWeight: '700',
-    color: colors.surface,
+    color: colors.onAccent,
   },
   removeBtn: {
     backgroundColor: colors.surfaceWarm,

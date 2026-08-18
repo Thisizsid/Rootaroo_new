@@ -14,6 +14,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   FlatList,
+  ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { groceryApi } from '../shared/api/grocery';
@@ -25,6 +26,7 @@ import { format, addDays } from 'date-fns';
 import { colors, radius, fonts, withAlpha } from '../shared/theme';
 import ConfirmSheet from '../components/ConfirmSheet';
 import Avatar from '../components/Avatar';
+import { KEYBOARD_BEHAVIOR, keyboardScrollProps } from '../shared/components/KeyboardAware';
 
 // ─── Section type shared for both tabs ────────────────────────────────────
 
@@ -522,9 +524,9 @@ export default function GroceryListScreen({ navigation }) {
           paddingTop: insets.top,
         },
       ]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={KEYBOARD_BEHAVIOR}
     >
-      <StatusBar barStyle="dark-content" backgroundColor={colors.canvas} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.canvas} />
 
       {/* ── Header: back chevron + centered "Lists" (SCREEN 19/21) ── */}
       <View style={styles.header}>
@@ -596,21 +598,34 @@ export default function GroceryListScreen({ navigation }) {
         visible={showItemSheet}
         transparent
         animationType="slide"
+        /* RN Modals render in their own native window, which on Android does
+           not receive keyboard insets unless these are set — without them the
+           avoider below computes a zero offset and the sheet never lifts. */
+        statusBarTranslucent
+        navigationBarTranslucent
         onRequestClose={() => setShowItemSheet(false)}
       >
-        <View style={sheet.overlay}>
+        {/* The avoider is the full-screen root (mirrors CreateTaskScreen):
+            `height` shrinks this container so the flex-end sheet slides up.
+            When it sat on sheet.box instead, the box shrank in place. */}
+        <KeyboardAvoidingView style={sheet.overlay} behavior={KEYBOARD_BEHAVIOR}>
           <TouchableOpacity
             style={sheet.backdrop}
             activeOpacity={1}
             onPress={() => setShowItemSheet(false)}
           />
-          <KeyboardAvoidingView
-            style={sheet.box}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          >
+          <View style={sheet.box}>
             <View style={sheet.handle} />
             <Text style={sheet.title}>{sheetTitle}</Text>
 
+            {/* Fields + actions scroll as one block so every input stays
+                reachable once the keyboard shrinks the sheet. The handle and
+                title above stay pinned. */}
+            <ScrollView
+              style={sheet.scroll}
+              showsVerticalScrollIndicator={false}
+              {...keyboardScrollProps}
+            >
             <View style={styles.form}>
               {/* Item */}
               <Field label="Item">
@@ -753,7 +768,7 @@ export default function GroceryListScreen({ navigation }) {
               activeOpacity={0.85}
             >
               {saving ? (
-                <ActivityIndicator size="small" color={colors.surface} />
+                <ActivityIndicator size="small" color={colors.onAccent} />
               ) : (
                 <Text style={styles.saveBtnText}>Save changes</Text>
               )}
@@ -770,8 +785,9 @@ export default function GroceryListScreen({ navigation }) {
                 <Text style={styles.removeLinkText}>Remove item</Text>
               </TouchableOpacity>
             )}
-          </KeyboardAvoidingView>
-        </View>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* ── Assignee picker sheet ── */}
@@ -1011,7 +1027,7 @@ const styles = StyleSheet.create({
   checkmark: {
     fontSize: 11,
     fontWeight: '900',
-    color: colors.surface,
+    color: colors.onAccent,
     lineHeight: 13,
   },
   itemContent: {
@@ -1171,7 +1187,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     fontFamily: fonts.displayBold,
-    color: colors.surface,
+    color: colors.onAccent,
   },
   removeLink: {
     alignItems: 'center',
@@ -1195,16 +1211,27 @@ const sheet = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: withAlpha(colors.inkDeep, 0.55),
+    backgroundColor: withAlpha(colors.shadow, 0.55),
   },
   box: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.canvasElevated,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderBottomWidth: 0,
     paddingTop: 14,
     paddingHorizontal: 24,
     paddingBottom: 40,
-    maxHeight: '90%',
+    /* Definite height (not maxHeight) is what makes the scroller work — it
+       gives sheet.scroll's `flex: 1` a bounded box to fill, so content taller
+       than the sheet actually overflows and scrolls. With `maxHeight` the box
+       just sized to its content and there was never anything to scroll.
+       Mirrors CreateTaskScreen's styles.sheet. */
+    height: '85%',
+  },
+  scroll: {
+    flex: 1,
   },
   handle: {
     width: 40,

@@ -6,7 +6,6 @@ import {
   TextInput,
   TouchableOpacity,
   StatusBar,
-  KeyboardAvoidingView,
   Platform,
   Alert,
   ActivityIndicator,
@@ -15,6 +14,7 @@ import Svg, { Path } from 'react-native-svg';
 import { authApi } from '../shared/api/auth';
 import { updateSignupProgress } from '../shared/store/signupProgress';
 import { colors, fonts } from '../shared/theme';
+import { KeyboardAwareScrollView } from '../shared/components/KeyboardAware';
 const OTP_LENGTH = 6;
 const RESEND_COOLDOWN = 30; // seconds
 
@@ -124,12 +124,8 @@ export default function PhoneVerificationScreen({ navigation, route }) {
   const otpFilled = otp.every((d) => d !== '');
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.bgApp} />
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <View style={styles.inner}>
+      <StatusBar barStyle="light-content" backgroundColor={colors.bgApp} />
+      <KeyboardAwareScrollView contentContainerStyle={styles.inner}>
           {/* Top bar: back chevron + 7-segment progress */}
           <View style={styles.topbar}>
             <TouchableOpacity
@@ -272,8 +268,7 @@ export default function PhoneVerificationScreen({ navigation, route }) {
               </View>
             </>
           )}
-        </View>
-      </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
     </View>
   );
 }
@@ -282,11 +277,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bgApp,
   },
-  flex: {
-    flex: 1,
-  },
   inner: {
-    flex: 1,
+    flexGrow: 1,
     paddingTop: Platform.OS === 'ios' ? 52 : 36,
     paddingHorizontal: 24,
     paddingBottom: 36,
@@ -316,7 +308,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceDark,
   },
   segOn: {
-    backgroundColor: colors.textPrimary,
+    backgroundColor: colors.surfaceRaised,
   },
   // Verifying state
   verifyCenter: {
@@ -444,7 +436,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.2,
-    color: colors.surface,
+    color: colors.onAccent,
   },
   // Change number
   changeBtn: {

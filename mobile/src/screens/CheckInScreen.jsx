@@ -34,6 +34,7 @@ import { useAuthStore } from '../shared/store/authStore';
 import { colors, fonts, withAlpha } from '../shared/theme';
 import { haversineDistanceKm, formatDistance } from '../shared/utils/geo';
 import Avatar from '../components/Avatar';
+import { KeyboardAvoider } from '../shared/components/KeyboardAware';
 const PLACE_ICON_EMOJI = {
   home: '⌂',
   office: '💼',
@@ -555,7 +556,7 @@ export default function CheckInScreen({ navigation }) {
   if (success) {
     return (
       <View style={styles.root}>
-        <StatusBar barStyle="dark-content" backgroundColor={colors.canvas} />
+        <StatusBar barStyle="light-content" backgroundColor={colors.canvas} />
         <View
           style={[
             styles.container,
@@ -592,7 +593,7 @@ export default function CheckInScreen({ navigation }) {
   // ── Main — Ping Home (map-first) ──
   return (
     <View style={styles.dataRoot}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.canvas} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.canvas} />
 
       {/* Header — back button + centered title + add-place, all one row */}
       <View
@@ -752,7 +753,7 @@ export default function CheckInScreen({ navigation }) {
                     activeOpacity={0.8}
                   >
                     {respondingPingId === request.id ? (
-                      <ActivityIndicator size="small" color={colors.surface} />
+                      <ActivityIndicator size="small" color={colors.onAccent} />
                     ) : (
                       <Text style={styles.pingAcceptText}>Share</Text>
                     )}
@@ -829,7 +830,7 @@ export default function CheckInScreen({ navigation }) {
             activeOpacity={0.85}
           >
             {checkingIn ? (
-              <ActivityIndicator size="small" color={colors.surface} />
+              <ActivityIndicator size="small" color={colors.onAccent} />
             ) : (
               <>
                 <Text style={styles.actionIconPrimary}>◈</Text>
@@ -1052,7 +1053,10 @@ export default function CheckInScreen({ navigation }) {
         transparent
         animationType="slide"
         onRequestClose={() => setShowPlaceSheet(false)}
+        statusBarTranslucent
+        navigationBarTranslucent
       >
+        <KeyboardAvoider>
         <TouchableOpacity
           style={styles.sheetOverlay}
           activeOpacity={1}
@@ -1163,7 +1167,7 @@ export default function CheckInScreen({ navigation }) {
               activeOpacity={0.85}
             >
               {savingPlace ? (
-                <ActivityIndicator size="small" color={colors.surface} />
+                <ActivityIndicator size="small" color={colors.onAccent} />
               ) : (
                 <Text style={styles.saveBtnText}>
                   {editingPlaceId ? 'Update place' : 'Save place'}
@@ -1219,6 +1223,7 @@ export default function CheckInScreen({ navigation }) {
             )}
           </ScrollView>
         </View>
+        </KeyboardAvoider>
       </Modal>
     </View>
   );
@@ -1398,7 +1403,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   nativeFocusLabel: {
-    backgroundColor: colors.inkDeep,
+    backgroundColor: colors.surfaceRaised,
     paddingHorizontal: 9,
     paddingVertical: 4,
     borderRadius: 8,
@@ -1412,7 +1417,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   nativeFocusLabelText: {
-    color: colors.surface,
+    color: colors.onAccent,
     fontWeight: '600',
     fontSize: 12,
   },
@@ -1428,7 +1433,7 @@ const styles = StyleSheet.create({
         rotate: '-45deg',
       },
     ],
-    backgroundColor: colors.inkDeep,
+    backgroundColor: colors.surfaceRaised,
     borderWidth: 2.5,
     borderColor: colors.surface,
     shadowColor: colors.black,
@@ -1450,7 +1455,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: colors.inkDeep,
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: 3,
@@ -1522,7 +1527,7 @@ const styles = StyleSheet.create({
   pingAcceptText: {
     fontFamily: fonts.bodySemiBold,
     fontSize: 13,
-    color: colors.surface,
+    color: colors.onAccent,
   },
   // Route-to-shared-location card — distance + "Open in Maps"
   routeCard: {
@@ -1534,7 +1539,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 12,
     gap: 8,
-    shadowColor: colors.inkDeep,
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: 4,
@@ -1568,7 +1573,7 @@ const styles = StyleSheet.create({
   routeCardDirectionsText: {
     fontFamily: fonts.bodySemiBold,
     fontSize: 13,
-    color: colors.surface,
+    color: colors.onAccent,
   },
   // Bottom tray — fixed-height absolute overlay, slid up/down via transform
   tray: {
@@ -1576,13 +1581,16 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.canvasElevated,
     borderTopLeftRadius: 26,
     borderTopRightRadius: 26,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderBottomWidth: 0,
     paddingHorizontal: 20,
     paddingTop: 10,
     gap: 14,
-    shadowColor: colors.inkDeep,
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: -8,
@@ -1624,7 +1632,7 @@ const styles = StyleSheet.create({
   },
   actionIconPrimary: {
     fontSize: 18,
-    color: colors.surface,
+    color: colors.onAccent,
     marginBottom: 2,
   },
   actionIconSecondary: {
@@ -1635,7 +1643,7 @@ const styles = StyleSheet.create({
   actionTitlePrimary: {
     fontFamily: fonts.displayBold,
     fontSize: 14,
-    color: colors.surface,
+    color: colors.onAccent,
   },
   actionTitleSecondary: {
     fontFamily: fonts.displayBold,
@@ -1687,7 +1695,7 @@ const styles = StyleSheet.create({
   },
   placeChipDotText: {
     fontSize: 11,
-    color: colors.surface,
+    color: colors.onAccent,
   },
   placeChipName: {
     fontFamily: fonts.bodySemiBold,
@@ -1746,7 +1754,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.success,
   },
   statusDotMuted: {
-    backgroundColor: colors.textMuted,
+    backgroundColor: colors.surfaceRaised,
   },
   recentPlace: {
     flex: 1,
@@ -1807,7 +1815,7 @@ const styles = StyleSheet.create({
   successCheck: {
     fontFamily: fonts.displayBold,
     fontSize: 72,
-    color: colors.surface,
+    color: colors.onAccent,
   },
   successWrap: {
     flex: 1,
@@ -1845,12 +1853,15 @@ const styles = StyleSheet.create({
   // Member picker sheet
   sheetOverlay: {
     flex: 1,
-    backgroundColor: withAlpha(colors.inkDeep, 0.55),
+    backgroundColor: withAlpha(colors.shadow, 0.55),
   },
   sheetBox: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.canvasElevated,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderBottomWidth: 0,
     paddingTop: 6,
     maxHeight: '75%',
   },
@@ -2013,9 +2024,12 @@ const styles = StyleSheet.create({
   },
   // Add/manage place sheet
   placeSheetBox: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.canvasElevated,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderBottomWidth: 0,
     paddingTop: 6,
     maxHeight: '86%',
   },
@@ -2090,7 +2104,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   iconOptTextSelected: {
-    color: colors.surface,
+    color: colors.onAccent,
   },
   saveBtn: {
     height: 48,
@@ -2105,7 +2119,7 @@ const styles = StyleSheet.create({
   saveBtnText: {
     fontFamily: fonts.displayBold,
     fontSize: 14,
-    color: colors.surface,
+    color: colors.onAccent,
   },
   savedList: {
     gap: 2,

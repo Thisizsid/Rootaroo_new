@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ScrollView,
   KeyboardAvoidingView,
-  Platform,
   StatusBar,
   ActivityIndicator,
   Alert,
@@ -22,6 +21,7 @@ import { feedApi } from '../shared/api/feed';
 import apiClient from '../shared/api/client';
 import { colors, fonts, withAlpha } from '../shared/theme';
 import PostCard from '../shared/components/PostCard';
+import { KEYBOARD_BEHAVIOR } from '../shared/components/KeyboardAware';
 const AVATAR_SIZE = 88;
 const AVATAR_RADIUS = AVATAR_SIZE / 2;
 // How much of the avatar sits over the cover photo vs. hangs below it.
@@ -223,9 +223,9 @@ export default function EditProfileScreen({ navigation }) {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={KEYBOARD_BEHAVIOR}
     >
-      <StatusBar barStyle="dark-content" backgroundColor={colors.canvas} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.canvas} />
 
       {/* ── Header (SCREEN 40): back + Edit profile + Save ── */}
       <View
@@ -284,7 +284,7 @@ export default function EditProfileScreen({ navigation }) {
             )}
             {uploadingCover && (
               <View style={styles.coverUploadingOverlay}>
-                <ActivityIndicator color={colors.surface} />
+                <ActivityIndicator color={colors.onAccent} />
               </View>
             )}
             {isHouseholdAdmin && (
@@ -594,7 +594,7 @@ const styles = StyleSheet.create({
   },
   coverUploadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: withAlpha(colors.inkDeep, 0.35),
+    backgroundColor: withAlpha(colors.shadow, 0.35),
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -613,7 +613,7 @@ const styles = StyleSheet.create({
   },
   coverEditBadgeIcon: {
     fontSize: 14,
-    color: colors.surface,
+    color: colors.onAccent,
   },
   // Delete account (SCREEN 40)
   deleteRow: {

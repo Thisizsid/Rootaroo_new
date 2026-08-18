@@ -5,14 +5,14 @@
     "scheme": "rootaru",
     "version": "1.0.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "androidNavigationBar": {
-      "barStyle": "dark-content",
-      "backgroundColor": "#FFFFFF"
+      "barStyle": "light-content",
+      "backgroundColor": "#0B1220"
     },
     "splash": {
       "resizeMode": "contain",
-      "backgroundColor": "#1B1E24"
+      "backgroundColor": "#06090F"
     },
     "ios": {
       "supportsTablet": true,
@@ -24,6 +24,7 @@
       },
       "package": "com.rootaroo.app",
       "predictiveBackGestureEnabled": false,
+      "softwareKeyboardLayoutMode": "resize",
       "permissions": [
         "USE_BIOMETRIC",
         "USE_FINGERPRINT"

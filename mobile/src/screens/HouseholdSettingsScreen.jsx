@@ -23,6 +23,7 @@ import { householdApi } from '../shared/api/household';
 import { colors, fonts, withAlpha } from '../shared/theme';
 import ConfirmSheet from '../components/ConfirmSheet';
 import Avatar from '../components/Avatar';
+import { KeyboardAvoider } from '../shared/components/KeyboardAware';
 // Role options match mock Screen 37 exactly — Admin & Member only.
 const ROLE_OPTIONS = [
   {
@@ -291,7 +292,7 @@ export default function HouseholdSettingsScreen({ navigation }) {
           },
         ]}
       >
-        <StatusBar barStyle="dark-content" backgroundColor={colors.canvas} />
+        <StatusBar barStyle="light-content" backgroundColor={colors.canvas} />
         <View style={styles.header}>
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
             <Text style={styles.backIcon}>‹</Text>
@@ -325,7 +326,7 @@ export default function HouseholdSettingsScreen({ navigation }) {
         },
       ]}
     >
-      <StatusBar barStyle="dark-content" backgroundColor={colors.canvas} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.canvas} />
 
       {/* Minimal header so the user can navigate back (mock has no header bar) */}
       <View style={styles.header}>
@@ -659,7 +660,10 @@ export default function HouseholdSettingsScreen({ navigation }) {
         transparent
         animationType="slide"
         onRequestClose={() => setShowDeletePasswordModal(false)}
+        statusBarTranslucent
+        navigationBarTranslucent
       >
+        <KeyboardAvoider>
         <Pressable style={styles.modalOverlay} onPress={() => setShowDeletePasswordModal(false)}>
           <Pressable
             style={[
@@ -687,7 +691,7 @@ export default function HouseholdSettingsScreen({ navigation }) {
               activeOpacity={0.85}
             >
               {deleteLoading ? (
-                <ActivityIndicator color={colors.surface} />
+                <ActivityIndicator color={colors.onAccent} />
               ) : (
                 <Text style={styles.saveBtnText}>Schedule deletion (30 days)</Text>
               )}
@@ -704,6 +708,7 @@ export default function HouseholdSettingsScreen({ navigation }) {
             </TouchableOpacity>
           </Pressable>
         </Pressable>
+        </KeyboardAvoider>
       </Modal>
     </View>
   );
@@ -771,7 +776,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
-    shadowColor: colors.ink,
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: 6,
@@ -851,7 +856,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.goldLight,
-    shadowColor: colors.ink,
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: 10,
@@ -918,7 +923,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     fontFamily: fonts.bodySemiBold,
-    color: colors.surface,
+    color: colors.onAccent,
   },
   invitePillBtnOutlineText: {
     color: colors.ink,
@@ -998,7 +1003,7 @@ const styles = StyleSheet.create({
   // Role Edit modal (mock Screen 37)
   modalOverlay: {
     flex: 1,
-    backgroundColor: withAlpha(colors.inkDeep, 0.55),
+    backgroundColor: withAlpha(colors.shadow, 0.55),
     justifyContent: 'flex-end',
   },
   modalSheet: {
@@ -1007,7 +1012,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 32,
     paddingTop: 14,
     paddingHorizontal: 24,
-    shadowColor: colors.inkDeep,
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: -8,
@@ -1046,7 +1051,7 @@ const styles = StyleSheet.create({
   },
   roleCardActive: {
     backgroundColor: colors.surface,
-    shadowColor: colors.ink,
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: 10,
@@ -1102,7 +1107,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     fontFamily: fonts.displayBold,
-    color: colors.surface,
+    color: colors.onAccent,
   },
   removeLink: {
     alignItems: 'center',

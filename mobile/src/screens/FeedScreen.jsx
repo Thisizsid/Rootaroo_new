@@ -10,6 +10,8 @@ import {
   RefreshControl,
   Modal,
   Pressable,
+  TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -27,7 +29,9 @@ import ErrorState from '../components/ErrorState';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import OfflineBanner from '../components/OfflineBanner';
 import ConfirmSheet from '../components/ConfirmSheet';
+import { KeyboardAvoider, keyboardScrollProps } from '../shared/components/KeyboardAware';
 import { colors, withAlpha } from '../shared/theme';
+import { GlassSheen } from '../shared/components/GlassCard';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // Import the family cover photo as placeholder for featured image
@@ -83,14 +87,29 @@ function timeAgo(iso) {
 export default function FeedScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
-  const { posts, loading, refreshing, error, fetchFeed, refresh, toggleLike, removePost } =
-    useFeedStore();
+  const {
+    posts,
+    loading,
+    refreshing,
+    error,
+    fetchFeed,
+    refresh,
+    removePost,
+    incrementCommentCount,
+  } = useFeedStore();
   const currentUserId = useAuthStore((s) => s.user?.id);
   const householdId = useAuthStore((s) => s.householdId);
   const [activeMediaIndex, setActiveMediaIndex] = useState({});
   const [menuPost, setMenuPost] = useState(null);
   const [menuAnchor, setMenuAnchor] = useState(null);
   const dotsRefs = useRef({});
+
+  // Inline commenting — draft text, in-flight state, and the most recent
+  // comment shown under each post (Facebook-style), all keyed by postId.
+  const [commentDrafts, setCommentDrafts] = useState({});
+  const [commentSending, setCommentSending] = useState({});
+  const [recentComments, setRecentComments] = useState({});
+  const fetchedRecentRef = useRef(new Set());
 
   // Family home card: cover photo + household message
   const [familyCover, setFamilyCover] = useState(null);
@@ -114,6 +133,40 @@ export default function FeedScreen() {
   const onRefresh = useCallback(() => {
     refresh();
   }, [refresh]);
+  // Lazily fetch just the most recent comment for each post that has one,
+  // so it can show inline under the post without opening the Comments screen.
+  useEffect(() => {
+    posts.forEach((post) => {
+      if (post.commentCount > 0 && !fetchedRecentRef.current.has(post.id)) {
+        fetchedRecentRef.current.add(post.id);
+        feedApi
+          .getComments(post.id, { limit: 1 })
+          .then((res) => {
+            const latest = res?.comments?.[0];
+            if (latest) setRecentComments((prev) => ({ ...prev, [post.id]: latest }));
+          })
+          .catch(() => {});
+      }
+    });
+  }, [posts]);
+  const submitInlineComment = useCallback(
+    async (postId) => {
+      const text = (commentDrafts[postId] || '').trim();
+      if (!text || commentSending[postId]) return;
+      setCommentSending((prev) => ({ ...prev, [postId]: true }));
+      try {
+        const created = await feedApi.addComment(postId, text);
+        setRecentComments((prev) => ({ ...prev, [postId]: created }));
+        setCommentDrafts((prev) => ({ ...prev, [postId]: '' }));
+        incrementCommentCount(postId);
+      } catch (e) {
+        alert('Could not post comment: ' + (e?.message || 'Try again'));
+      } finally {
+        setCommentSending((prev) => ({ ...prev, [postId]: false }));
+      }
+    },
+    [commentDrafts, commentSending, incrementCommentCount],
+  );
   const handleDeletePost = useCallback(
     async (postId) => {
       try {
@@ -185,58 +238,33 @@ export default function FeedScreen() {
     const feelings = (item.content || '').match(/Feeling: ([^\n]+)/)?.[1]?.trim();
     const bodyText = (item.content || '').replace(/^\s*Feeling: [^\n]*\n*/m, '').trim();
     const mediaIndex = activeMediaIndex[item.id] ?? 0;
+    const eyebrow = feelings || item.activity || null;
+    const metaLine = [timeAgo(item.createdAt), item.location].filter(Boolean).join(' · ');
+
+    const dotsButton = (
+      <TouchableOpacity
+        style={styles.dotsButton}
+        activeOpacity={0.6}
+        ref={(ref) => {
+          if (ref && !dotsRefs.current[item.id]) dotsRefs.current[item.id] = ref;
+        }}
+        onPress={() => {
+          const ref = dotsRefs.current[item.id];
+          if (ref && ref.measureInWindow) {
+            ref.measureInWindow((x, y, w, h) => openPostMenu(item, x + w - 8, y + h + 6));
+          } else {
+            openPostMenu(item, SCREEN_WIDTH - 60, 200);
+          }
+        }}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      >
+        <SvgXml xml={DOTS_SVG} width={18} height={18} />
+      </TouchableOpacity>
+    );
+
     return (
       <View style={styles.postCard}>
-        {/* Post header: avatar, name, time, feeling pill, menu */}
-        <View style={styles.postHeader}>
-          <View style={styles.avatarCircle}>
-            {avatar ? (
-              <Image source={avatar} style={styles.avatarImage} />
-            ) : (
-              <Text style={styles.avatarText}>{initialsOf(authorName)}</Text>
-            )}
-          </View>
-          <View style={styles.postHeaderInfo}>
-            <Text style={styles.authorName}>{authorName}</Text>
-            <Text style={styles.postTime}>
-              {timeAgo(item.createdAt)}
-              {item.activity ? ` · ${item.activity}` : ''}
-            </Text>
-          </View>
-          {feelings ? (
-            <View style={styles.headerFeeling}>
-              <Text style={styles.headerFeelingText} numberOfLines={1}>
-                {feelings}
-              </Text>
-            </View>
-          ) : null}
-          {/* 3-dot menu — anchored dropdown */}
-          <TouchableOpacity
-            style={styles.dotsButton}
-            activeOpacity={0.6}
-            ref={(ref) => {
-              if (ref && !dotsRefs.current[item.id]) dotsRefs.current[item.id] = ref;
-            }}
-            onPress={() => {
-              const ref = dotsRefs.current[item.id];
-              if (ref && ref.measureInWindow) {
-                ref.measureInWindow((x, y, w, h) => openPostMenu(item, x + w - 8, y + h + 6));
-              } else {
-                openPostMenu(item, SCREEN_WIDTH - 60, 200);
-              }
-            }}
-            hitSlop={{
-              top: 8,
-              bottom: 8,
-              left: 8,
-              right: 8,
-            }}
-          >
-            <SvgXml xml={DOTS_SVG} width={20} height={20} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Media slider (multiple images) — only when the post actually has media */}
+        {/* Media, with caption overlaid bottom-left — or the header row on top for text-only posts */}
         {media ? (
           <View style={styles.mediaWrap}>
             <ScrollView
@@ -244,7 +272,7 @@ export default function FeedScreen() {
               pagingEnabled
               showsHorizontalScrollIndicator={false}
               onMomentumScrollEnd={(e) => {
-                const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+                const idx = Math.round(e.nativeEvent.contentOffset.x / (SCREEN_WIDTH - 24));
                 setActiveMediaIndex((prev) => ({
                   ...prev,
                   [item.id]: idx,
@@ -259,16 +287,12 @@ export default function FeedScreen() {
                       ? m.mediaUrl
                       : `${getServerBase()}${m.mediaUrl}`,
                   }}
-                  style={[
-                    styles.postImage,
-                    {
-                      width: SCREEN_WIDTH,
-                    },
-                  ]}
+                  style={[styles.postImage, { width: SCREEN_WIDTH - 24 }]}
                   resizeMode="cover"
                 />
               ))}
             </ScrollView>
+
             {item.media.length > 1 && (
               <View style={styles.pageDots}>
                 {item.media.map((_, i) => (
@@ -279,81 +303,132 @@ export default function FeedScreen() {
                 ))}
               </View>
             )}
+
+            {bodyText ? (
+              <>
+                <LinearGradient
+                  colors={['transparent', withAlpha(colors.shadow, 0.75)]}
+                  style={styles.mediaCaptionScrim}
+                  pointerEvents="none"
+                />
+                <View style={styles.mediaCaptionBlock} pointerEvents="none">
+                  {eyebrow ? (
+                    <Text style={styles.mediaEyebrow} numberOfLines={1}>
+                      {eyebrow.toUpperCase()}
+                    </Text>
+                  ) : null}
+                  <Text style={styles.mediaCaptionTitle} numberOfLines={2}>
+                    {bodyText}
+                  </Text>
+                </View>
+              </>
+            ) : null}
           </View>
         ) : null}
 
-        {/* Post content */}
-        <View style={styles.postBody}>
-          <Text style={styles.postText}>{bodyText || item.content || ''}</Text>
-
-          {/* Tag row — below content, with icon */}
-          {item.taggedUsers && item.taggedUsers.length > 0 && (
-            <View style={styles.infoRow}>
-              <SvgXml xml={TAG_SVG} width={16} height={16} />
-              <Text style={styles.infoRowText} numberOfLines={1}>
-                {item.taggedUsers.map((t) => t.displayName).join(', ')}
+        {/* Author footer bar — avatar, name, meta, menu */}
+        <View style={media ? styles.postFooter : styles.postHeader}>
+          <View style={styles.avatarCircle}>
+            {avatar ? (
+              <Image source={avatar} style={styles.avatarImage} />
+            ) : (
+              <Text style={styles.avatarText}>{initialsOf(authorName)}</Text>
+            )}
+          </View>
+          <View style={styles.postHeaderInfo}>
+            <Text style={styles.authorName}>{authorName}</Text>
+            <Text style={styles.postTime}>{metaLine}</Text>
+          </View>
+          {!media && eyebrow ? (
+            <View style={styles.headerFeeling}>
+              <Text style={styles.headerFeelingText} numberOfLines={1}>
+                {eyebrow}
               </Text>
             </View>
-          )}
+          ) : null}
+          {dotsButton}
+        </View>
 
-          {/* Like + comment in one row — only on text posts (no media) */}
-          {!media && (
-            <View style={styles.actionsRow}>
-              <TouchableOpacity
-                style={styles.likeButton}
-                activeOpacity={0.7}
-                onPress={() => toggleLike(item.id)}
-              >
-                <Text style={[styles.likeIcon, item.isLikedByMe && styles.likeIconActive]}>
-                  {item.isLikedByMe ? '♥' : '♡'}
-                </Text>
-                <Text style={[styles.likeText, item.isLikedByMe && styles.likeTextActive]}>
-                  {item.likeCount} {item.likeCount === 1 ? 'like' : 'likes'}
-                </Text>
-              </TouchableOpacity>
+        {/* Text-only caption (no media to overlay it on) */}
+        {!media && bodyText ? (
+          <Text style={styles.postText}>{bodyText}</Text>
+        ) : null}
 
-              <TouchableOpacity
-                style={styles.likeButton}
-                activeOpacity={0.7}
-                onPress={() =>
-                  navigation.navigate('Comments', {
-                    postId: item.id,
-                  })
-                }
-              >
-                <SvgXml xml={CHAT_SVG} width={17} height={17} />
-                <Text style={styles.likeText}>
-                  {item.commentCount} {item.commentCount === 1 ? 'comment' : 'comments'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
+        {/* Tag row */}
+        {item.taggedUsers && item.taggedUsers.length > 0 && (
+          <View style={styles.infoRow}>
+            <SvgXml xml={TAG_SVG} width={16} height={16} />
+            <Text style={styles.infoRowText} numberOfLines={1}>
+              {item.taggedUsers.map((t) => t.displayName).join(', ')}
+            </Text>
+          </View>
+        )}
 
-          {/* Comment count row — with icon, same row as tags */}
-          {media && (
-            <View style={styles.infoRow}>
-              <SvgXml xml={CHAT_SVG} width={16} height={16} />
-              <Text style={styles.infoRowText}>
-                {item.commentCount} comment{item.commentCount !== 1 ? 's' : ''} · {commentPreview}
-              </Text>
-            </View>
-          )}
-
-          {/* Comment input — tap opens Comments screen */}
+        {/* Comment row */}
+        <View style={styles.actionsRow}>
           <TouchableOpacity
-            style={styles.commentInputBar}
+            style={styles.likeButton}
             activeOpacity={0.7}
-            onPress={() =>
-              navigation.navigate('Comments', {
-                postId: item.id,
-              })
-            }
+            onPress={() => navigation.navigate('Comments', { postId: item.id })}
           >
-            <View style={styles.commentInputAvatar}>
-              <Text style={styles.commentInputAvatarText}>✎</Text>
-            </View>
-            <Text style={styles.commentInputPlaceholder}>Add a comment…</Text>
+            <SvgXml xml={CHAT_SVG} width={17} height={17} />
+            <Text style={styles.likeText}>
+              {item.commentCount} {item.commentCount === 1 ? 'comment' : 'comments'}
+            </Text>
           </TouchableOpacity>
+        </View>
+
+        {/* Most recent comment — inline preview, Facebook-style */}
+        {recentComments[item.id] ? (
+          <TouchableOpacity
+            style={styles.recentCommentRow}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('Comments', { postId: item.id })}
+          >
+            <Text style={styles.recentCommentText} numberOfLines={2}>
+              <Text style={styles.recentCommentAuthor}>
+                {recentComments[item.id].author?.displayName || 'Member'}{' '}
+              </Text>
+              {recentComments[item.id].content}
+            </Text>
+            {item.commentCount > 1 ? (
+              <Text style={styles.recentCommentViewAll}>
+                View all {item.commentCount} comments
+              </Text>
+            ) : null}
+          </TouchableOpacity>
+        ) : null}
+
+        {/* Comment input — post inline without leaving the feed */}
+        <View style={styles.commentInputBar}>
+          <View style={styles.commentInputAvatar}>
+            <Text style={styles.commentInputAvatarText}>✎</Text>
+          </View>
+          <TextInput
+            value={commentDrafts[item.id] || ''}
+            onChangeText={(text) =>
+              setCommentDrafts((prev) => ({
+                ...prev,
+                [item.id]: text,
+              }))
+            }
+            placeholder="Add a comment…"
+            placeholderTextColor={colors.textMuted}
+            style={styles.commentInputField}
+            returnKeyType="send"
+            onSubmitEditing={() => submitInlineComment(item.id)}
+            editable={!commentSending[item.id]}
+          />
+          {commentSending[item.id] ? (
+            <ActivityIndicator size="small" color={colors.gold} />
+          ) : (commentDrafts[item.id] || '').trim() ? (
+            <TouchableOpacity
+              onPress={() => submitInlineComment(item.id)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={styles.commentSendText}>Post</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
       </View>
     );
@@ -367,11 +442,12 @@ export default function FeedScreen() {
         },
       ]}
     >
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
       {/* Title bar: Feed + pencil icon */}
       <View style={styles.titleBar}>
         <Text style={styles.title}>Feed</Text>
         <TouchableOpacity
+          style={styles.composeButton}
           activeOpacity={0.7}
           onPress={() => navigation.navigate('CreatePost')}
           hitSlop={{
@@ -381,7 +457,7 @@ export default function FeedScreen() {
             right: 8,
           }}
         >
-          <SvgXml xml={PENCIL_SVG} width={22} height={22} />
+          <SvgXml xml={PENCIL_SVG} width={18} height={18} />
         </TouchableOpacity>
       </View>
 
@@ -390,69 +466,47 @@ export default function FeedScreen() {
       ) : error && posts.length === 0 ? (
         <ErrorState onRetry={fetchFeed} onGoHome={() => navigation.navigate('KnowsDashboard')} />
       ) : (
-        <ScrollView
-          contentContainerStyle={styles.postsContainer}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.gold} />
-          }
-        >
-          <View style={styles.bannerWrap}>
-            <OfflineBanner onRetry={onRefresh} />
-          </View>
-
-          {/* Family home card — cover photo + household message */}
-          <View style={styles.featuredMemory}>
-            <Image
-              source={
-                familyCover
-                  ? {
-                      uri: familyCover,
-                    }
-                  : FAMILY_COVER
-              }
-              style={styles.featuredImage}
-              resizeMode="cover"
-            />
-            <LinearGradient
-              colors={[withAlpha(colors.inkDeep, 0), withAlpha(colors.inkDeep, 0.68)]}
-              style={styles.featuredOverlay}
-            />
-            <View style={styles.featuredTextBlock}>
-              <View style={styles.featuredEyebrow}>
-                <Text style={styles.featuredEyebrowText}>OUR FAMILY HOME</Text>
-              </View>
-              <Text style={styles.featuredTitle} numberOfLines={1}>
-                {householdName || 'Our Family'}
-              </Text>
-              <Text style={styles.featuredSub} numberOfLines={2}>
-                {posts.length > 0
-                  ? `${posts.length} new moment${posts.length > 1 ? 's' : ''} waiting — today's little moments become tomorrow's favorite memories. ✨`
-                  : "Today's little moments become tomorrow's favorite memories. ✨"}
-              </Text>
-            </View>
-          </View>
-
-          {posts.length === 0 ? (
-            <View style={styles.emptyWrap}>
-              <EmptyState
-                icon={<SvgXml xml={PHOTO_SVG} width={28} height={28} />}
-                title="Nothing here yet"
-                subtitle="Share a photo or update with your household to get the feed going."
-                actionLabel="Create a post"
-                onAction={() => navigation.navigate('CreatePost')}
+        <KeyboardAvoider style={styles.avoider}>
+          <ScrollView
+            contentContainerStyle={styles.postsContainer}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={colors.gold}
               />
+            }
+            {...keyboardScrollProps}
+          >
+            <View style={styles.bannerWrap}>
+              <OfflineBanner onRetry={onRefresh} />
             </View>
-          ) : (
-            posts.map((post) => (
-              <View key={post.id}>
-                {renderPost({
-                  item: post,
-                })}
+
+            {/* Family home card — cover photo + household message */}
+
+
+            {posts.length === 0 ? (
+              <View style={styles.emptyWrap}>
+                <EmptyState
+                  icon={<SvgXml xml={PHOTO_SVG} width={28} height={28} />}
+                  title="Nothing here yet"
+                  subtitle="Share a photo or update with your household to get the feed going."
+                  actionLabel="Create a post"
+                  onAction={() => navigation.navigate('CreatePost')}
+                />
               </View>
-            ))
-          )}
-        </ScrollView>
+            ) : (
+              posts.map((post) => (
+                <View key={post.id}>
+                  {renderPost({
+                    item: post,
+                  })}
+                </View>
+              ))
+            )}
+          </ScrollView>
+        </KeyboardAvoider>
       )}
 
       {/* Floating Action Button */}
@@ -492,8 +546,7 @@ export default function FeedScreen() {
                   activeOpacity={0.6}
                   onPress={() => handleMenuAction('delete')}
                 >
-                  <Text style={styles.menuItemIcon}>🗑</Text>
-                  <Text style={styles.menuItemText}>Delete post</Text>
+                  <Text style={styles.menuItemText}>Delete</Text>
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity
@@ -532,9 +585,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.canvas,
-    marginTop: 10,
-    marginBottom: 90,
     paddingHorizontal: 4,
+  },
+  avoider: {
+    flex: 1,
   },
   header: {
     height: 44,
@@ -556,10 +610,21 @@ const styles = StyleSheet.create({
     backgroundColor: colors.canvas,
   },
   title: {
-    fontSize: 19,
-    fontWeight: '700',
+    fontSize: 28,
+    fontWeight: '800',
     color: colors.ink,
-    fontFamily: 'PlusJakartaSans_700Bold',
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    letterSpacing: -0.02 * 28,
+  },
+  composeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   postsContainer: {
     paddingTop: 4,
@@ -575,11 +640,13 @@ const styles = StyleSheet.create({
   },
   featuredMemory: {
     position: 'relative',
-    height: 210,
+    height: 220,
     marginHorizontal: 12,
-    marginBottom: 22,
+    marginBottom: 20,
     borderRadius: 20,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   featuredImage: {
     width: '100%',
@@ -590,32 +657,28 @@ const styles = StyleSheet.create({
   },
   featuredTextBlock: {
     position: 'absolute',
-    left: 18,
-    right: 18,
-    bottom: 18,
+    left: 20,
+    right: 20,
+    bottom: 20,
   },
   featuredEyebrow: {
     alignSelf: 'flex-start',
-    backgroundColor: withAlpha(colors.inkDeep, 0.45),
-    borderRadius: 9999,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   featuredEyebrowText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: colors.tanPale,
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.goldSoft,
     letterSpacing: 1.2,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Inter_700Bold',
   },
   featuredTitle: {
     fontSize: 24,
     fontWeight: '800',
-    color: colors.surface,
+    color: colors.onAccent,
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     marginBottom: 6,
-    textShadowColor: withAlpha(colors.inkDeep, 0.4),
+    textShadowColor: withAlpha(colors.shadow, 0.5),
     textShadowOffset: {
       width: 0,
       height: 1,
@@ -624,23 +687,25 @@ const styles = StyleSheet.create({
   },
   featuredSub: {
     fontSize: 13,
-    color: colors.surface,
+    color: colors.onAccent,
     fontFamily: 'Inter_400Regular',
     lineHeight: 18,
-    opacity: 0.92,
+    opacity: 0.85,
   },
   menuBackdrop: {
     flex: 1,
-    backgroundColor: withAlpha(colors.inkDeep, 0.25),
+    backgroundColor: withAlpha(colors.shadow, 0.25),
   },
   menuDropdown: {
     position: 'absolute',
     width: 220,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.canvas,
     borderRadius: 14,
     paddingVertical: 6,
     paddingHorizontal: 14,
-    shadowColor: colors.inkDeep,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: 6,
@@ -655,7 +720,7 @@ const styles = StyleSheet.create({
     right: 14,
     width: 12,
     height: 12,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.canvas,
     transform: [
       {
         rotate: '45deg',
@@ -706,34 +771,40 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 24,
+    paddingHorizontal: 20,
     marginBottom: 12,
     marginTop: 2,
-  },
-  likeIcon: {
-    fontSize: 17,
-    color: colors.textSecondary,
-  },
-  likeIconActive: {
-    color: colors.gold,
   },
   likeText: {
     fontSize: 13,
     color: colors.textSecondary,
     fontFamily: 'Inter_500Medium',
   },
-  likeTextActive: {
-    color: colors.gold,
-  },
   postCard: {
     backgroundColor: colors.surface,
-    marginBottom: 16,
+    marginHorizontal: 12,
+    marginBottom: 18,
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingBottom: 16,
   },
   postHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 10,
+  },
+  postFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 20,
     paddingVertical: 14,
+    backgroundColor: colors.surfaceWarm,
   },
   avatarCircle: {
     width: 36,
@@ -766,7 +837,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerFeeling: {
-    backgroundColor: withAlpha(colors.legacyGold, 0.14),
+    backgroundColor: colors.goldTint,
     borderRadius: 14,
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -776,14 +847,16 @@ const styles = StyleSheet.create({
   headerFeelingText: {
     fontSize: 11,
     fontWeight: '600',
-    color: colors.legacyGoldDark,
+    color: colors.goldSoft,
     fontFamily: 'Inter_600SemiBold',
   },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 7,
-    marginBottom: 8,
+    paddingHorizontal: 20,
+    marginTop: 12,
+    marginBottom: 4,
   },
   infoRowText: {
     fontSize: 13,
@@ -799,6 +872,7 @@ const styles = StyleSheet.create({
     borderRadius: 9999,
     paddingHorizontal: 14,
     paddingVertical: 10,
+    marginHorizontal: 20,
     marginTop: 4,
   },
   commentInputAvatar: {
@@ -813,13 +887,76 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.inkMuted,
   },
-  commentInputPlaceholder: {
+  commentInputField: {
+    flex: 1,
     fontSize: 13,
+    color: colors.ink,
+    fontFamily: 'Inter_400Regular',
+    padding: 0,
+    margin: 0,
+  },
+  commentSendText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.gold,
+    fontFamily: 'Inter_700Bold',
+  },
+  recentCommentRow: {
+    marginHorizontal: 20,
+    marginTop: 8,
+  },
+  recentCommentText: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.ink,
+    fontFamily: 'Inter_400Regular',
+  },
+  recentCommentAuthor: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '700',
+    color: colors.ink,
+    fontFamily: 'PlusJakartaSans_700Bold',
+  },
+  recentCommentViewAll: {
+    fontSize: 12,
     color: colors.textMuted,
     fontFamily: 'Inter_400Regular',
+    marginTop: 4,
   },
   mediaWrap: {
     position: 'relative',
+  },
+  mediaCaptionScrim: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 130,
+  },
+  mediaCaptionBlock: {
+    position: 'absolute',
+    left: 20,
+    right: 20,
+    bottom: 16,
+  },
+  mediaEyebrow: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.goldSoft,
+    letterSpacing: 1,
+    fontFamily: 'Inter_700Bold',
+    marginBottom: 6,
+  },
+  mediaCaptionTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: colors.onAccent,
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    lineHeight: 25,
+    textShadowColor: withAlpha(colors.shadow, 0.5),
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   pageDots: {
     position: 'absolute',
@@ -842,9 +979,9 @@ const styles = StyleSheet.create({
   },
   authorName: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
     color: colors.ink,
-    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontFamily: 'PlusJakartaSans_700Bold',
     marginBottom: 2,
   },
   postTime: {
@@ -854,19 +991,15 @@ const styles = StyleSheet.create({
   },
   postImage: {
     width: '100%',
-    height: 440,
-  },
-  postBody: {
-    paddingHorizontal: 24,
-    paddingVertical: 20,
+    height: 300,
   },
   postText: {
     fontSize: 15,
     color: colors.ink,
     fontFamily: 'Inter_400Regular',
     lineHeight: 22,
-    paddingRight: 40,
-    marginBottom: 14,
+    paddingHorizontal: 20,
+    paddingBottom: 8,
   },
   taggedText: {
     fontSize: 13,
@@ -905,7 +1038,7 @@ const styles = StyleSheet.create({
   retryText: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.surface,
+    color: colors.onAccent,
     fontFamily: 'PlusJakartaSans_600SemiBold',
   },
   fab: {
@@ -930,7 +1063,7 @@ const styles = StyleSheet.create({
   fabIcon: {
     fontSize: 24,
     fontWeight: '700',
-    color: colors.surface,
+    color: colors.onAccent,
     fontFamily: 'PlusJakartaSans_700Bold',
   },
 });

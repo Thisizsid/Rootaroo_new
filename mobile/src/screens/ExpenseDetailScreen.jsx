@@ -11,7 +11,6 @@ import {
   Modal,
   TextInput,
   KeyboardAvoidingView,
-  Platform,
   FlatList,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -23,6 +22,7 @@ import ConfirmSheet from '../components/ConfirmSheet';
 import { useExpenseStore } from '../shared/store/expenseStore';
 import { colors, radius, fonts, withAlpha } from '../shared/theme';
 import Avatar from '../components/Avatar';
+import { KEYBOARD_BEHAVIOR } from '../shared/components/KeyboardAware';
 function formatMoney(n) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -261,7 +261,7 @@ export default function ExpenseDetailScreen({ navigation, route }) {
         },
       ]}
     >
-      <StatusBar barStyle="dark-content" backgroundColor={colors.canvas} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.canvas} />
 
       {/* ── Header (SCREEN 24): back + Expense ── */}
       <View style={styles.header}>
@@ -370,9 +370,11 @@ export default function ExpenseDetailScreen({ navigation, route }) {
         transparent
         animationType="slide"
         onRequestClose={() => setShowEditModal(false)}
+        statusBarTranslucent
+        navigationBarTranslucent
       >
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={KEYBOARD_BEHAVIOR}
           style={styles.editOverlay}
           keyboardVerticalOffset={insets.top}
         >
@@ -539,7 +541,7 @@ export default function ExpenseDetailScreen({ navigation, route }) {
                 activeOpacity={0.85}
               >
                 {saving ? (
-                  <ActivityIndicator size="small" color={colors.surface} />
+                  <ActivityIndicator size="small" color={colors.onAccent} />
                 ) : (
                   <Text style={styles.editUpdateText}>Update</Text>
                 )}
@@ -769,7 +771,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     fontFamily: fonts.displayBold,
-    color: colors.surface,
+    color: colors.onAccent,
   },
   primaryBtnDisabled: {
     opacity: 0.6,
@@ -799,7 +801,7 @@ const styles = StyleSheet.create({
   },
   editBackdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: withAlpha(colors.inkDeep, 0.55),
+    backgroundColor: withAlpha(colors.shadow, 0.55),
   },
   editSheet: {
     backgroundColor: colors.surface,
@@ -809,7 +811,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 12,
     maxHeight: '92%',
-    shadowColor: colors.inkDeep,
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: -8,
@@ -951,7 +953,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   editChipActive: {
-    backgroundColor: colors.ink,
+    backgroundColor: colors.surfaceRaised,
     borderColor: colors.ink,
   },
   editChipText: {
@@ -961,7 +963,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   editChipTextActive: {
-    color: colors.surface,
+    color: colors.onAccent,
   },
   // Custom shares
   editShares: {
@@ -1041,7 +1043,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     fontFamily: fonts.displayBold,
-    color: colors.surface,
+    color: colors.onAccent,
   },
   // Paid-by picker
   pickOverlay: {
@@ -1050,7 +1052,7 @@ const styles = StyleSheet.create({
   },
   pickBackdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: withAlpha(colors.inkDeep, 0.55),
+    backgroundColor: withAlpha(colors.shadow, 0.55),
   },
   pickSheet: {
     backgroundColor: colors.surface,

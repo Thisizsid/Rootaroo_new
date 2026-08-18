@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
   bubbleOther: {
     backgroundColor: colors.surface,
     borderBottomLeftRadius: 4,
-    shadowColor: colors.inkDeep,
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 3,
@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
   },
   focusedBubble: {
     marginBottom: 12,
-    shadowColor: colors.inkDeep,
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 10,
@@ -231,7 +231,7 @@ const styles = StyleSheet.create({
     lineHeight: 21,
   },
   textOwn: {
-    color: colors.surface,
+    color: colors.onAccent,
   },
   textOther: {
     color: colors.ink,
@@ -316,7 +316,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 7,
     paddingVertical: 2,
     gap: 3,
-    shadowColor: colors.inkDeep,
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 2,

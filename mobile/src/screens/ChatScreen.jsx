@@ -7,7 +7,6 @@ import {
   Alert,
   FlatList,
   KeyboardAvoidingView,
-  Platform,
   Modal,
   TextInput,
   TouchableOpacity,
@@ -28,6 +27,7 @@ import TypingIndicator from '../components/TypingIndicator';
 import { chatApi } from '../shared/api/chat';
 import { householdApi } from '../shared/api/household';
 import { SvgXml } from 'react-native-svg';
+import { KEYBOARD_BEHAVIOR } from '../shared/components/KeyboardAware';
 
 // Quick reactions shown in the long-press message actions dropdown (SCREEN 31)
 const MESSAGE_EMOJIS = ['👍', '❤️', '😂', '😲', '😢'];
@@ -539,8 +539,7 @@ export default function ChatScreen({ route }) {
 
       <KeyboardAvoidingView
         style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        behavior={KEYBOARD_BEHAVIOR}
       >
         {/* Messages list — oldest at top, newest at bottom */}
         <FlatList
@@ -559,6 +558,7 @@ export default function ChatScreen({ route }) {
           showsVerticalScrollIndicator={false}
           onScroll={handleScroll}
           scrollEventThrottle={16}
+          keyboardShouldPersistTaps="handled"
         />
 
         {/* ---- Fix 4: Scroll-to-bottom FAB ---- */}
@@ -578,6 +578,8 @@ export default function ChatScreen({ route }) {
           transparent
           animationType="fade"
           onRequestClose={() => setEditingMessage(null)}
+          statusBarTranslucent
+          navigationBarTranslucent
         >
           <View style={styles.modalOverlay}>
             <View style={styles.editModal}>
@@ -771,7 +773,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     gap: 14,
     marginBottom: 10,
-    shadowColor: colors.inkDeep,
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -791,7 +793,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: 18,
     overflow: 'hidden',
-    shadowColor: colors.inkDeep,
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: 6,
@@ -858,7 +860,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     paddingVertical: 6,
     paddingHorizontal: 4,
-    shadowColor: colors.inkDeep,
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: 4,
@@ -910,7 +912,7 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 11,
     color: colors.textSecondary,
-    backgroundColor: withAlpha(colors.inkDeep, 0.05),
+    backgroundColor: withAlpha(colors.shadow, 0.05),
     paddingHorizontal: 14,
     paddingVertical: 4,
     borderRadius: radius.pill,
@@ -950,7 +952,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 4,
-    shadowColor: colors.inkDeep,
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -961,7 +963,7 @@ const styles = StyleSheet.create({
   },
   scrollToBottomText: {
     fontSize: 20,
-    color: colors.surface,
+    color: colors.onAccent,
     fontWeight: '700',
   },
   // ---- Fix 2: Edit Modal styles ----
@@ -969,7 +971,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: withAlpha(colors.inkDeep, 0.5),
+    backgroundColor: withAlpha(colors.shadow, 0.5),
   },
   editModal: {
     backgroundColor: colors.surface,
@@ -1017,13 +1019,13 @@ const styles = StyleSheet.create({
   },
   editSaveText: {
     fontSize: 15,
-    color: colors.surface,
+    color: colors.onAccent,
     fontWeight: '600',
   },
   // ---- Fix 3: Image Preview/Lightbox styles ----
   previewOverlay: {
     flex: 1,
-    backgroundColor: withAlpha(colors.inkDeep, 0.9),
+    backgroundColor: withAlpha(colors.shadow, 0.9),
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1041,7 +1043,7 @@ const styles = StyleSheet.create({
   },
   previewCloseText: {
     fontSize: 18,
-    color: colors.surface,
+    color: colors.onAccent,
     fontWeight: '700',
   },
   previewImage: {

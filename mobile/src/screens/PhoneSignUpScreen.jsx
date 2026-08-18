@@ -18,6 +18,7 @@ import {
 import Svg, { Path } from 'react-native-svg';
 import { authApi } from '../shared/api/auth';
 import { colors, fonts, withAlpha } from '../shared/theme';
+import { KEYBOARD_BEHAVIOR } from '../shared/components/KeyboardAware';
 const COUNTRY_CODES = [
   {
     code: '+91',
@@ -149,10 +150,10 @@ export default function PhoneSignUpScreen({ navigation }) {
   };
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.bgApp} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.bgApp} />
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={KEYBOARD_BEHAVIOR}
       >
         <ScrollView
           contentContainerStyle={styles.scroll}
@@ -245,7 +246,7 @@ export default function PhoneSignUpScreen({ navigation }) {
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color={colors.surface} />
+                <ActivityIndicator color={colors.onAccent} />
               ) : (
                 <Text style={styles.primaryText}>Send OTP</Text>
               )}
@@ -280,6 +281,8 @@ export default function PhoneSignUpScreen({ navigation }) {
           setPickerVisible(false);
           setSearch('');
         }}
+        statusBarTranslucent
+        navigationBarTranslucent
       >
         <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalHeader}>
@@ -386,7 +389,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceDark,
   },
   segOn: {
-    backgroundColor: colors.textPrimary,
+    backgroundColor: colors.surfaceRaised,
   },
   // Heading — shared auth typography
   heading: {
@@ -491,7 +494,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.2,
-    color: colors.surface,
+    color: colors.onAccent,
   },
   note: {
     fontFamily: fonts.body,

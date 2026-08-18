@@ -36,6 +36,7 @@ import ErrorState from '../components/ErrorState';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import OfflineBanner from '../components/OfflineBanner';
 import ConfirmSheet from '../components/ConfirmSheet';
+import { KeyboardAvoider } from '../shared/components/KeyboardAware';
 const AUTO_LOCK_SECONDS = 300; // 5 minutes (mock: "Auto-locks in 4:52")
 
 const VAULT_SVG =
@@ -312,7 +313,7 @@ export default function VaultListScreen({ navigation }) {
   if (checkingSetup) {
     return (
       <View style={[styles.root, styles.checkingRoot]}>
-        <StatusBar barStyle="light-content" backgroundColor={colors.inkDeep} />
+        <StatusBar barStyle="light-content" backgroundColor={colors.shadow} />
         <ActivityIndicator size="small" color={colors.gold} />
       </View>
     );
@@ -322,7 +323,7 @@ export default function VaultListScreen({ navigation }) {
   if (locked) {
     return (
       <View style={styles.root}>
-        <StatusBar barStyle="light-content" backgroundColor={colors.inkDeep} />
+        <StatusBar barStyle="light-content" backgroundColor={colors.shadow} />
 
         <View
           style={[
@@ -389,7 +390,7 @@ export default function VaultListScreen({ navigation }) {
             activeOpacity={0.85}
           >
             {unlockLoading ? (
-              <ActivityIndicator size="small" color={colors.surface} />
+              <ActivityIndicator size="small" color={colors.onAccent} />
             ) : (
               <Text style={styles.unlockButtonText}>Unlock vault</Text>
             )}
@@ -402,7 +403,7 @@ export default function VaultListScreen({ navigation }) {
   // ── Unlocked state (SCREEN 26) ──
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.inkDeep} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.shadow} />
 
       <View
         style={[
@@ -533,8 +534,10 @@ export default function VaultListScreen({ navigation }) {
         transparent
         animationType="fade"
         onRequestClose={closeRename}
+        statusBarTranslucent
+        navigationBarTranslucent
       >
-        <View style={styles.renameOverlay}>
+        <KeyboardAvoider style={styles.renameOverlay}>
           <View style={styles.renameCard}>
             <Text style={styles.renameTitle}>Rename document</Text>
             <TextInput
@@ -568,7 +571,7 @@ export default function VaultListScreen({ navigation }) {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoider>
       </Modal>
 
       {/* Delete document confirmation sheet */}
@@ -586,7 +589,7 @@ export default function VaultListScreen({ navigation }) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.inkDeep,
+    backgroundColor: colors.surfaceRaised,
   },
   checkingRoot: {
     alignItems: 'center',
@@ -614,7 +617,7 @@ const styles = StyleSheet.create({
   },
   skeletonCard: {
     flex: 1,
-    backgroundColor: colors.inkSoft,
+    backgroundColor: colors.surfaceRaised,
     borderRadius: 18,
     padding: 16,
     height: 122,
@@ -661,7 +664,7 @@ const styles = StyleSheet.create({
     fontSize: 25,
     lineHeight: 33,
     fontFamily: fonts.displayBold,
-    color: colors.surface,
+    color: colors.onAccent,
     textAlign: 'center',
     marginBottom: 12,
   },
@@ -693,7 +696,7 @@ const styles = StyleSheet.create({
   unlockButtonText: {
     fontSize: 15,
     fontFamily: fonts.displayBold,
-    color: colors.surface,
+    color: colors.onAccent,
   },
   // ── Header (shared: locked back-only row + unlocked title row) ──
   header: {
@@ -712,14 +715,14 @@ const styles = StyleSheet.create({
   backIcon: {
     fontSize: 20,
     fontWeight: '700',
-    color: colors.surface,
+    color: colors.onAccent,
     lineHeight: 20,
   },
   headerTitle: {
     flex: 1,
     fontSize: 17,
     fontFamily: fonts.displayBold,
-    color: colors.surface,
+    color: colors.onAccent,
   },
   lockCountdown: {
     fontSize: 12,
@@ -739,7 +742,7 @@ const styles = StyleSheet.create({
   },
   card: {
     flex: 1,
-    backgroundColor: colors.inkSoft,
+    backgroundColor: colors.surfaceRaised,
     borderRadius: 18,
     padding: 16,
     height: 142,
@@ -754,7 +757,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 19,
     fontFamily: fonts.displayBold,
-    color: colors.surface,
+    color: colors.onAccent,
   },
   cardMeta: {
     fontSize: 11,
@@ -799,7 +802,7 @@ const styles = StyleSheet.create({
   fabText: {
     fontSize: 24,
     fontFamily: fonts.displayBold,
-    color: colors.surface,
+    color: colors.onAccent,
     lineHeight: 28,
   },
   // Empty
@@ -816,7 +819,7 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontFamily: fonts.displayBold,
-    color: colors.surface,
+    color: colors.onAccent,
     marginBottom: 6,
   },
   emptySubtitle: {
@@ -833,7 +836,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   emptyAddButtonText: {
-    color: colors.surface,
+    color: colors.onAccent,
     fontSize: 15,
     fontFamily: fonts.displayBold,
   },
@@ -844,7 +847,7 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: withAlpha(colors.inkDeep, 0.55),
+    backgroundColor: withAlpha(colors.shadow, 0.55),
   },
   sheet: {
     backgroundColor: colors.surface,
@@ -852,7 +855,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 32,
     paddingTop: 14,
     paddingHorizontal: 24,
-    shadowColor: colors.inkDeep,
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: -8,
@@ -893,7 +896,7 @@ const styles = StyleSheet.create({
   // ── Rename modal ──
   renameOverlay: {
     flex: 1,
-    backgroundColor: withAlpha(colors.inkDeep, 0.55),
+    backgroundColor: withAlpha(colors.shadow, 0.55),
     justifyContent: 'center',
     paddingHorizontal: 32,
   },
@@ -943,7 +946,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gold,
   },
   renameSaveText: {
-    color: colors.surface,
+    color: colors.onAccent,
     fontSize: 14,
     fontFamily: fonts.displayBold,
   },

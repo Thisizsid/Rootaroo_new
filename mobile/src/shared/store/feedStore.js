@@ -53,6 +53,14 @@ export const useFeedStore = create((set, get) => ({
     set((state) => ({ posts: state.posts.filter((p) => p.id !== postId) }));
   },
 
+  incrementCommentCount: (postId) => {
+    set((state) => ({
+      posts: state.posts.map((p) =>
+        p.id === postId ? { ...p, commentCount: p.commentCount + 1 } : p,
+      ),
+    }));
+  },
+
   toggleLike: async (postId) => {
     // Optimistic update
     set((state) => ({

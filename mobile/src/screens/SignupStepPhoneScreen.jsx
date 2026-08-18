@@ -145,6 +145,8 @@ export default function SignupStepPhoneScreen({ navigation }) {
           setPickerVisible(false);
           setSearch('');
         }}
+        statusBarTranslucent
+        navigationBarTranslucent
       >
         <SafeAreaView style={styles.modal}>
           <View style={styles.modalHead}>

@@ -9,7 +9,6 @@ import {
   Alert,
   StatusBar,
   KeyboardAvoidingView,
-  Platform,
   Modal,
   FlatList,
   ScrollView,
@@ -21,6 +20,7 @@ import { useAuthStore } from '../shared/store/authStore';
 import { useExpenseStore } from '../shared/store/expenseStore';
 import { colors, radius, fonts, withAlpha } from '../shared/theme';
 import Avatar from '../components/Avatar';
+import { KEYBOARD_BEHAVIOR } from '../shared/components/KeyboardAware';
 function formatDateLabel(dateStr) {
   if (!dateStr) return 'Today';
   const d = new Date(dateStr);
@@ -165,9 +165,9 @@ export default function CreateExpenseScreen({ navigation }) {
   return (
     <KeyboardAvoidingView
       style={styles.root}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={KEYBOARD_BEHAVIOR}
     >
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" />
+      <StatusBar barStyle="light-content" backgroundColor="transparent" />
       <TouchableOpacity
         style={styles.backdrop}
         activeOpacity={1}
@@ -304,7 +304,7 @@ export default function CreateExpenseScreen({ navigation }) {
           activeOpacity={0.85}
         >
           {saving ? (
-            <ActivityIndicator size="small" color={colors.surface} />
+            <ActivityIndicator size="small" color={colors.onAccent} />
           ) : (
             <Text style={styles.submitBtnText}>Add expense</Text>
           )}
@@ -385,16 +385,19 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: withAlpha(colors.inkDeep, 0.55),
+    backgroundColor: withAlpha(colors.shadow, 0.55),
   },
   sheet: {
-    backgroundColor: 'white',
+    backgroundColor: colors.canvasElevated,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderBottomWidth: 0,
     paddingTop: 14,
     paddingHorizontal: 24,
     paddingBottom: 44,
-    shadowColor: colors.inkDeep,
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: -8,
@@ -521,7 +524,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   splitChipActive: {
-    backgroundColor: colors.ink,
+    backgroundColor: colors.surfaceRaised,
     borderColor: colors.ink,
   },
   splitChipText: {
@@ -531,7 +534,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   splitChipTextActive: {
-    color: colors.surface,
+    color: colors.onAccent,
   },
   // Custom / percent shares
   shares: {
@@ -589,7 +592,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     fontFamily: fonts.displayBold,
-    color: colors.surface,
+    color: colors.onAccent,
   },
   // Paid-by picker
   pickerOverlay: {
@@ -598,12 +601,15 @@ const styles = StyleSheet.create({
   },
   pickerBackdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: withAlpha(colors.inkDeep, 0.55),
+    backgroundColor: withAlpha(colors.shadow, 0.55),
   },
   pickerSheet: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.canvasElevated,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderBottomWidth: 0,
     paddingTop: 20,
     paddingHorizontal: 24,
   },

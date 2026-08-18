@@ -102,8 +102,8 @@ export default function HouseholdSetupScreen({ navigation }) {
               onBlur={() => setFocusedField(null)}
             />
 
-            <Text style={[styles.label, styles.emojiLabel]}>Family emoji</Text>
-            <View style={styles.emojiMiniRow}>
+            {/* <Text style={[styles.label, styles.emojiLabel]}>Family emoji</Text> */}
+            {/* <View style={styles.emojiMiniRow}>
               {FAMILY_EMOJIS.map((e) => (
                 <TouchableOpacity
                   key={e}
@@ -114,7 +114,7 @@ export default function HouseholdSetupScreen({ navigation }) {
                   <Text style={styles.emojiMiniText}>{e}</Text>
                 </TouchableOpacity>
               ))}
-            </View>
+            </View> */}
           </View>
         )}
       </TouchableOpacity>

@@ -55,7 +55,7 @@ export default function HelpCenterScreen({ navigation }) {
         },
       ]}
     >
-      <StatusBar barStyle="dark-content" backgroundColor={colors.canvas} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.canvas} />
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backBtn}

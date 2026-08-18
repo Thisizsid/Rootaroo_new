@@ -23,6 +23,7 @@ import EmptyState from '../components/EmptyState';
 import ErrorState from '../components/ErrorState';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import OfflineBanner from '../components/OfflineBanner';
+import { KeyboardAvoider } from '../shared/components/KeyboardAware';
 const AVATAR_COLORS = [colors.gold, colors.avatarTan, colors.avatarLilac, colors.avatarSage, colors.avatarSky];
 const PAD = 24;
 function initials(name) {
@@ -303,7 +304,7 @@ export default function ConversationsScreen() {
         },
       ]}
     >
-      <StatusBar barStyle="dark-content" backgroundColor={colors.canvas} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.canvas} />
 
       <View style={styles.bannerWrap}>
         <OfflineBanner onRetry={handleRefresh} />
@@ -428,9 +429,10 @@ export default function ConversationsScreen() {
         presentationStyle="pageSheet"
         statusBarTranslucent
         onRequestClose={() => setModalVisible(false)}
+        navigationBarTranslucent
       >
-        <View style={[searchModal.container, { paddingTop: insets.top }]}>
-          <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
+        <KeyboardAvoider style={[searchModal.container, { paddingTop: insets.top }]}>
+          <StatusBar barStyle="light-content" backgroundColor={colors.surface} />
 
           {/* Sheet header */}
           <View style={searchModal.sheetHeader}>
@@ -520,7 +522,7 @@ export default function ConversationsScreen() {
               <Text style={searchModal.creatingText}>Creating...</Text>
             </View>
           )}
-        </View>
+        </KeyboardAvoider>
       </Modal>
     </View>
   );
@@ -534,8 +536,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.canvas,
-    marginTop: 20,
-    marginBottom: 90,
     paddingHorizontal: 4,
   },
   center: {
@@ -592,7 +592,7 @@ const styles = StyleSheet.create({
   memberAvatarText: {
     fontSize: 15,
     fontWeight: '700',
-    color: colors.surface,
+    color: colors.onAccent,
   },
   memberName: {
     fontSize: 10,
@@ -635,7 +635,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: colors.inkDeep,
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: 1,
@@ -663,7 +663,7 @@ const styles = StyleSheet.create({
     right: 0,
     width: 7,
     height: 1.5,
-    backgroundColor: colors.textMuted,
+    backgroundColor: colors.surfaceRaised,
     transform: [
       {
         rotate: '45deg',
@@ -720,7 +720,7 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 16,
     fontWeight: '700',
-    color: colors.surface,
+    color: colors.onAccent,
   },
   conversationContent: {
     flex: 1,

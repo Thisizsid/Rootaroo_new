@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
   memberAvatarText: {
     fontSize: 12,
     fontWeight: '700',
-    color: colors.surface,
+    color: colors.onAccent,
   },
   joinName: {
     fontFamily: fonts.bodyMedium,

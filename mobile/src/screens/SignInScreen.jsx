@@ -22,9 +22,10 @@ import { useGoogleSignIn } from '../shared/hooks/useGoogleSignIn';
 import { resolvePostAuthNavigation } from '../shared/navigation/postAuthNavigation';
 import { loadSignupProgress } from '../shared/store/signupProgress';
 import { colors, fonts, withAlpha } from '../shared/theme';
+import { KEYBOARD_BEHAVIOR } from '../shared/components/KeyboardAware';
 function SvgApple() {
   return (
-    <Svg width="19" height="19" viewBox="0 0 24 24" fill={colors.surface}>
+    <Svg width="19" height="19" viewBox="0 0 24 24" fill={colors.onAccent}>
       <Path d="M17.05 12.54c-.03-2.56 2.09-3.79 2.18-3.85-1.19-1.74-3.04-1.98-3.7-2.01-1.58-.16-3.08.93-3.88.93-.8 0-2.03-.91-3.34-.88-1.72.02-3.3 1-4.19 2.54-1.79 3.1-.46 7.69 1.28 10.2.85 1.23 1.87 2.61 3.2 2.56 1.28-.05 1.77-.83 3.32-.83s1.99.83 3.35.8c1.38-.02 2.26-1.25 3.1-2.49.98-1.43 1.38-2.81 1.4-2.88-.03-.01-2.67-1.03-2.72-4.09zM14.37 4.9c.7-.85 1.18-2.03 1.05-3.21-1.02.04-2.25.68-2.98 1.53-.65.76-1.23 1.97-1.07 3.14 1.13.09 2.29-.58 3-1.46z" />
     </Svg>
   );
@@ -75,10 +76,10 @@ export default function SignInScreen({ navigation }) {
   const inputStyle = (field) => [styles.input, focusedField === field && styles.inputFocused];
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.bgApp} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.bgApp} />
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={KEYBOARD_BEHAVIOR}
       >
         <ScrollView
           contentContainerStyle={[
@@ -214,7 +215,7 @@ export default function SignInScreen({ navigation }) {
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color={colors.surface} />
+                <ActivityIndicator color={colors.onAccent} />
               ) : (
                 <Text style={styles.primaryText}>Sign in</Text>
               )}
@@ -293,11 +294,11 @@ const styles = StyleSheet.create({
   },
   // Apple button — dark pill (Apple brand style)
   socialBtnApple: {
-    backgroundColor: colors.textPrimary,
+    backgroundColor: colors.surfaceRaised,
     borderColor: colors.textPrimary,
   },
   socialBtnTextApple: {
-    color: colors.surface,
+    color: colors.onAccent,
   },
   socialBtnPhone: {
     marginBottom: 6,
@@ -401,7 +402,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyBold,
     fontSize: 16,
     fontWeight: '700',
-    color: colors.surface,
+    color: colors.onAccent,
     letterSpacing: 0.2,
   },
   // Bottom link

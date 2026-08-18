@@ -32,15 +32,14 @@ import { eventApi } from '../shared/api/event';
 import { checkInApi } from '../shared/api/checkin';
 import { colors, fonts, spacing, radius, withAlpha } from '../shared/theme';
 import Avatar from '../components/Avatar';
-
-// Family cover photo (Boss's pick, 2026-08-01) — default hero image
-const FAMILY_COVER = require('../../assets/images/family-cover.png');
+import { KeyboardAvoider } from '../shared/components/KeyboardAware';
+import GlassCard, { GlassSheen } from '../shared/components/GlassCard';
 
 /* ═══════════════════════════════════════════════
    Dashboard · Night glass
-   Deep navy ambient field · frosted translucent
-   cards · gold ember accents. Same widgets and
-   data as before — restyled for the dark theme.
+   Deep navy ambient field · tiled doodle backdrop ·
+   gradient-filled frosted cards · gold ember accents.
+   Same widgets, data and handlers as before.
    ═══════════════════════════════════════════════ */
 
 const GOLD = colors.goldGlow;
@@ -68,7 +67,7 @@ const AMBIENT_SVG = `
   <rect width="100" height="100" fill="url(#floor)"/>
 </svg>`;
 
-// Notification bell (Feather "bell") — Dashboard top-right, over the hero photo.
+// Notification bell (Feather "bell") — Dashboard top-right.
 const BELL_SVG = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="${colors.textOnDark}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
@@ -132,22 +131,18 @@ function WidgetLabel({ children, color = colors.textOnDarkLabel, style }) {
   );
 }
 
-/* ── Glass card (translucent white over the navy field) ── */
-function Card({ children, style, radius = 22 }) {
-  return (
-    <View
-      style={[
-        styles.card,
-        {
-          borderRadius: radius,
-        },
-        style,
-      ]}
-    >
-      {children}
-    </View>
-  );
-}
+/* ── Gradient sheen + glass card ──────────────────────────────────
+   The goldish-glass recipe (diagonal sheen gradient over a translucent
+   dark panel) now lives in the shared GlassCard component — this was its
+   original, most-refined implementation, extracted so every other screen
+   reaches for the same thing instead of re-deriving it. Aliased to the
+   names this file already uses so none of its many call sites change.
+
+   tone 'gold'  → primary (brand gold), for accent surfaces.
+   tone 'blue'  → secondary (navy lift), for the hero.
+   default      → neutral white glass.                              */
+const CardSheen = GlassSheen;
+const Card = GlassCard;
 
 /* ── Streak ring — SVG arc, gold sweep over a faint track ── */
 function StreakRing({ value, progress }) {
@@ -350,13 +345,8 @@ export default function DashboardScreen() {
   }, []);
   useEffect(() => {
     if (Platform.OS !== 'android') return;
-    // Dark screen → dark system nav bar; restore the light chrome on the way out.
     NavigationBar.setBackgroundColorAsync(colors.navyDeep);
     NavigationBar.setButtonStyleAsync('light');
-    return () => {
-      NavigationBar.setBackgroundColorAsync(colors.surface);
-      NavigationBar.setButtonStyleAsync('dark');
-    };
   }, []);
   const activity = data?.activity || [];
   const recentActivity = data?.recentActivity || [];
@@ -583,84 +573,6 @@ export default function DashboardScreen() {
       {/* ═══════ AMBIENT NAVY FIELD (behind everything) ═══════ */}
       <SvgXml xml={AMBIENT_SVG} width="100%" height="100%" style={styles.ambient} />
 
-      {/* ═══════ SELF AVATAR (top-left, pinned over the hero photo) ═══════ */}
-      <TouchableOpacity
-        style={[
-          styles.selfAvatarBtn,
-          {
-            top: insets.top + 20,
-          },
-        ]}
-        onPress={() => nav.navigate('MoreStack', { screen: 'EditProfile' })}
-        activeOpacity={0.8}
-        hitSlop={{
-          top: 8,
-          bottom: 8,
-          left: 8,
-          right: 8,
-        }}
-      >
-        <Avatar
-          url={user?.avatarUrl}
-          emoji={user?.avatarEmoji}
-          name={user?.name}
-          id={user?.id}
-          size={46}
-          style={styles.selfAvatarRing}
-        />
-      </TouchableOpacity>
-
-      {/* ═══════ NOTIFICATION BELL (top-right, pinned over the hero photo) ═══════ */}
-      <TouchableOpacity
-        style={[
-          styles.notifBtn,
-          {
-            top: insets.top + 23,
-          },
-        ]}
-        onPress={() => nav.navigate('Notifications')}
-        activeOpacity={0.8}
-        hitSlop={{
-          top: 8,
-          bottom: 8,
-          left: 8,
-          right: 8,
-        }}
-      >
-        <SvgXml xml={BELL_SVG} width={22} height={22} />
-      </TouchableOpacity>
-
-      {/* ═══════ FIXED LAYER: family photo dissolves into the navy field ═══════ */}
-      <View
-        style={[
-          styles.photoLayer,
-          {
-            height: 300,
-          },
-        ]}
-        pointerEvents="none"
-      >
-        <Image
-          source={
-            coverPhotoUrl
-              ? {
-                  uri: coverPhotoUrl,
-                }
-              : FAMILY_COVER
-          }
-          style={styles.heroImage}
-          resizeMode="cover"
-        />
-        <LinearGradient
-          colors={[
-            withAlpha(colors.navyDeep, 0.55),
-            withAlpha(colors.navyDeep, 0.82),
-            colors.navyDeep,
-          ]}
-          style={styles.heroOverlay}
-        />
-      </View>
-
       <ScrollView
         style={styles.scroll}
         showsVerticalScrollIndicator={false}
@@ -678,12 +590,52 @@ export default function DashboardScreen() {
           />
         }
       >
-        {/* Spacer keeps the photo visible above the scroll body */}
+        {/* Clears the status bar / notch now that the hero photo is gone. */}
         <View
           style={{
-            height: 168 - insets.top,
+            height: insets.top + 12,
           }}
         />
+
+        {/* ═══════ HEADER ROW — avatar + bell.
+              In normal flow (they used to be absolutely pinned over the hero
+              photo). With the photo gone, pinning made them sit on top of the
+              greeting, so they now occupy their own row instead. ═══════ */}
+        <View style={styles.headerRow}>
+          <TouchableOpacity
+            onPress={() => nav.navigate('MoreStack', { screen: 'EditProfile' })}
+            activeOpacity={0.8}
+            hitSlop={{
+              top: 8,
+              bottom: 8,
+              left: 8,
+              right: 8,
+            }}
+          >
+            <Avatar
+              url={user?.avatarUrl}
+              emoji={user?.avatarEmoji}
+              name={user?.name}
+              id={user?.id}
+              size={46}
+              style={styles.selfAvatarRing}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.notifBtn}
+            onPress={() => nav.navigate('Notifications')}
+            activeOpacity={0.8}
+            hitSlop={{
+              top: 8,
+              bottom: 8,
+              left: 8,
+              right: 8,
+            }}
+          >
+            <SvgXml xml={BELL_SVG} width={22} height={22} />
+          </TouchableOpacity>
+        </View>
 
         {/* ═══════ GREETING (sits directly on the field) ═══════ */}
         <View style={styles.greetBlock}>
@@ -751,6 +703,7 @@ export default function DashboardScreen() {
               style={{
                 alignItems: 'center',
                 gap: 10,
+                marginBottom: 20,
               }}
             >
               <Text
@@ -777,6 +730,7 @@ export default function DashboardScreen() {
             <>
               {/* ── Family Streak (hero) ── */}
               <BlurView intensity={22} tint="dark" style={styles.streakCard}>
+                <CardSheen radius={26} tone="blue" />
                 <View style={styles.rowBetween}>
                   <WidgetLabel>FAMILY STREAK</WidgetLabel>
                   {bestStreak != null && (
@@ -862,6 +816,7 @@ export default function DashboardScreen() {
                 onPress={() => nav.navigate('TasksStack')}
                 activeOpacity={0.7}
               >
+                <CardSheen radius={22} />
                 <View style={styles.rowBetween}>
                   <WidgetLabel>FAMILY HARMONY SCORE</WidgetLabel>
                   <Text style={styles.greenDelta}>▲ +{activitiesThisWeek} this week</Text>
@@ -900,7 +855,7 @@ export default function DashboardScreen() {
               </TouchableOpacity>
 
               {/* ── Today's Focus ── */}
-              <Card>
+              <Card style={{ marginBottom: 20 }}>
                 <WidgetLabel
                   style={{
                     marginBottom: 14,
@@ -943,6 +898,7 @@ export default function DashboardScreen() {
                 }
                 activeOpacity={0.7}
               >
+                <CardSheen radius={22} />
                 <View style={styles.rowBetween}>
                   <WidgetLabel>CALENDAR</WidgetLabel>
                   <View style={styles.calControls}>
@@ -1053,6 +1009,7 @@ export default function DashboardScreen() {
                   onPress={() => nav.navigate('TasksStack')}
                   activeOpacity={0.7}
                 >
+                  <CardSheen radius={20} />
                   <WidgetLabel
                     style={{
                       marginBottom: 12,
@@ -1075,6 +1032,7 @@ export default function DashboardScreen() {
                   }
                   activeOpacity={0.7}
                 >
+                  <CardSheen radius={20} />
                   <WidgetLabel
                     style={{
                       marginBottom: 12,
@@ -1101,6 +1059,7 @@ export default function DashboardScreen() {
                 }
                 activeOpacity={0.7}
               >
+                <CardSheen radius={20} />
                 <WidgetLabel
                   style={{
                     marginBottom: 12,
@@ -1166,6 +1125,7 @@ export default function DashboardScreen() {
                   }
                   activeOpacity={0.7}
                 >
+                  <CardSheen radius={20} />
                   <WidgetLabel>HOUSEHOLD</WidgetLabel>
                   <View
                     style={{
@@ -1196,6 +1156,7 @@ export default function DashboardScreen() {
                 style={{
                   paddingVertical: 18,
                   paddingHorizontal: 16,
+                  marginBottom: 20,
                 }}
               >
                 <WidgetLabel
@@ -1237,6 +1198,7 @@ export default function DashboardScreen() {
                 onPress={() => nav.navigate('TasksStack')}
                 activeOpacity={0.7}
               >
+                <CardSheen radius={20} />
                 <WidgetLabel
                   style={{
                     marginBottom: 14,
@@ -1297,6 +1259,7 @@ export default function DashboardScreen() {
                 }
                 activeOpacity={0.85}
               >
+                <CardSheen radius={20} tone="gold" />
                 <View
                   style={{
                     flex: 1,
@@ -1311,7 +1274,7 @@ export default function DashboardScreen() {
               </TouchableOpacity>
 
               {/* ── This Week ── */}
-              <Card radius={20} style={{ padding: 20 }}>
+              <Card radius={20} style={{ padding: 20, marginBottom: 20 }}>
                 <WidgetLabel
                   style={{
                     marginBottom: 10,
@@ -1337,8 +1300,11 @@ export default function DashboardScreen() {
         transparent
         statusBarTranslucent
         onRequestClose={() => setShowPicker(false)}
+        navigationBarTranslucent
       >
-        <View style={mo.overlay}>
+        {/* The overlay itself is the avoider — no extra nesting, and the
+            bottom sheet rises with the keyboard instead of sitting under it. */}
+        <KeyboardAvoider style={mo.overlay}>
           <View
             style={[
               mo.sheet,
@@ -1503,7 +1469,7 @@ export default function DashboardScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoider>
       </Modal>
     </View>
   );
@@ -1557,12 +1523,15 @@ const styles = StyleSheet.create({
   scroll: {
     flex: 1,
   },
-  // Notification bell (top-right, pinned over hero photo)
+  /* Header row holding the avatar + bell, above the greeting. */
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    paddingBottom: 14,
+  },
   notifBtn: {
-    position: 'absolute',
-    right: 16,
-    zIndex: 30,
-    elevation: 30,
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -1572,15 +1541,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  selfAvatarBtn: {
-    position: 'absolute',
-    left: 24,
-    zIndex: 30,
-    elevation: 30,
-  },
   selfAvatarRing: {
     borderWidth: 2,
-    borderColor: withAlpha(colors.surface, 0.85),
+    borderColor: withAlpha(colors.white, 0.85),
   },
   loadingWrap: {
     flex: 1,
@@ -1598,7 +1561,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: GLASS_BORDER,
     padding: 22,
-    marginBottom: 14,
+    marginBottom: 20,
     shadowColor: colors.navyDark,
     shadowOffset: {
       width: 0,
@@ -1614,7 +1577,7 @@ const styles = StyleSheet.create({
     borderColor: GLASS_BORDER,
     borderRadius: 20,
     padding: 18,
-    marginBottom: 14,
+    marginBottom: 20,
     shadowColor: colors.navyDark,
     shadowOffset: {
       width: 0,
@@ -1630,30 +1593,16 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     fontFamily: 'Inter_600SemiBold',
   },
-  /* Photo layer — fixed behind scroll content, fades into the navy field */
-  photoLayer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-  },
-  heroImage: {
-    width: '100%',
-    height: '100%',
-  },
-  heroOverlay: {
-    ...StyleSheet.absoluteFillObject,
-  },
   /* Greeting */
   greetBlock: {
     paddingHorizontal: 24,
-    paddingBottom: 18,
+    paddingBottom: 20,
   },
   greetDate: {
-    fontSize: 11,
+    fontSize: 15,
     letterSpacing: 0.3,
     color: colors.textOnDarkFaint,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   greetRow: {
     flexDirection: 'row',
@@ -1672,18 +1621,21 @@ const styles = StyleSheet.create({
   },
   avatarStack: {
     flexDirection: 'row',
+  
   },
   avatarWrap: {
     position: 'relative',
   },
   avatarCircle: {
+  
     width: 32,
     height: 32,
-    borderRadius: 16,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: withAlpha(colors.navyDeep, 0.9),
+  
   },
   avatarInitials: {
     fontSize: 11,
@@ -1731,7 +1683,7 @@ const styles = StyleSheet.create({
     borderRadius: 26,
     overflow: 'hidden',
     padding: 20,
-    marginBottom: 14,
+    marginBottom: 20,
     backgroundColor: GLASS_FILL_LIFT,
     borderWidth: 1,
     borderColor: GLASS_BORDER_LIFT,
@@ -2050,7 +2002,7 @@ const styles = StyleSheet.create({
   twoUp: {
     flexDirection: 'row',
     gap: 14,
-    marginBottom: 14,
+    marginBottom: 20,
   },
   halfCard: {
     flex: 1,
@@ -2202,7 +2154,7 @@ const styles = StyleSheet.create({
     gap: 12,
     borderRadius: 20,
     padding: 18,
-    marginBottom: 14,
+    marginBottom: 20,
     backgroundColor: withAlpha(colors.goldGlow, 0.07),
     borderWidth: 1,
     borderColor: withAlpha(colors.goldGlow, 0.22),

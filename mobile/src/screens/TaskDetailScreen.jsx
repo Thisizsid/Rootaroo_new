@@ -125,7 +125,7 @@ export default function TaskDetailScreen({ route, navigation }) {
         },
       ]}
     >
-      <StatusBar barStyle="dark-content" backgroundColor={colors.canvas} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.canvas} />
 
       {/* ── Header: back + title (SCREEN 18) ── */}
       <View style={styles.header}>
@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     fontFamily: fonts.displayBold,
-    color: colors.surface,
+    color: colors.onAccent,
   },
   outlineBtn: {
     height: 54,

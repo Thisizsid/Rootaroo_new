@@ -10,7 +10,6 @@ import {
   Easing,
   BackHandler,
   Dimensions,
-  Platform,
   Pressable,
   ActivityIndicator,
   Modal,
@@ -28,6 +27,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useFeedStore } from '../shared/store/feedStore';
 import { useAuthStore } from '../shared/store/authStore';
 import { colors, withAlpha } from '../shared/theme';
+import { KEYBOARD_BEHAVIOR } from '../shared/components/KeyboardAware';
 const MAX_CHARS = 10000;
 const MAX_MEDIA = 10;
 const ATTACH_SVG =
@@ -370,7 +370,7 @@ export default function CreatePostScreen({ navigation, route }) {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={KEYBOARD_BEHAVIOR}
       keyboardVerticalOffset={0}
     >
       <Animated.View
@@ -493,7 +493,7 @@ export default function CreatePostScreen({ navigation, route }) {
                   )}
                   {item.uploading && (
                     <View style={styles.mediaOverlay}>
-                      <ActivityIndicator size="small" color={colors.surface} />
+                      <ActivityIndicator size="small" color={colors.onAccent} />
                       <Text style={styles.uploadLabel}>Uploading</Text>
                     </View>
                   )}
@@ -608,7 +608,7 @@ export default function CreatePostScreen({ navigation, route }) {
               }}
             >
               {posting ? (
-                <ActivityIndicator size="small" color={colors.surface} />
+                <ActivityIndicator size="small" color={colors.shadow} />
               ) : (
                 <Text style={styles.postButtonText}>Post</Text>
               )}
@@ -766,7 +766,7 @@ export default function CreatePostScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: withAlpha(colors.inkDeep, 0.55), // backdrop
+    backgroundColor: withAlpha(colors.shadow, 0.6), // backdrop
   },
   sheet: {
     position: 'absolute',
@@ -774,15 +774,18 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     // stretch from animated top all the way down, like the mock
-    backgroundColor: colors.surface,
+    backgroundColor: colors.canvasElevated,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
-    shadowColor: colors.inkDeep,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderBottomWidth: 0,
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: -8,
     },
-    shadowOpacity: 0.14,
+    shadowOpacity: 0.3,
     shadowRadius: 40,
     elevation: 10,
   },
@@ -951,7 +954,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   playBadgeText: {
-    color: colors.surface,
+    color: colors.onAccent,
     fontSize: 12,
     marginLeft: 2,
   },
@@ -966,12 +969,12 @@ const styles = StyleSheet.create({
   uploadLabel: {
     fontSize: 10,
     fontWeight: '600',
-    color: colors.surface,
+    color: colors.onAccent,
   },
   errorLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: colors.surface,
+    color: colors.onAccent,
   },
   retryLabel: {
     fontSize: 10,
@@ -986,12 +989,12 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: withAlpha(colors.legacyNavy, 0.72),
+    backgroundColor: withAlpha(colors.shadow, 0.6),
     alignItems: 'center',
     justifyContent: 'center',
   },
   mediaRemoveText: {
-    color: colors.surface,
+    color: colors.onAccent,
     fontSize: 14,
     fontWeight: '600',
     lineHeight: 16,
@@ -1021,7 +1024,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: colors.canvasElevated,
+    borderTopColor: colors.border,
     gap: 8,
   },
   tools: {
@@ -1096,9 +1099,9 @@ const styles = StyleSheet.create({
   postButtonPressed: {},
   postButtonText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: colors.surface,
-    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontWeight: '700',
+    color: colors.shadow,
+    fontFamily: 'PlusJakartaSans_700Bold',
   },
   chars: {
     fontSize: 11,
@@ -1119,7 +1122,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: withAlpha(colors.legacyNavy, 0.08),
-    shadowColor: colors.inkDeep,
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: -4,
@@ -1185,9 +1188,12 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
   tagModalContent: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.canvasElevated,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderBottomWidth: 0,
     maxHeight: '70%',
   },
   tagModalHead: {

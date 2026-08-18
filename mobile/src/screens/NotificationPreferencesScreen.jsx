@@ -143,7 +143,7 @@ export default function NotificationPreferencesScreen({ navigation }) {
         },
       ]}
     >
-      <StatusBar barStyle="dark-content" backgroundColor={colors.canvas} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.canvas} />
 
       {/* Header (mock Screen 38) */}
       <View style={styles.header}>

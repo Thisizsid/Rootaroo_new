@@ -270,17 +270,17 @@ function GlassTabBar({ state, descriptors, navigation }) {
     >
       <BlurView
         intensity={80}
-        tint={dark ? 'dark' : 'light'}
+        tint="dark"
         style={{
           flexDirection: 'row',
           borderRadius: 28,
           overflow: 'hidden',
           borderWidth: 1,
-          borderColor: dark ? colors.gold : withAlpha(colors.white, 0.65),
-          backgroundColor: dark ? withAlpha(colors.overlaySlate, 0.88) : withAlpha(colors.white, 0.72),
-          shadowColor: dark ? colors.black : INK,
+          borderColor: dark ? colors.gold : colors.border,
+          backgroundColor: withAlpha(colors.overlaySlate, dark ? 0.9 : 0.82),
+          shadowColor: colors.black,
           shadowOffset: { width: 0, height: 10 },
-          shadowOpacity: dark ? 0.4 : 0.12,
+          shadowOpacity: 0.4,
           shadowRadius: 24,
           elevation: 14,
         }}
@@ -305,9 +305,7 @@ function GlassTabBar({ state, descriptors, navigation }) {
             navigation.emit({ type: 'tabLongPress', target: route.key });
           };
 
-          const color = isFocused
-            ? GOLD
-            : (dark ? withAlpha(colors.white, 0.55) : INACTIVE);
+          const color = isFocused ? GOLD : INACTIVE;
 
           return (
             <TouchableOpacity
@@ -345,9 +343,7 @@ function GlassTabBar({ state, descriptors, navigation }) {
                   fontSize: 10.5,
                   fontWeight: isFocused ? '700' : '600',
                   letterSpacing: 0.1,
-                  color: isFocused
-                    ? (dark ? colors.surface : INK)
-                    : (dark ? withAlpha(colors.white, 0.5) : INACTIVE),
+                  color: isFocused ? INK : INACTIVE,
                   fontFamily: isFocused ? 'PlusJakartaSans_700Bold' : 'Inter_600SemiBold',
                 }}
               >
@@ -378,8 +374,8 @@ function MainNavigator() {
 
   useEffect(() => {
     if (Platform.OS !== 'android') return;
-    NavigationBar.setBackgroundColorAsync(colors.surface);
-    NavigationBar.setButtonStyleAsync('dark');
+    NavigationBar.setBackgroundColorAsync(colors.canvas);
+    NavigationBar.setButtonStyleAsync('light');
   }, []);
 
   return (

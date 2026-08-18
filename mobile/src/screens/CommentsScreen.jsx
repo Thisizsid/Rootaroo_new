@@ -8,8 +8,6 @@ import {
   ScrollView,
   TextInput,
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
   Alert,
   Modal,
   Pressable,
@@ -19,6 +17,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { SvgXml } from 'react-native-svg';
 import { feedApi } from '../shared/api/feed';
 import { colors, withAlpha } from '../shared/theme';
+import { KeyboardAvoider } from '../shared/components/KeyboardAware';
 const INK = colors.ink;
 const MUTED = colors.textMuted;
 const CANVAS = colors.canvas;
@@ -394,55 +393,56 @@ export default function CommentsScreen() {
         )}
       </View>
 
-      {/* Comments list */}
-      <ScrollView
-        style={styles.list}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        onScroll={({ nativeEvent }) => {
-          const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
-          if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 60) {
-            loadMore();
-          }
-        }}
-        scrollEventThrottle={200}
-      >
-        {loading ? (
-          <View style={styles.loading}>
-            <ActivityIndicator size="large" color={GOLD} />
-          </View>
-        ) : comments.length === 0 ? (
-          <Text style={styles.empty}>No comments yet — be the first.</Text>
-        ) : (
-          comments.map((c) => renderComment(c, 0))
-        )}
-        {loadingMore && (
-          <View
-            style={{
-              paddingVertical: 12,
-              alignItems: 'center',
-            }}
-          >
-            <ActivityIndicator size="small" color={GOLD} />
-          </View>
-        )}
-      </ScrollView>
+      {/* Comments list + input bar move together as the keyboard opens */}
+      <KeyboardAvoider style={styles.avoider}>
+        <ScrollView
+          style={styles.list}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          onScroll={({ nativeEvent }) => {
+            const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
+            if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 60) {
+              loadMore();
+            }
+          }}
+          scrollEventThrottle={200}
+        >
+          {loading ? (
+            <View style={styles.loading}>
+              <ActivityIndicator size="large" color={GOLD} />
+            </View>
+          ) : comments.length === 0 ? (
+            <Text style={styles.empty}>No comments yet — be the first.</Text>
+          ) : (
+            comments.map((c) => renderComment(c, 0))
+          )}
+          {loadingMore && (
+            <View
+              style={{
+                paddingVertical: 12,
+                alignItems: 'center',
+              }}
+            >
+              <ActivityIndicator size="small" color={GOLD} />
+            </View>
+          )}
+        </ScrollView>
 
-      {/* Reply banner */}
-      {replyingTo && (
-        <View style={styles.replyBanner}>
-          <Text style={styles.replyBannerText} numberOfLines={1}>
-            Replying to {replyingTo.author?.displayName || 'comment'}
-          </Text>
-          <TouchableOpacity onPress={() => setReplyingTo(null)} hitSlop={8}>
-            <Text style={styles.replyBannerX}>✕</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+        {/* Reply banner */}
+        {replyingTo && (
+          <View style={styles.replyBanner}>
+            <Text style={styles.replyBannerText} numberOfLines={1}>
+              Replying to {replyingTo.author?.displayName || 'comment'}
+            </Text>
+            <TouchableOpacity onPress={() => setReplyingTo(null)} hitSlop={8}>
+              <Text style={styles.replyBannerX}>✕</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
-      {/* Input bar */}
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        {/* Input bar */}
         <View
           style={[
             styles.inputBarWrap,
@@ -481,14 +481,14 @@ export default function CommentsScreen() {
               disabled={sending || !input.trim()}
             >
               {sending ? (
-                <ActivityIndicator size="small" color={colors.surface} />
+                <ActivityIndicator size="small" color={colors.onAccent} />
               ) : (
                 <SvgXml xml={SEND_SVG} width={18} height={18} />
               )}
             </TouchableOpacity>
           </View>
         </View>
-      </KeyboardAvoidingView>
+      </KeyboardAvoider>
 
       {/* Delete menu dropdown */}
       <Modal visible={!!menuComment} transparent animationType="fade" onRequestClose={closeMenu}>
@@ -561,6 +561,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: GLYPH_FG,
     fontFamily: 'Inter_600SemiBold',
+  },
+  avoider: {
+    flex: 1,
   },
   list: {
     flex: 1,
@@ -752,7 +755,7 @@ const styles = StyleSheet.create({
   },
   menuBackdrop: {
     flex: 1,
-    backgroundColor: withAlpha(colors.inkDeep, 0.25),
+    backgroundColor: withAlpha(colors.shadow, 0.25),
   },
   menuDropdown: {
     position: 'absolute',
@@ -761,7 +764,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingVertical: 6,
     paddingHorizontal: 14,
-    shadowColor: colors.inkDeep,
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: 6,

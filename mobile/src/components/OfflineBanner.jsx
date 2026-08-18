@@ -47,7 +47,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
   },
-  bannerDark: { backgroundColor: colors.inkSoft },
+  bannerDark: { backgroundColor: colors.surfaceRaised },
   text: {
     flex: 1,
     fontSize: 13,

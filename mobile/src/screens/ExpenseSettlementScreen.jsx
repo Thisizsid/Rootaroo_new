@@ -135,14 +135,14 @@ export default function ExpenseSettlementScreen({ navigation }) {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
+        <StatusBar barStyle="light-content" backgroundColor={colors.surface} />
         <ActivityIndicator size="large" color={colors.legacyGold} style={styles.loading} />
       </SafeAreaView>
     );
   }
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.surface} />
 
       <View style={styles.header}>
         <View style={styles.headerLeft}>

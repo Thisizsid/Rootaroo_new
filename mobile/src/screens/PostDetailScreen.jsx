@@ -6,7 +6,6 @@ import {
   SafeAreaView,
   ScrollView,
   KeyboardAvoidingView,
-  Platform,
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
@@ -19,6 +18,7 @@ import { feedApi } from '../shared/api/feed';
 import { useAuthStore } from '../shared/store/authStore';
 import { colors, withAlpha } from '../shared/theme';
 import Avatar from '../components/Avatar';
+import { KEYBOARD_BEHAVIOR } from '../shared/components/KeyboardAware';
 /* ── Helpers ────────────────────────────────────────────────────────────── */
 
 function elapsed(timestamp) {
@@ -46,6 +46,8 @@ export default function PostDetailScreen({ navigation, route }) {
   const [error, setError] = useState(null);
   const [commentText, setCommentText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  // Measured so the keyboard offset isn't a hardcoded pixel guess.
+  const [topBarHeight, setTopBarHeight] = useState(0);
   const user = useAuthStore((s) => s.user);
   const inputRef = useRef(null);
 
@@ -106,7 +108,7 @@ export default function PostDetailScreen({ navigation, route }) {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
+        <StatusBar barStyle="light-content" backgroundColor={colors.surface} />
         <View style={styles.topBar}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
@@ -133,7 +135,7 @@ export default function PostDetailScreen({ navigation, route }) {
   if (error || !post) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
+        <StatusBar barStyle="light-content" backgroundColor={colors.surface} />
         <View style={styles.topBar}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
@@ -162,9 +164,12 @@ export default function PostDetailScreen({ navigation, route }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.surface} />
       {/* Top bar */}
-      <View style={styles.topBar}>
+      <View
+        style={styles.topBar}
+        onLayout={(e) => setTopBarHeight(e.nativeEvent.layout.height)}
+      >
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           hitSlop={{
@@ -183,8 +188,8 @@ export default function PostDetailScreen({ navigation, route }) {
       </View>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        behavior={KEYBOARD_BEHAVIOR}
+        keyboardVerticalOffset={topBarHeight}
       >
         <View style={styles.flex}>
           {/* Scrollable area: PostCard + comments */}
@@ -285,7 +290,7 @@ export default function PostDetailScreen({ navigation, route }) {
               style={styles.postButton}
             >
               {submitting ? (
-                <ActivityIndicator size="small" color={colors.surface} />
+                <ActivityIndicator size="small" color={colors.onAccent} />
               ) : (
                 <Text
                   style={[
@@ -453,7 +458,7 @@ const styles = StyleSheet.create({
   postButtonText: {
     fontSize: 14,
     fontWeight: '700',
-    color: colors.surface,
+    color: colors.onAccent,
   },
   postButtonTextDisabled: {
     opacity: 0.4,

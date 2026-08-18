@@ -7,7 +7,6 @@ import {
   TextInput,
   TouchableOpacity,
   KeyboardAvoidingView,
-  Platform,
   ScrollView,
   Alert,
   ActivityIndicator,
@@ -16,6 +15,7 @@ import Svg, { Path } from 'react-native-svg';
 import { authApi, storePendingAuthResponse } from '../shared/api/auth';
 import { startEmailSignupProgress } from '../shared/navigation/postAuthNavigation';
 import { colors, fonts } from '../shared/theme';
+import { KEYBOARD_BEHAVIOR } from '../shared/components/KeyboardAware';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /* Back chevron — matches rootaro_signup_validation.html (20x20, stroke 2, ink) */
@@ -97,11 +97,11 @@ export default function SignUpScreen({ navigation }) {
       : null;
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.bgApp} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.bgApp} />
 
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={KEYBOARD_BEHAVIOR}
       >
         <ScrollView
           contentContainerStyle={styles.scroll}
@@ -201,7 +201,7 @@ export default function SignUpScreen({ navigation }) {
             disabled={!canContinue}
           >
             {loading ? (
-              <ActivityIndicator color={colors.surface} />
+              <ActivityIndicator color={colors.onAccent} />
             ) : (
               <Text style={[styles.ctaText, !canContinue && styles.ctaTextDisabled]}>Continue</Text>
             )}
@@ -340,7 +340,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 16,
     letterSpacing: 0.2,
-    color: colors.surface,
+    color: colors.onAccent,
   },
   ctaTextDisabled: {
     color: colors.btnDisabledText,

@@ -1,7 +1,7 @@
 /**
  * CalendarScreen — family calendar (SCREEN 34, 07-Calendar-Household.html).
  *
- * Light theme (#F3F1EC canvas). Hero header + avatar stack, dark "Today's
+ * Dark glass theme (navy canvas). Hero header + avatar stack, dark "Today's
  * agenda" card, month grid, selected-day timeline, upcoming card, and the
  * Birthdays / Availability tiles. A gold FAB opens the Create Event sheet.
  */
@@ -214,7 +214,7 @@ export default function CalendarScreen({ navigation }) {
   const birthday = useMemo(() => nextBirthday(members), [members]);
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.canvas} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.canvas} />
 
       <ScrollView
         style={styles.scroll}
@@ -496,7 +496,7 @@ const styles = StyleSheet.create({
   },
   // Today's agenda
   todayCard: {
-    backgroundColor: colors.ink,
+    backgroundColor: colors.surfaceRaised,
     borderRadius: 20,
     padding: 18,
     marginVertical: 18,
@@ -512,7 +512,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 21,
     fontFamily: fonts.displayBold,
-    color: colors.surface,
+    color: colors.onAccent,
     marginBottom: 4,
   },
   todaySub: {
@@ -557,7 +557,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gold,
   },
   dayCircleSelected: {
-    backgroundColor: colors.ink,
+    backgroundColor: colors.surfaceRaised,
   },
   dayNum: {
     fontSize: 13,
@@ -566,7 +566,7 @@ const styles = StyleSheet.create({
   },
   dayNumActive: {
     fontFamily: fonts.bodySemiBold,
-    color: colors.surface,
+    color: colors.onAccent,
   },
   dayDot: {
     width: 4,
@@ -627,7 +627,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 20,
     marginBottom: 14,
-    shadowColor: colors.ink,
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: 10,
@@ -641,7 +641,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 18,
-    shadowColor: colors.ink,
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: 10,
@@ -733,7 +733,7 @@ const styles = StyleSheet.create({
   fabText: {
     fontSize: 24,
     fontFamily: fonts.displayBold,
-    color: colors.surface,
+    color: colors.onAccent,
     lineHeight: 28,
   },
 });

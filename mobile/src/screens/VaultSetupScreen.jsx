@@ -29,6 +29,7 @@ import { useVaultStore } from '../shared/store/vaultStore';
 import { setupVaultKeys } from '../shared/crypto/vaultSetup';
 import { getPrivateKey } from '../shared/crypto/secureKeyStore';
 import { colors, fonts, withAlpha } from '../shared/theme';
+import { KeyboardAvoider, keyboardScrollProps } from '../shared/components/KeyboardAware';
 export default function VaultSetupScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const [backupChoice, setBackupChoice] = useState('passphrase');
@@ -85,7 +86,7 @@ export default function VaultSetupScreen({ navigation }) {
   };
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.inkDeep} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.shadow} />
 
       {/* Header */}
       <View
@@ -113,6 +114,7 @@ export default function VaultSetupScreen({ navigation }) {
         <View style={styles.backBtn} />
       </View>
 
+      <KeyboardAvoider>
       <ScrollView
         contentContainerStyle={[
           styles.content,
@@ -120,7 +122,7 @@ export default function VaultSetupScreen({ navigation }) {
             paddingBottom: insets.bottom + 24,
           },
         ]}
-        keyboardShouldPersistTaps="handled"
+        {...keyboardScrollProps}
         showsVerticalScrollIndicator={false}
       >
         {/* Icon */}
@@ -221,7 +223,7 @@ export default function VaultSetupScreen({ navigation }) {
         >
           {settingUp ? (
             <View style={styles.creatingRow}>
-              <ActivityIndicator size="small" color={colors.surface} />
+              <ActivityIndicator size="small" color={colors.onAccent} />
               <Text style={styles.createButtonText}>Creating secure key…</Text>
             </View>
           ) : (
@@ -235,13 +237,14 @@ export default function VaultSetupScreen({ navigation }) {
           </Text>
         )}
       </View>
+      </KeyboardAvoider>
     </View>
   );
 }
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.inkDeep,
+    backgroundColor: colors.surfaceRaised,
   },
   header: {
     flexDirection: 'row',
@@ -258,13 +261,13 @@ const styles = StyleSheet.create({
   backIcon: {
     fontSize: 20,
     fontWeight: '700',
-    color: colors.surface,
+    color: colors.onAccent,
     lineHeight: 20,
   },
   headerTitle: {
     fontSize: 17,
     fontFamily: fonts.displayBold,
-    color: colors.surface,
+    color: colors.onAccent,
   },
   content: {
     paddingHorizontal: 24,
@@ -278,7 +281,7 @@ const styles = StyleSheet.create({
     fontSize: 23,
     lineHeight: 30,
     fontFamily: fonts.displayBold,
-    color: colors.surface,
+    color: colors.onAccent,
     textAlign: 'center',
     marginBottom: 10,
   },
@@ -291,7 +294,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   option: {
-    backgroundColor: colors.inkSoft,
+    backgroundColor: colors.surfaceRaised,
     borderWidth: 1,
     borderColor: 'transparent',
     borderRadius: 18,
@@ -304,7 +307,7 @@ const styles = StyleSheet.create({
   optionTitle: {
     fontSize: 15,
     fontFamily: fonts.displayBold,
-    color: colors.surface,
+    color: colors.onAccent,
     marginBottom: 6,
   },
   optionDesc: {
@@ -320,13 +323,13 @@ const styles = StyleSheet.create({
   input: {
     height: 52,
     borderRadius: 14,
-    backgroundColor: colors.inkSoft,
+    backgroundColor: colors.surfaceRaised,
     borderWidth: 1.5,
     borderColor: withAlpha(colors.white, 0.1),
     paddingHorizontal: 16,
     fontSize: 14,
     fontFamily: fonts.body,
-    color: colors.surface,
+    color: colors.onAccent,
   },
   note: {
     fontSize: 12,
@@ -366,7 +369,7 @@ const styles = StyleSheet.create({
   createButtonText: {
     fontSize: 15,
     fontFamily: fonts.displayBold,
-    color: colors.surface,
+    color: colors.onAccent,
   },
   waitHint: {
     fontSize: 12,

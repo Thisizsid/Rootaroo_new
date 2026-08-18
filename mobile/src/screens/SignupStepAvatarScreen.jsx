@@ -18,23 +18,11 @@ import { colors, fonts } from '../shared/theme';
 const AVATAR_PRESETS = [
   {
     id: 'ava_01',
-    source: require('../../assets/images/avatars/avatar_01.png'),
+    source: require('../../assets/images/avatars/avatar1-removebg-preview.png'),
   },
   {
     id: 'ava_02',
-    source: require('../../assets/images/avatars/avatar_02.png'),
-  },
-  {
-    id: 'ava_03',
-    source: require('../../assets/images/avatars/avatar_03.png'),
-  },
-  {
-    id: 'ava_04',
-    source: require('../../assets/images/avatars/avatar_04.png'),
-  },
-  {
-    id: 'ava_05',
-    source: require('../../assets/images/avatars/avatar_05.png'),
+    source: require('../../assets/images/avatars/avatar2-removebg-preview.png'),
   },
 ];
 const FAMILY_EMOJIS = ['🏡', '❤️', '🌿', '🐶', '🌻', '🌙', '☀️', '🍂'];
@@ -248,7 +236,7 @@ export default function SignupStepAvatarScreen({ navigation }) {
                 height="14"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke={colors.surface}
+                stroke={colors.onAccent}
                 strokeWidth="2"
               >
                 <Path d="M4 8h3l2-2h6l2 2h3v11H4z" />
@@ -291,10 +279,10 @@ export default function SignupStepAvatarScreen({ navigation }) {
 
       {/* Family emoji */}
       <Text style={styles.sectionLabel}>Choose an emoji that represents your family</Text>
-      <View style={styles.emojiPreview}>
+      {/* <View style={styles.emojiPreview}>
         <Text style={styles.emojiPreviewText}>{familyEmoji}</Text>
-      </View>
-      <View style={styles.emojiGrid}>
+      </View> */}
+      {/* <View style={styles.emojiGrid}>
         {FAMILY_EMOJIS.map((e) => (
           <TouchableOpacity
             key={e}
@@ -305,7 +293,7 @@ export default function SignupStepAvatarScreen({ navigation }) {
             <Text style={styles.emojiText}>{e}</Text>
           </TouchableOpacity>
         ))}
-      </View>
+      </View> */}
     </SignupWizardShell>
   );
 }
@@ -345,7 +333,7 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: colors.textPrimary,
+    backgroundColor: colors.surfaceRaised,
     borderWidth: 2,
     borderColor: colors.bgApp,
     alignItems: 'center',

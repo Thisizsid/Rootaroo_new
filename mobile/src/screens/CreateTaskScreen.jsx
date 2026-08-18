@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   ScrollView,
   KeyboardAvoidingView,
-  Platform,
   StatusBar,
   Modal,
   FlatList,
@@ -20,6 +19,18 @@ import { useAuthStore } from '../shared/store/authStore';
 import { householdApi } from '../shared/api/household';
 import { colors, radius, fonts, withAlpha } from '../shared/theme';
 import Avatar from '../components/Avatar';
+import { KEYBOARD_BEHAVIOR } from '../shared/components/KeyboardAware';
+const POINTS_OPTIONS = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
+// Legacy tasks may have a points value that predates the multiples-of-5
+// picker — snap it to the closest option so editing always shows a value
+// the dropdown can actually select.
+function nearestPointsOption(n) {
+  const num = Number(n);
+  if (!Number.isFinite(num) || num <= 0) return POINTS_OPTIONS[0];
+  return POINTS_OPTIONS.reduce((closest, opt) =>
+    Math.abs(opt - num) < Math.abs(closest - num) ? opt : closest,
+  );
+}
 const RECURRENCE_OPTIONS = [
   {
     label: 'None',
@@ -270,6 +281,33 @@ function RecurrencePicker({ visible, value, onSelect, onClose, insets }) {
 }
 
 // ─────────────────────────────────────────────
+// Points picker — multiples of 5
+// ─────────────────────────────────────────────
+function PointsPicker({ visible, value, onSelect, onClose, insets }) {
+  return (
+    <Sheet visible={visible} title="Points" onClose={onClose} insets={insets}>
+      {POINTS_OPTIONS.map((opt) => {
+        const active = Number(value) === opt;
+        return (
+          <TouchableOpacity
+            key={opt}
+            style={styles.pickRow}
+            onPress={() => {
+              onSelect(opt);
+              onClose();
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.pickRowText, active && styles.pickRowTextActive]}>{opt} pts</Text>
+            {active && <Text style={styles.pickRowCheck}>✓</Text>}
+          </TouchableOpacity>
+        );
+      })}
+    </Sheet>
+  );
+}
+
+// ─────────────────────────────────────────────
 // Main screen — Add Task bottom sheet (SCREEN 17)
 // ─────────────────────────────────────────────
 export default function CreateTaskScreen({ route, navigation }) {
@@ -278,7 +316,7 @@ export default function CreateTaskScreen({ route, navigation }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
-  const [points, setPoints] = useState('1');
+  const [points, setPoints] = useState('5');
   const [recurrence, setRecurrence] = useState('none');
   const [posting, setPosting] = useState(false);
   const [members, setMembers] = useState([]);
@@ -286,13 +324,14 @@ export default function CreateTaskScreen({ route, navigation }) {
   const [showCalendar, setShowCalendar] = useState(false);
   const [showAssigneePicker, setShowAssigneePicker] = useState(false);
   const [showRecurrence, setShowRecurrence] = useState(false);
+  const [showPoints, setShowPoints] = useState(false);
   const insets = useSafeAreaInsets();
   const householdId = useAuthStore((s) => s.householdId);
   const userId = useAuthStore((s) => s.user?.id);
   const canPost = title.trim().length > 0 && !posting;
   const isSelfOnly = selectedAssignees.length === 1 && selectedAssignees[0] === userId;
   useEffect(() => {
-    if (isSelfOnly) setPoints('1');
+    if (isSelfOnly) setPoints('5');
   }, [isSelfOnly]);
   useEffect(() => {
     if (householdId) {
@@ -310,7 +349,7 @@ export default function CreateTaskScreen({ route, navigation }) {
         setTitle(task.title);
         setDescription(task.description || '');
         setDueDate(task.dueDate || '');
-        setPoints(String(task.points ?? 1));
+        setPoints(String(nearestPointsOption(task.points ?? 5)));
         setRecurrence(task.recurrence);
         setSelectedAssignees(task.assignees.map((a) => a.id));
       } catch {
@@ -359,9 +398,9 @@ export default function CreateTaskScreen({ route, navigation }) {
   return (
     <KeyboardAvoidingView
       style={styles.root}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={KEYBOARD_BEHAVIOR}
     >
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" />
+      <StatusBar barStyle="light-content" backgroundColor="transparent" />
       <TouchableOpacity
         style={styles.backdrop}
         activeOpacity={1}
@@ -443,16 +482,16 @@ export default function CreateTaskScreen({ route, navigation }) {
           <View style={styles.row}>
             <View style={styles.fieldGroup}>
               <Text style={styles.fieldLabel}>Points</Text>
-              <TextInput
+              <TouchableOpacity
                 style={[styles.fieldInput, isSelfOnly && styles.fieldInputDisabled]}
-                value={points}
-                onChangeText={(t) => setPoints(t.replace(/[^0-9]/g, ''))}
-                keyboardType="number-pad"
-                placeholder="1"
-                placeholderTextColor={colors.textMuted}
-                maxLength={4}
-                editable={!isSelfOnly}
-              />
+                onPress={() => !isSelfOnly && setShowPoints(true)}
+                activeOpacity={0.7}
+                disabled={isSelfOnly}
+              >
+                <Text style={points ? styles.fieldValue : styles.fieldPlaceholder}>
+                  {points ? `${points} pts` : 'Select'}
+                </Text>
+              </TouchableOpacity>
               {isSelfOnly && (
                 <Text style={styles.fieldHelper}>
                   Points aren't awarded for tasks assigned only to yourself.
@@ -483,7 +522,7 @@ export default function CreateTaskScreen({ route, navigation }) {
           activeOpacity={0.85}
         >
           {posting ? (
-            <ActivityIndicator size="small" color={colors.surface} />
+            <ActivityIndicator size="small" color={colors.onAccent} />
           ) : (
             <Text style={styles.submitBtnText}>{isEditing ? 'Save' : 'Add task'}</Text>
           )}
@@ -504,6 +543,14 @@ export default function CreateTaskScreen({ route, navigation }) {
         value={recurrence}
         onSelect={setRecurrence}
         onClose={() => setShowRecurrence(false)}
+        insets={insets}
+      />
+
+      <PointsPicker
+        visible={showPoints}
+        value={points}
+        onSelect={(opt) => setPoints(String(opt))}
+        onClose={() => setShowPoints(false)}
         insets={insets}
       />
 
@@ -566,12 +613,15 @@ export default function CreateTaskScreen({ route, navigation }) {
 const sheet = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: withAlpha(colors.inkDeep, 0.55),
+    backgroundColor: withAlpha(colors.shadow, 0.55),
   },
   box: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.canvasElevated,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderBottomWidth: 0,
     paddingTop: 6,
     maxHeight: '75%',
   },
@@ -671,7 +721,7 @@ const cal = StyleSheet.create({
     borderWidth: 0,
   },
   selectedCellText: {
-    color: colors.surface,
+    color: colors.onAccent,
     fontWeight: '800',
   },
   pastCellText: {
@@ -688,17 +738,20 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: withAlpha(colors.inkDeep, 0.55),
+    backgroundColor: withAlpha(colors.shadow, 0.55),
   },
   sheet: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.canvasElevated,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderBottomWidth: 0,
     paddingTop: 14,
     paddingHorizontal: 24,
     paddingBottom: 120,
     marginBottom: -60,
-    shadowColor: colors.inkDeep,
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: -8,
@@ -810,7 +863,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     fontFamily: fonts.displayBold,
-    color: colors.surface,
+    color: colors.onAccent,
   },
   // Picker rows (assignee + recurrence)
   pickRow: {
@@ -889,6 +942,6 @@ const styles = StyleSheet.create({
   pickCheckMark: {
     fontSize: 13,
     fontWeight: '800',
-    color: colors.surface,
+    color: colors.onAccent,
   },
 });

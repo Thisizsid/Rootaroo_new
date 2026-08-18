@@ -13,6 +13,7 @@ import {
 import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fonts } from '../../shared/theme';
+import { KEYBOARD_BEHAVIOR } from './KeyboardAware';
 
 /**
  * Auth wizard shell — matches design/auth-designs/screen05..11 (rootaro signup).
@@ -36,10 +37,10 @@ export default function SignupWizardShell({
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.bgApp} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.bgApp} />
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={KEYBOARD_BEHAVIOR}
       >
         <ScrollView
           contentContainerStyle={[
@@ -94,7 +95,7 @@ export default function SignupWizardShell({
               activeOpacity={0.85}
             >
               {loading ? (
-                <ActivityIndicator color={colors.surface} />
+                <ActivityIndicator color={colors.onAccent} />
               ) : (
                 <Text style={[styles.ctaText, (continueDisabled || loading) && styles.ctaTextOff]}>
                   {continueLabel}
@@ -148,7 +149,7 @@ const styles = StyleSheet.create({
   },
 
   segOn: {
-    backgroundColor: colors.textPrimary,
+    backgroundColor: colors.surfaceRaised,
   },
 
   heading: {
@@ -201,7 +202,7 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     fontWeight: '700',
     letterSpacing: 0.2,
-    color: colors.surface,
+    color: colors.onAccent,
   },
 
   ctaTextOff: {
