@@ -16,6 +16,7 @@ import { chatApi } from '../shared/api/chat';
 import { householdApi } from '../shared/api/household';
 import { useAuthStore } from '../shared/store/authStore';
 import { colors, radius, spacing, withAlpha } from '../shared/theme';
+import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
 const AVATAR_COLORS = [colors.gold, colors.avatarTan, colors.avatarLilac, colors.avatarSage, colors.avatarSky];
 function initials(name) {
   const parts = name.trim().split(/\s+/);
@@ -25,6 +26,7 @@ function initials(name) {
 export default function GroupMembersScreen({ route }) {
   const { conversationId, title, type } = route.params;
   const insets = useSafeAreaInsets();
+  const dockHeight = useTabBarDockHeight();
   const nav = useNavigation();
   const currentUserId = useAuthStore((s) => s.user?.id || '');
   const householdId = useAuthStore((s) => s.householdId);
@@ -275,7 +277,7 @@ export default function GroupMembersScreen({ route }) {
           data={rows}
           keyExtractor={(item) => item.member.userId}
           renderItem={renderItem}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: dockHeight + 16 }]}
           ListHeaderComponent={
             <>
               {isAdmin && (

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fonts } from '../shared/theme';
+import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
 const SECTIONS = [
   {
     heading: 'What we collect',
@@ -38,6 +39,7 @@ const SECTIONS = [
 ];
 export default function PrivacyPolicyScreen({ navigation }) {
   const insets = useSafeAreaInsets();
+  const dockHeight = useTabBarDockHeight();
   return (
     <View
       style={[
@@ -70,7 +72,7 @@ export default function PrivacyPolicyScreen({ navigation }) {
         contentContainerStyle={[
           styles.scrollContent,
           {
-            paddingBottom: insets.bottom + 40,
+            paddingBottom: dockHeight + 16,
           },
         ]}
         showsVerticalScrollIndicator={false}

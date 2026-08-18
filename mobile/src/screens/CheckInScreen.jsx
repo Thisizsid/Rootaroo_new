@@ -35,6 +35,7 @@ import { colors, fonts, withAlpha } from '../shared/theme';
 import { haversineDistanceKm, formatDistance } from '../shared/utils/geo';
 import Avatar from '../components/Avatar';
 import { KeyboardAvoider } from '../shared/components/KeyboardAware';
+import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
 const PLACE_ICON_EMOJI = {
   home: '⌂',
   office: '💼',
@@ -72,6 +73,7 @@ const MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
  */
 export default function CheckInScreen({ navigation }) {
   const insets = useSafeAreaInsets();
+  const dockHeight = useTabBarDockHeight();
   const currentUserId = useAuthStore((s) => s.user?.id || '');
   const householdId = useAuthStore((s) => s.householdId);
   const [loading, setLoading] = useState(true);
@@ -809,7 +811,7 @@ export default function CheckInScreen({ navigation }) {
           styles.tray,
           {
             height: TRAY_EXPANDED_HEIGHT,
-            paddingBottom: insets.bottom + 12,
+            paddingBottom: dockHeight + 12,
             transform: [
               {
                 translateY: trayTranslateY,

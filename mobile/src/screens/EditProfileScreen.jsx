@@ -22,6 +22,7 @@ import apiClient from '../shared/api/client';
 import { colors, fonts, withAlpha } from '../shared/theme';
 import PostCard from '../shared/components/PostCard';
 import { KEYBOARD_BEHAVIOR } from '../shared/components/KeyboardAware';
+import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
 const AVATAR_SIZE = 88;
 const AVATAR_RADIUS = AVATAR_SIZE / 2;
 // How much of the avatar sits over the cover photo vs. hangs below it.
@@ -44,6 +45,7 @@ export default function EditProfileScreen({ navigation }) {
   const setUser = useAuthStore((s) => s.setUser);
   const householdId = useAuthStore((s) => s.householdId);
   const insets = useSafeAreaInsets();
+  const dockHeight = useTabBarDockHeight();
   const [name, setName] = useState(user?.name ?? '');
   const [phone, setPhone] = useState(user?.phone ?? '');
   const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl ?? null);
@@ -324,7 +326,7 @@ export default function EditProfileScreen({ navigation }) {
           styles.form,
           {
             paddingTop: hasCoverSection ? AVATAR_HANG_BELOW + 16 : 24,
-            paddingBottom: insets.bottom + 40,
+            paddingBottom: dockHeight + 16,
           },
         ]}
         showsVerticalScrollIndicator={false}

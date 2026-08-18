@@ -24,6 +24,7 @@ import ErrorState from '../components/ErrorState';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import OfflineBanner from '../components/OfflineBanner';
 import { KeyboardAvoider } from '../shared/components/KeyboardAware';
+import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
 const AVATAR_COLORS = [colors.gold, colors.avatarTan, colors.avatarLilac, colors.avatarSage, colors.avatarSky];
 const PAD = 24;
 function initials(name) {
@@ -123,6 +124,7 @@ function ConversationItem({ item, currentUserId, onPress }) {
 
 export default function ConversationsScreen() {
   const insets = useSafeAreaInsets();
+  const dockHeight = useTabBarDockHeight();
   const nav = useNavigation();
   const user = useAuthStore((s) => s.user);
   const householdId = useAuthStore((s) => s.householdId);
@@ -408,7 +410,9 @@ export default function ConversationsScreen() {
         renderItem={renderConversationItem}
         keyExtractor={keyExtractor}
         contentContainerStyle={
-          conversations.length === 0 ? styles.listEmptyContent : styles.listContent
+          conversations.length === 0
+            ? styles.listEmptyContent
+            : [styles.listContent, { paddingBottom: dockHeight + 16 }]
         }
         ListEmptyComponent={ListEmptyComponent}
         refreshControl={

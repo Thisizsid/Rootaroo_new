@@ -15,7 +15,6 @@ import {
   Share,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import QRCodeSvg from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
 import { useAuthStore } from '../shared/store/authStore';
@@ -24,6 +23,7 @@ import { colors, fonts, withAlpha } from '../shared/theme';
 import ConfirmSheet from '../components/ConfirmSheet';
 import Avatar from '../components/Avatar';
 import { KeyboardAvoider } from '../shared/components/KeyboardAware';
+import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
 // Role options match mock Screen 37 exactly — Admin & Member only.
 const ROLE_OPTIONS = [
   {
@@ -47,18 +47,9 @@ const ROLE_COLOR = {
   member: colors.textMuted,
   child: colors.textMuted,
 };
-const EMOJI_OPTIONS = ['🏡', '🏠', '🏕️', '🌳', '🌻', '🐾', '⭐', '🌙'];
-function sinceLabel(dateStr) {
-  return new Date(dateStr).toLocaleDateString('en-US', {
-    month: 'long',
-    year: 'numeric',
-  });
-}
-function memberCount(n) {
-  return `${n} member${n !== 1 ? 's' : ''}`;
-}
 export default function HouseholdSettingsScreen({ navigation }) {
   const insets = useSafeAreaInsets();
+  const dockHeight = useTabBarDockHeight();
   const user = useAuthStore((s) => s.user);
   const householdId = useAuthStore((s) => s.householdId);
   const logout = useAuthStore((s) => s.logout);
@@ -67,7 +58,6 @@ export default function HouseholdSettingsScreen({ navigation }) {
   const [createdAt, setCreatedAt] = useState('');
   const [inviteCode, setInviteCode] = useState('');
   const [myRole, setMyRole] = useState('');
-  const [householdEmoji, setHouseholdEmoji] = useState('🏡');
   const [scheduledDeletionAt, setScheduledDeletionAt] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -76,7 +66,6 @@ export default function HouseholdSettingsScreen({ navigation }) {
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [selectedMember, setSelectedMember] = useState(null);
   const [selectedRole, setSelectedRole] = useState('member');
-  const [showEmojiModal, setShowEmojiModal] = useState(false);
 
   // Destructive confirm sheets
   const [confirmRemoveMember, setConfirmRemoveMember] = useState(null);
@@ -351,7 +340,7 @@ export default function HouseholdSettingsScreen({ navigation }) {
         contentContainerStyle={[
           styles.scrollContent,
           {
-            paddingBottom: insets.bottom + 40,
+            paddingBottom: dockHeight + 16,
           },
         ]}
         showsVerticalScrollIndicator={false}
@@ -366,22 +355,6 @@ export default function HouseholdSettingsScreen({ navigation }) {
           />
         }
       >
-        {/* ── Hero: household name + emoji, gold gradient panel ── */}
-        <LinearGradient
-          colors={[colors.goldLight, withAlpha(colors.gold, 0.08)]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.hero}
-        >
-          <View style={styles.heroBadge}>
-            <Text style={styles.heroBadgeEmoji}>{householdEmoji}</Text>
-          </View>
-          <Text style={styles.heroName}>{householdName}</Text>
-          <Text style={styles.heroMeta}>
-            {memberCount(members.length)} · since {createdAt ? sinceLabel(createdAt) : '—'}
-          </Text>
-        </LinearGradient>
-
         {/* ── Members ── */}
         <Text style={styles.sectionLabel}>Members</Text>
         <View style={styles.membersCard}>
@@ -458,16 +431,6 @@ export default function HouseholdSettingsScreen({ navigation }) {
             </TouchableOpacity>
           </View>
         </View>
-
-        {/* ── Nav rows ── */}
-        <TouchableOpacity
-          style={styles.navRow}
-          onPress={() => setShowEmojiModal(true)}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.navLabel}>Household emoji</Text>
-          <Text style={styles.navChevron}>›</Text>
-        </TouchableOpacity>
 
         {/* ── Danger zone ── */}
         <View style={styles.dangerCard}>
@@ -582,44 +545,6 @@ export default function HouseholdSettingsScreen({ navigation }) {
                 <Text style={styles.removeLinkText}>Remove from household</Text>
               </TouchableOpacity>
             )}
-          </Pressable>
-        </Pressable>
-      </Modal>
-
-      {/* ── Household emoji picker (session-only, no backend field) ── */}
-      <Modal
-        visible={showEmojiModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowEmojiModal(false)}
-      >
-        <Pressable style={styles.modalOverlay} onPress={() => setShowEmojiModal(false)}>
-          <Pressable
-            style={[
-              styles.modalSheet,
-              styles.emojiSheet,
-              {
-                paddingBottom: insets.bottom + 44,
-              },
-            ]}
-          >
-            <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>Household emoji</Text>
-            <View style={styles.emojiGrid}>
-              {EMOJI_OPTIONS.map((e) => (
-                <TouchableOpacity
-                  key={e}
-                  style={[styles.emojiOption, householdEmoji === e && styles.emojiOptionActive]}
-                  onPress={() => {
-                    setHouseholdEmoji(e);
-                    setShowEmojiModal(false);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.emojiOptionText}>{e}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
           </Pressable>
         </Pressable>
       </Modal>
@@ -760,47 +685,6 @@ const styles = StyleSheet.create({
   headerSpacer: {
     width: 32,
   },
-  // Hero: gold gradient panel with a badge, name, meta
-  hero: {
-    alignItems: 'center',
-    borderRadius: 26,
-    paddingVertical: 28,
-    paddingHorizontal: 20,
-    marginBottom: 28,
-  },
-  heroBadge: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-    shadowColor: colors.shadow,
-    shadowOffset: {
-      width: 0,
-      height: 6,
-    },
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
-    elevation: 2,
-  },
-  heroBadgeEmoji: {
-    fontSize: 30,
-  },
-  heroName: {
-    fontSize: 21,
-    lineHeight: 27,
-    fontWeight: '700',
-    fontFamily: fonts.displayBold,
-    color: colors.ink,
-  },
-  heroMeta: {
-    fontSize: 13,
-    fontFamily: fonts.body,
-    color: colors.inkMuted,
-    marginTop: 4,
-  },
   // Section label (mock: 600 11px, letter-spacing 0.4, #A6ABB0)
   sectionLabel: {
     fontSize: 11,
@@ -927,25 +811,6 @@ const styles = StyleSheet.create({
   },
   invitePillBtnOutlineText: {
     color: colors.ink,
-  },
-  // Nav rows (mock: 14px label + chevron, bottom border)
-  navRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  navLabel: {
-    fontSize: 14,
-    fontFamily: fonts.body,
-    color: colors.ink,
-  },
-  navChevron: {
-    fontSize: 20,
-    color: colors.textMuted,
-    marginTop: -2,
   },
   // Danger zone (mock: #B54B3A)
   dangerCard: {
@@ -1118,32 +983,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     fontFamily: fonts.bodyMedium,
     color: colors.danger,
-  },
-  // Emoji picker sheet
-  emojiSheet: {},
-  emojiGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 14,
-    justifyContent: 'center',
-    paddingVertical: 10,
-  },
-  emojiOption: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.canvas,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-  },
-  emojiOptionActive: {
-    borderColor: colors.gold,
-    backgroundColor: colors.goldLight,
-  },
-  emojiOptionText: {
-    fontSize: 26,
   },
   // Empty state
   emptyTitle: {

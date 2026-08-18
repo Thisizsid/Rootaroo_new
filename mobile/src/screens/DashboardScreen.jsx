@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,8 +13,10 @@ import {
   Modal,
   Platform,
   TextInput,
+  Animated,
+  Easing,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -23,7 +25,8 @@ import { dashboardApi } from '../shared/api/dashboard';
 import * as NavigationBar from 'expo-navigation-bar';
 import { useAuthStore } from '../shared/store/authStore';
 import { householdApi } from '../shared/api/household';
-import { feedApi } from '../shared/api/feed';
+import { useFeedStore } from '../shared/store/feedStore';
+import { useFeedPhotos } from '../shared/hooks/useFeedPhotos';
 import { taskApi } from '../shared/api/task';
 import { todoApi } from '../shared/api/todo';
 import { expenseApi } from '../shared/api/expense';
@@ -34,6 +37,7 @@ import { colors, fonts, spacing, radius, withAlpha } from '../shared/theme';
 import Avatar from '../components/Avatar';
 import { KeyboardAvoider } from '../shared/components/KeyboardAware';
 import GlassCard, { GlassSheen } from '../shared/components/GlassCard';
+import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
 
 /* ═══════════════════════════════════════════════
    Dashboard · Night glass
@@ -184,6 +188,7 @@ function StreakRing({ value, progress }) {
 export default function DashboardScreen() {
   const nav = useNavigation();
   const insets = useSafeAreaInsets();
+  const dockHeight = useTabBarDockHeight();
   const user = useAuthStore((s) => s.user);
   const householdId = useAuthStore((s) => s.householdId);
   const [data, setData] = useState(null);
@@ -199,7 +204,20 @@ export default function DashboardScreen() {
   const [oweName, setOweName] = useState(null);
   const [latestDoc, setLatestDoc] = useState(null);
   const [latestDocTime, setLatestDocTime] = useState('');
-  const [feedPost, setFeedPost] = useState(null);
+  // Shared with the photo gallery — one fetch, one copy of the photo list.
+  // autoLoad off: the focus effect below already fetches, including on mount.
+  const feedPhotos = useFeedPhotos({ autoLoad: false });
+  const refreshFeed = useFeedStore((s) => s.fetchFeed);
+  // Two stacked image layers that ping-pong: the hidden one is swapped to the
+  // upcoming photo while it is still invisible, so a visible layer's source
+  // never changes mid-fade.
+  const [feedSlots, setFeedSlots] = useState([null, null]);
+  const feedFade = useRef(new Animated.Value(0)).current; // 0 → slot A, 1 → slot B
+  const feedFadeInverse = useRef(
+    feedFade.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
+  ).current;
+  const feedIndexRef = useRef(0); // index of the photo currently on screen
+  const feedTopRef = useRef(0); // which slot is currently visible
 
   // Calendar + household widgets (real data)
   const [events, setEvents] = useState([]);
@@ -332,17 +350,52 @@ export default function DashboardScreen() {
       .catch(() => {});
   }, []);
 
-  // Feed widget — newest post
+  // Re-check on every focus so a photo just posted to the Feed shows up here.
+  // The store hands back the same list when nothing changed, so an unchanged
+  // refetch does not restart the rotation.
+  useFocusEffect(
+    useCallback(() => {
+      refreshFeed();
+    }, [refreshFeed]),
+  );
+
+  // Seed both layers whenever the photo set changes.
   useEffect(() => {
-    feedApi
-      .list({
-        limit: 1,
-      })
-      .then((r) => {
-        if (r.posts?.length) setFeedPost(r.posts[0]);
-      })
-      .catch(() => {});
-  }, []);
+    feedIndexRef.current = 0;
+    feedTopRef.current = 0;
+    feedFade.setValue(0);
+    setFeedSlots([feedPhotos[0]?.uri ?? null, feedPhotos[1]?.uri ?? null]);
+  }, [feedPhotos, feedFade]);
+
+  // Auto-rotate every 3s with a crossfade. A single photo just sits there.
+  useEffect(() => {
+    if (feedPhotos.length < 2) return undefined;
+    const timer = setInterval(() => {
+      const nextIndex = (feedIndexRef.current + 1) % feedPhotos.length;
+      const nextTop = feedTopRef.current === 0 ? 1 : 0;
+      Animated.timing(feedFade, {
+        toValue: nextTop,
+        duration: 600,
+        easing: Easing.inOut(Easing.ease),
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (!finished) return;
+        feedIndexRef.current = nextIndex;
+        feedTopRef.current = nextTop;
+        // Preload the photo after this one into the now-hidden layer, so it has
+        // a full 3s to decode before it is faded in.
+        const following = feedPhotos[(nextIndex + 1) % feedPhotos.length].uri;
+        const hidden = nextTop === 0 ? 1 : 0;
+        setFeedSlots((prev) => {
+          if (prev[hidden] === following) return prev;
+          const next = [...prev];
+          next[hidden] = following;
+          return next;
+        });
+      });
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [feedPhotos, feedFade]);
   useEffect(() => {
     if (Platform.OS !== 'android') return;
     NavigationBar.setBackgroundColorAsync(colors.navyDeep);
@@ -577,7 +630,7 @@ export default function DashboardScreen() {
         style={styles.scroll}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          paddingBottom: 96,
+          paddingBottom: dockHeight + 16,
         }}
         refreshControl={
           <RefreshControl
@@ -585,6 +638,7 @@ export default function DashboardScreen() {
             onRefresh={() => {
               setRefreshing(true);
               load();
+              refreshFeed();
             }}
             tintColor={GOLD}
           />
@@ -1079,17 +1133,26 @@ export default function DashboardScreen() {
               <View style={styles.twoUp}>
                 <TouchableOpacity
                   style={styles.feedCard}
-                  onPress={() => nav.navigate('FeedStack')}
+                  onPress={() => nav.navigate('PhotoGallery')}
                   activeOpacity={0.85}
                 >
-                  {feedPost?.media?.[0]?.mediaUrl ? (
-                    <Image
-                      source={{
-                        uri: feedPost.media[0].mediaUrl,
-                      }}
-                      style={styles.feedImage}
-                      resizeMode="cover"
-                    />
+                  {feedPhotos.length > 0 ? (
+                    <>
+                      {feedSlots[0] ? (
+                        <Animated.Image
+                          source={{ uri: feedSlots[0] }}
+                          style={[styles.feedImage, { opacity: feedFadeInverse }]}
+                          resizeMode="cover"
+                        />
+                      ) : null}
+                      {feedSlots[1] ? (
+                        <Animated.Image
+                          source={{ uri: feedSlots[1] }}
+                          style={[styles.feedImage, { opacity: feedFade }]}
+                          resizeMode="cover"
+                        />
+                      ) : null}
+                    </>
                   ) : (
                     <View style={[styles.feedImage, styles.feedPlaceholder]}>
                       <Text
@@ -1100,15 +1163,18 @@ export default function DashboardScreen() {
                       >
                         📸
                       </Text>
+                      <Text style={styles.feedCaption} numberOfLines={1}>
+                        Share a moment
+                      </Text>
                     </View>
                   )}
-                  <LinearGradient
-                    colors={[withAlpha(colors.navyDark, 0), withAlpha(colors.navyDark, 0.8)]}
-                    style={styles.feedGradient}
-                  />
-                  <Text style={styles.feedCaption} numberOfLines={1}>
-                    {feedPost?.content || 'Share a moment'}
-                  </Text>
+                  {feedPhotos.length > 0 ? (
+                    <LinearGradient
+                      colors={[withAlpha(colors.navyDark, 0), withAlpha(colors.navyDark, 0.45)]}
+                      style={styles.feedGradient}
+                      pointerEvents="none"
+                    />
+                  ) : null}
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[
@@ -2045,8 +2111,8 @@ const styles = StyleSheet.create({
     borderColor: GLASS_BORDER,
   },
   feedImage: {
-    width: '100%',
-    height: '100%',
+    // Absolute so the two crossfading layers stack; the card has a fixed height.
+    ...StyleSheet.absoluteFillObject,
   },
   feedPlaceholder: {
     backgroundColor: colors.navySurface,
@@ -2057,10 +2123,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
   feedCaption: {
-    position: 'absolute',
-    left: 14,
-    bottom: 12,
-    right: 14,
+    marginTop: 6,
     fontSize: 12,
     fontWeight: '600',
     color: colors.white,

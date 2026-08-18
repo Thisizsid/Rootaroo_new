@@ -5,7 +5,6 @@ import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { ActivityIndicator, Platform, View, TouchableOpacity, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as NavigationBar from 'expo-navigation-bar';
-import { BlurView } from 'expo-blur';
 import { useAuthStore } from '../shared/store/authStore';
 import { connectSocket, disconnectSocket } from '../shared/socket';
 import { registerForPushNotificationsAsync } from '../shared/pushNotifications';
@@ -40,6 +39,7 @@ import CreatePostScreen from '../screens/CreatePostScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import FeedScreen from '../screens/FeedScreen';
 import CommentsScreen from '../screens/CommentsScreen';
+import PhotoGalleryScreen from '../screens/PhotoGalleryScreen';
 
 import TaskListScreen from '../screens/TaskListScreen';
 import TaskDetailScreen from '../screens/TaskDetailScreen';
@@ -244,40 +244,44 @@ function TabMoreIcon({ color, focused }) {
 function GlassTabBar({ state, descriptors, navigation }) {
   const insets = useSafeAreaInsets();
 
-  // Hide the dock when a tab-nested screen opts out (e.g. Notification preferences)
-  const moreRoute = state.routes.find((r) => r.name === 'MoreStack');
-  const nested = moreRoute && moreRoute.state && moreRoute.state.routes
-    ? getFocusedRouteNameFromRoute(moreRoute)
-    : undefined;
-  const hidden = nested === 'NotificationPreferences' || (!!nested && VAULT_ROUTES.includes(nested));
-  if (hidden) return null;
-
-  const dark = !!nested && VAULT_ROUTES.includes(nested);
+  // Hide the dock whenever the focused tab's own `options.tabBarStyle` opts
+  // out (e.g. `{ display: 'none' }`, already set per-screen in MainNavigator
+  // for full-screen chat, notification preferences, and Vault routes). Reading
+  // this generically — rather than re-deriving per-stack route-name checks
+  // here — is what makes new "hide the dock" screens work automatically:
+  // set `tabBarStyle: { display: 'none' }` on the screen and the dock respects
+  // it, with no changes needed in this component.
+  const focusedRoute = state.routes[state.index];
+  const focusedOptions = descriptors[focusedRoute.key].options;
+  if (focusedOptions.tabBarStyle?.display === 'none') return null;
 
   return (
     <View
       style={[
         {
-          position: 'absolute',
-          left: 0, right: 0, bottom: 5,
-          paddingBottom: insets.bottom > 0 ? insets.bottom : 10,
+          // The dock sits in normal layout flow so the screen above it ends
+          // where it begins — nothing scrolls behind it. The floating look is
+          // the *pill inside*: an opaque canvas strip with a rounded, shadowed
+          // bar inset from its edges.
+          paddingBottom: (insets.bottom > 0 ? insets.bottom : 10) + 5,
           paddingHorizontal: 14,
-          paddingTop: 8,
-          backgroundColor: 'transparent',
+          // No top padding: the pill's own top edge is where the screen ends,
+          // so there is no canvas band above it reading as a seam.
+          paddingTop: 0,
+          backgroundColor: colors.canvas,
         },
       ]}
-      pointerEvents="box-none"
     >
-      <BlurView
-        intensity={80}
-        tint="dark"
+      <View
         style={{
           flexDirection: 'row',
           borderRadius: 28,
-          overflow: 'hidden',
+          // No `overflow: 'hidden'` here — on iOS it suppresses the shadow that
+          // sells the floating look, and the tab buttons paint no background of
+          // their own, so there is nothing to clip to the rounded corners.
           borderWidth: 1,
-          borderColor: dark ? colors.gold : colors.border,
-          backgroundColor: withAlpha(colors.overlaySlate, dark ? 0.9 : 0.82),
+          borderColor: colors.border,
+          backgroundColor: colors.overlaySlate,
           shadowColor: colors.black,
           shadowOffset: { width: 0, height: 10 },
           shadowOpacity: 0.4,
@@ -352,7 +356,7 @@ function GlassTabBar({ state, descriptors, navigation }) {
             </TouchableOpacity>
           );
         })}
-      </BlurView>
+      </View>
     </View>
   );
 }
@@ -502,6 +506,11 @@ export default function RootNavigator() {
         options={{ presentation: 'transparentModal', animation: 'fade' }}
       />
       <RootStack.Screen name="Comments" component={CommentsScreen} />
+      <RootStack.Screen
+        name="PhotoGallery"
+        component={PhotoGalleryScreen}
+        options={{ animation: 'slide_from_right' }}
+      />
       <RootStack.Screen
         name="Notifications"
         component={NotificationScreen}

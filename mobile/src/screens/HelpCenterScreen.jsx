@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fonts } from '../shared/theme';
+import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
 const SUPPORT_EMAIL = 'support@rootaroo.app';
 const FAQS = [
   {
@@ -45,6 +46,7 @@ const FAQS = [
 ];
 export default function HelpCenterScreen({ navigation }) {
   const insets = useSafeAreaInsets();
+  const dockHeight = useTabBarDockHeight();
   const [openIndex, setOpenIndex] = useState(null);
   return (
     <View
@@ -78,7 +80,7 @@ export default function HelpCenterScreen({ navigation }) {
         contentContainerStyle={[
           styles.scrollContent,
           {
-            paddingBottom: insets.bottom + 40,
+            paddingBottom: dockHeight + 16,
           },
         ]}
         showsVerticalScrollIndicator={false}

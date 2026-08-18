@@ -15,8 +15,10 @@ import { useAuthStore } from '../shared/store/authStore';
 import { authApi } from '../shared/api/auth';
 import { colors, withAlpha } from '../shared/theme';
 import { KeyboardAvoider, keyboardScrollProps } from '../shared/components/KeyboardAware';
+import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
 export default function AccountDeletionScreen({ navigation }) {
   const logout = useAuthStore((s) => s.logout);
+  const dockHeight = useTabBarDockHeight();
   const [password, setPassword] = useState('');
   const [step, setStep] = useState('confirm');
   const [loading, setLoading] = useState(false);
@@ -102,7 +104,7 @@ export default function AccountDeletionScreen({ navigation }) {
       <StatusBar barStyle="light-content" backgroundColor={colors.canvasSoft} />
       <KeyboardAvoider>
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[styles.scroll, { paddingBottom: dockHeight + 16 }]}
         {...keyboardScrollProps}
       >
         {step === 'confirm' && (

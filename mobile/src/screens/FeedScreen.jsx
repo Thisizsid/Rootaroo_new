@@ -30,17 +30,13 @@ import LoadingSkeleton from '../components/LoadingSkeleton';
 import OfflineBanner from '../components/OfflineBanner';
 import ConfirmSheet from '../components/ConfirmSheet';
 import { KeyboardAvoider, keyboardScrollProps } from '../shared/components/KeyboardAware';
+import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
 import { colors, withAlpha } from '../shared/theme';
 import { GlassSheen } from '../shared/components/GlassCard';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // Import the family cover photo as placeholder for featured image
 const FAMILY_COVER = require('../../assets/images/family-cover.png');
-const PENCIL_SVG =
-  '<svg width="22" height="22" viewBox="0 0 24 24" fill="none">' +
-  `<path d="M12 20h9" stroke="${colors.ink}" stroke-width="2" stroke-linecap="round"></path>` +
-  `<path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4L16.5 3.5z" stroke="${colors.ink}" stroke-width="2" stroke-linejoin="round"></path>` +
-  '</svg>';
 const DOTS_SVG =
   `<svg width="20" height="20" viewBox="0 0 24 24" fill="${colors.ink}">` +
   '<circle cx="5" cy="12" r="1.7"></circle>' +
@@ -87,6 +83,7 @@ function timeAgo(iso) {
 export default function FeedScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
+  const dockHeight = useTabBarDockHeight();
   const {
     posts,
     loading,
@@ -443,22 +440,9 @@ export default function FeedScreen() {
       ]}
     >
       <StatusBar style="light" />
-      {/* Title bar: Feed + pencil icon */}
+      {/* Title bar: Feed — post creation lives in the "+" FAB below, no need to duplicate it here */}
       <View style={styles.titleBar}>
         <Text style={styles.title}>Feed</Text>
-        <TouchableOpacity
-          style={styles.composeButton}
-          activeOpacity={0.7}
-          onPress={() => navigation.navigate('CreatePost')}
-          hitSlop={{
-            top: 8,
-            bottom: 8,
-            left: 8,
-            right: 8,
-          }}
-        >
-          <SvgXml xml={PENCIL_SVG} width={18} height={18} />
-        </TouchableOpacity>
       </View>
 
       {loading && posts.length === 0 ? (
@@ -468,7 +452,7 @@ export default function FeedScreen() {
       ) : (
         <KeyboardAvoider style={styles.avoider}>
           <ScrollView
-            contentContainerStyle={styles.postsContainer}
+            contentContainerStyle={[styles.postsContainer, { paddingBottom: dockHeight + 24 }]}
             showsVerticalScrollIndicator={false}
             refreshControl={
               <RefreshControl
@@ -511,7 +495,7 @@ export default function FeedScreen() {
 
       {/* Floating Action Button */}
       <TouchableOpacity
-        style={styles.fab}
+        style={[styles.fab, { bottom: dockHeight + 12 }]}
         activeOpacity={0.8}
         onPress={() => navigation.navigate('CreatePost')}
       >
@@ -616,19 +600,9 @@ const styles = StyleSheet.create({
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     letterSpacing: -0.02 * 28,
   },
-  composeButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   postsContainer: {
     paddingTop: 4,
-    paddingBottom: 120,
+    paddingBottom: 24,
   },
   bannerWrap: {
     paddingHorizontal: 24,

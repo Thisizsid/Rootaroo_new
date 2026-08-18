@@ -19,6 +19,7 @@ import { useAuthStore } from '../shared/store/authStore';
 import { colors, withAlpha } from '../shared/theme';
 import Avatar from '../components/Avatar';
 import { KEYBOARD_BEHAVIOR } from '../shared/components/KeyboardAware';
+import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
 /* ── Helpers ────────────────────────────────────────────────────────────── */
 
 function elapsed(timestamp) {
@@ -48,6 +49,7 @@ export default function PostDetailScreen({ navigation, route }) {
   const [submitting, setSubmitting] = useState(false);
   // Measured so the keyboard offset isn't a hardcoded pixel guess.
   const [topBarHeight, setTopBarHeight] = useState(0);
+  const dockHeight = useTabBarDockHeight();
   const user = useAuthStore((s) => s.user);
   const inputRef = useRef(null);
 
@@ -270,7 +272,7 @@ export default function PostDetailScreen({ navigation, route }) {
           </ScrollView>
 
           {/* Fixed comment input bar (pinned above keyboard) */}
-          <View style={styles.inputBar}>
+          <View style={[styles.inputBar, { paddingBottom: dockHeight }]}>
             <TextInput
               ref={inputRef}
               style={styles.input}

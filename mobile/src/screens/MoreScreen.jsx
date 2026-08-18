@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../shared/store/authStore';
 import apiClient from '../shared/api/client';
 import { colors, fonts } from '../shared/theme';
+import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
 function getInitials(name) {
   return name
     .split(' ')
@@ -27,6 +28,7 @@ function getServerBase() {
 }
 export default function MoreScreen({ navigation }) {
   const insets = useSafeAreaInsets();
+  const dockHeight = useTabBarDockHeight();
   const user = useAuthStore((s) => s.user);
   const displayName = user?.name || user?.email || 'You';
   const initials = getInitials(displayName);
@@ -122,7 +124,7 @@ export default function MoreScreen({ navigation }) {
         contentContainerStyle={[
           styles.scrollContent,
           {
-            paddingBottom: insets.bottom + 24,
+            paddingBottom: dockHeight + 16,
           },
         ]}
       >
@@ -179,7 +181,7 @@ export default function MoreScreen({ navigation }) {
       </ScrollView>
 
       {/* ── Version footer (SCREEN 39) ── */}
-      <Text style={styles.versionText}>Rootaroo 2.4.1</Text>
+      <Text style={[styles.versionText, { paddingBottom: dockHeight }]}>Rootaroo 2.4.1</Text>
     </View>
   );
 }

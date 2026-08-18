@@ -27,6 +27,7 @@ import { colors, radius, fonts, withAlpha } from '../shared/theme';
 import ConfirmSheet from '../components/ConfirmSheet';
 import Avatar from '../components/Avatar';
 import { KEYBOARD_BEHAVIOR, keyboardScrollProps } from '../shared/components/KeyboardAware';
+import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
 
 // ─── Section type shared for both tabs ────────────────────────────────────
 
@@ -70,6 +71,7 @@ export default function GroceryListScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('GROCERY');
   const insets = useSafeAreaInsets();
+  const dockHeight = useTabBarDockHeight();
   const user = useAuthStore((s) => s.user);
   const householdId = useAuthStore((s) => s.householdId);
 
@@ -588,7 +590,11 @@ export default function GroceryListScreen({ navigation }) {
             <Text style={styles.emptySubtitle}>Add something above to get started</Text>
           </View>
         }
-        contentContainerStyle={totalCount === 0 ? styles.emptyContainer : styles.listContent}
+        contentContainerStyle={
+          totalCount === 0
+            ? styles.emptyContainer
+            : [styles.listContent, { paddingBottom: dockHeight + 16 }]
+        }
         stickySectionHeadersEnabled={false}
         showsVerticalScrollIndicator={false}
       />
