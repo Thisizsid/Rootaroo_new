@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, StatusBar, TouchableOpacity, Image, Alert } from 'react-native';
+import { View, Text, StyleSheet, StatusBar, TouchableOpacity, Image } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import Svg, { Path, Rect } from 'react-native-svg';
 import { colors, fonts, radius } from '../shared/theme';
 import { startPhoneSignupProgress } from '../shared/navigation/postAuthNavigation';
@@ -48,7 +49,7 @@ export default function ChooseMethodScreen({ navigation }) {
   });
   const handleApple = () => {
     if (appleActive === 0) {
-      Alert.alert(
+      showAlert(
         'Apple sign-in',
         'Apple sign-in is coming soon. Use Google, Phone, or Email for now.',
       );

@@ -6,10 +6,10 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   Image,
   Modal,
 } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { chatApi } from '../shared/api/chat';
@@ -120,7 +120,7 @@ export default function GroupMembersScreen({ route }) {
         await chatApi.inviteToGroup(conversationId, userId);
         await load();
       } catch (e) {
-        Alert.alert('Error', e?.response?.data?.error || 'Failed to add member');
+        showAlert('Error', e?.response?.data?.error || 'Failed to add member');
       } finally {
         setBusyId(null);
       }
@@ -129,7 +129,7 @@ export default function GroupMembersScreen({ route }) {
   );
   const handleRemove = useCallback(
     (userId, displayName) => {
-      Alert.alert('Remove Member', `Remove ${displayName} from this group?`, [
+      showAlert('Remove Member', `Remove ${displayName} from this group?`, [
         {
           text: 'Cancel',
           style: 'cancel',
@@ -143,7 +143,7 @@ export default function GroupMembersScreen({ route }) {
               await chatApi.removeParticipant(conversationId, userId);
               await load();
             } catch (e) {
-              Alert.alert('Error', e?.response?.data?.error || 'Failed to remove member');
+              showAlert('Error', e?.response?.data?.error || 'Failed to remove member');
             } finally {
               setBusyId(null);
             }

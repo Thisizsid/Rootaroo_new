@@ -6,9 +6,9 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   StatusBar,
 } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { notificationApi } from '../shared/api/notification';
 import PreferenceToggle from '../components/PreferenceToggle';
@@ -73,7 +73,7 @@ export default function NotificationPreferencesScreen({ navigation }) {
       try {
         setPrefs(await notificationApi.getPreferences());
       } catch {
-        Alert.alert('Error', 'Could not load notification preferences.');
+        showAlert('Error', 'Could not load notification preferences.');
       } finally {
         setLoading(false);
       }
@@ -95,7 +95,7 @@ export default function NotificationPreferencesScreen({ navigation }) {
         ...p,
         [key]: !next,
       }));
-      Alert.alert('Error', 'Could not save preference.');
+      showAlert('Error', 'Could not save preference.');
     }
   }, []);
   const allOn = ALL_PREF_KEYS.every((key) => prefs[key]);
@@ -109,7 +109,7 @@ export default function NotificationPreferencesScreen({ navigation }) {
         setPrefs(saved);
       } catch {
         setPrefs(snapshot);
-        Alert.alert('Error', 'Could not save preference.');
+        showAlert('Error', 'Could not save preference.');
       }
     },
     [prefs],
@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
   headerSpacer: {
     width: 32,
   },
-  // Section label (mock: 600 11px, letter-spacing 0.4, #A6ABB0)
+  // Section label
   sectionLabel: {
     fontSize: 11,
     fontWeight: '600',
@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
     marginTop: 26,
     marginBottom: 14,
   },
-  // Toggle row (mock: 14px label, 14px padding, bottom border #E3E1DB)
+  // Toggle row
   row: {
     flexDirection: 'row',
     alignItems: 'center',

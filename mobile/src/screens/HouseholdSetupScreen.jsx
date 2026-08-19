@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import SignupWizardShell from '../shared/components/SignupWizardShell';
 import QrScannerModal from '../components/QrScannerModal';
 import { useAuthStore } from '../shared/store/authStore';
 import { householdApi } from '../shared/api/household';
 import { navigateAfterHouseholdSetup } from '../shared/navigation/postAuthNavigation';
-import { colors, fonts } from '../shared/theme';
+import { colors, fonts, radius } from '../shared/theme';
 const FAMILY_EMOJIS = ['🏡', '🌿', '☀️'];
 // Matches the QR the household admin generates in Household Settings /
 // Invite Members (rootaru://join?code=XXXX) — see app.json's "scheme".
@@ -23,7 +24,7 @@ export default function HouseholdSetupScreen({ navigation }) {
     setShowScanner(false);
     const match = JOIN_LINK_RE.exec((rawValue || '').trim());
     if (!match) {
-      Alert.alert('Not a Rootaroo invite code', 'That QR code doesn\'t look like a household invite. Try again or enter the code manually.');
+      showAlert('Not a Rootaroo invite code', 'That QR code doesn\'t look like a household invite. Try again or enter the code manually.');
       return;
     }
     setInviteCode(match[1].toUpperCase());
@@ -33,12 +34,12 @@ export default function HouseholdSetupScreen({ navigation }) {
     try {
       if (option === 'create') {
         if (!nestName.trim()) {
-          Alert.alert('Error', 'Please enter a name for your household.');
+          showAlert('Error', 'Please enter a name for your household.');
           setLoading(false);
           return;
         }
       } else if (!inviteCode.trim()) {
-        Alert.alert('Error', 'Please enter your invite code.');
+        showAlert('Error', 'Please enter your invite code.');
         setLoading(false);
         return;
       }
@@ -54,7 +55,7 @@ export default function HouseholdSetupScreen({ navigation }) {
       }
     } catch (e) {
       const msg = e?.response?.data?.error || e?.message || 'Failed to set up household.';
-      Alert.alert('Error', msg);
+      showAlert('Error', msg);
     } finally {
       setLoading(false);
     }
@@ -237,7 +238,7 @@ const styles = StyleSheet.create({
   input: {
     height: 52,
     backgroundColor: colors.surface,
-    borderRadius: 14,
+    borderRadius: radius.card,
     borderWidth: 1.5,
     borderColor: colors.fieldBorder,
     paddingHorizontal: 16,

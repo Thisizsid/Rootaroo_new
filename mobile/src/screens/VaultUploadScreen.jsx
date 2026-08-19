@@ -20,6 +20,7 @@ import {
   Modal,
   TextInput,
 } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import Svg, { Path, Rect, Circle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { File, Paths } from 'expo-file-system';
@@ -37,7 +38,7 @@ import {
 import { getPrivateKey } from '../shared/crypto/secureKeyStore';
 import { verifyPublicKey } from '../shared/crypto/keyPinStore';
 import { setupVaultKeys } from '../shared/crypto/vaultSetup';
-import { colors, fonts, withAlpha } from '../shared/theme';
+import { colors, fonts, radius, withAlpha } from '../shared/theme';
 import { KeyboardAvoider } from '../shared/components/KeyboardAware';
 const MAX_SIZE = 20 * 1024 * 1024;
 
@@ -151,21 +152,21 @@ export default function VaultUploadScreen({ navigation }) {
   const processAndUpload = async (asset) => {
     try {
       if (keyState === 'checking') {
-        Alert.alert('Please wait', 'Checking vault key status...');
+        showAlert('Please wait', 'Checking vault key status...');
         return;
       }
       setUploading(true);
       setProgress(0);
       setFileName(asset.name);
       if (asset.size > MAX_SIZE) {
-        Alert.alert('File too large', 'Maximum file size is 20 MB');
+        showAlert('File too large', 'Maximum file size is 20 MB');
         setUploading(false);
         return;
       }
       setProgress(15);
       const user = useAuthStore.getState().user;
       if (!user?.id) {
-        Alert.alert('Error', 'User authentication required.');
+        showAlert('Error', 'User authentication required.');
         setUploading(false);
         return;
       }
@@ -178,7 +179,7 @@ export default function VaultUploadScreen({ navigation }) {
           ? await ensureKeys(userId)
           : (await vaultApi.getMyKey())?.publicKey;
       if (!publicKeySpki) {
-        Alert.alert('Error', 'No vault key found. Please set up your vault key first.');
+        showAlert('Error', 'No vault key found. Please set up your vault key first.');
         return;
       }
       setUploading(true);
@@ -187,7 +188,7 @@ export default function VaultUploadScreen({ navigation }) {
       // TOFU verification of own public key before wrapping
       const pinResult = await verifyPublicKey(userId, publicKeySpki);
       if (pinResult === 'changed') {
-        Alert.alert(
+        showAlert(
           '⚠️ Vault Key Mismatch',
           'Your vault public key on the server does not match the key stored on this device. ' +
             'This may indicate a server compromise. Vault upload has been blocked. ' +
@@ -251,7 +252,7 @@ export default function VaultUploadScreen({ navigation }) {
       if (document) {
         useVaultStore.getState().prependDocument(document);
         setProgress(100);
-        Alert.alert('Uploaded', `${asset.name} encrypted and uploaded successfully`, [
+        showAlert('Uploaded', `${asset.name} encrypted and uploaded successfully`, [
           {
             text: 'OK',
             onPress: () => navigation.goBack(),
@@ -259,7 +260,7 @@ export default function VaultUploadScreen({ navigation }) {
         ]);
       }
     } catch (error) {
-      Alert.alert(
+      showAlert(
         'Upload Failed',
         error?.response?.data?.message || error?.message || 'Could not upload file',
       );
@@ -278,14 +279,14 @@ export default function VaultUploadScreen({ navigation }) {
       const name = await promptDocumentName(asset.name);
       await processAndUpload({ ...asset, name });
     } catch (e) {
-      Alert.alert('Error', e?.message || 'Could not pick file');
+      showAlert('Error', e?.message || 'Could not pick file');
     }
   };
   const handleTakePhoto = async () => {
     try {
       const perm = await ImagePicker.requestCameraPermissionsAsync();
       if (!perm.granted) {
-        Alert.alert('Permission needed', 'Camera access is required to take a photo.');
+        showAlert('Permission needed', 'Camera access is required to take a photo.');
         return;
       }
       const result = await ImagePicker.launchCameraAsync({
@@ -296,7 +297,7 @@ export default function VaultUploadScreen({ navigation }) {
       const name = await promptDocumentName(asset.name);
       await processAndUpload({ ...asset, name });
     } catch (e) {
-      Alert.alert('Error', e?.message || 'Could not take photo');
+      showAlert('Error', e?.message || 'Could not take photo');
     }
   };
 
@@ -557,7 +558,7 @@ const styles = StyleSheet.create({
   },
   optionCard: {
     flex: 1,
-    borderRadius: 18,
+    borderRadius: radius.cardLg,
     paddingVertical: 24,
     paddingHorizontal: 12,
     alignItems: 'center',
@@ -618,7 +619,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceRaised,
     borderWidth: 1,
     borderColor: 'transparent',
-    borderRadius: 18,
+    borderRadius: radius.cardLg,
     padding: 16,
     marginBottom: 14,
   },

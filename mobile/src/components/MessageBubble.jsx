@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   Image,
 } from 'react-native';
-import { colors } from '../shared/theme';
+import { colors, fonts, radius } from '../shared/theme';
 import Avatar from './Avatar';
 
 export default function MessageBubble({
@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
     maxWidth: '82%',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderRadius: 18,
+    borderRadius: radius.cardLg,
   },
   bubbleOwn: {
     backgroundColor: colors.gold,
@@ -224,11 +224,13 @@ const styles = StyleSheet.create({
   deletedText: {
     fontSize: 13,
     fontStyle: 'italic',
+    fontFamily: fonts.body,
     color: colors.textSecondary,
   },
   text: {
     fontSize: 15,
     lineHeight: 21,
+    fontFamily: fonts.body,
   },
   textOwn: {
     color: colors.onAccent,
@@ -255,17 +257,18 @@ const styles = StyleSheet.create({
   metaText: {
     fontSize: 12,
     color: colors.textMuted,
-    fontWeight: '400',
+    fontFamily: fonts.body,
   },
   editedText: {
     fontSize: 11,
     color: colors.textMuted,
     fontStyle: 'italic',
+    fontFamily: fonts.body,
   },
   metaReaction: {
     fontSize: 12,
     color: colors.ink,
-    fontWeight: '600',
+    fontFamily: fonts.bodySemiBold,
   },
   replyPreview: {
     flexDirection: 'row',
@@ -283,11 +286,12 @@ const styles = StyleSheet.create({
   },
   replyName: {
     fontSize: 11,
-    fontWeight: '700',
+    fontFamily: fonts.bodyBold,
     color: colors.gold,
   },
   replyText: {
     fontSize: 12,
+    fontFamily: fonts.body,
     color: colors.textSecondary,
   },
   reactionBadgeRow: {
@@ -327,6 +331,6 @@ const styles = StyleSheet.create({
     borderColor: colors.gold,
   },
   reactionEmoji: { fontSize: 12 },
-  reactionCountText: { fontSize: 11, color: colors.textSecondary, fontWeight: '600' },
+  reactionCountText: { fontSize: 11, color: colors.textSecondary, fontFamily: fonts.bodySemiBold },
   reactionCountActive: { color: colors.goldDeep },
 });

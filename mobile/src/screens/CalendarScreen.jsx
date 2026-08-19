@@ -14,8 +14,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StatusBar,
-  Alert,
 } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { householdApi } from '../shared/api/household';
@@ -128,12 +128,12 @@ export default function CalendarScreen({ navigation }) {
   const { connect: connectGoogle, isLoading: connectingGoogle } = useGoogleCalendarConnect(
     (status) => {
       setGoogleStatus(status);
-      Alert.alert('Connected', 'Your Google Calendar is now syncing with Rootaroo.');
+      showAlert('Connected', 'Your Google Calendar is now syncing with Rootaroo.');
     },
   );
   const handleGoogleSyncPress = useCallback(() => {
     if (googleStatus?.connected) {
-      Alert.alert(
+      showAlert(
         'Disconnect Google Calendar?',
         'Rootaroo will stop syncing events with your Google Calendar.',
         [
@@ -153,7 +153,7 @@ export default function CalendarScreen({ navigation }) {
                   lastSyncedAt: null,
                 });
               } catch {
-                Alert.alert('Error', 'Could not disconnect Google Calendar.');
+                showAlert('Error', 'Could not disconnect Google Calendar.');
               }
             },
           },

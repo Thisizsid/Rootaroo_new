@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
-import { colors, withAlpha } from '../theme';
+import { colors, fonts, withAlpha } from '../theme';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -301,6 +301,8 @@ const styles = StyleSheet.create({
     width: '100%',
     borderRadius: 20,
     backgroundColor: colors.canvasSoft,
+    borderWidth: 1,
+    borderColor: colors.border,
     shadowColor: colors.black,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,
@@ -323,14 +325,14 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 17,
-    fontWeight: '700',
-    color: colors.legacyNavy,
+    fontFamily: fonts.displayBold,
+    color: colors.ink,
     marginBottom: 2,
   },
   subtitle: {
     fontSize: 13,
-    fontWeight: '500',
-    color: colors.legacyGold,
+    fontFamily: fonts.bodyMedium,
+    color: colors.gold,
   },
 
   // Column label row
@@ -341,8 +343,8 @@ const styles = StyleSheet.create({
   },
   columnLabel: {
     fontSize: 11,
-    fontWeight: '500',
-    color: withAlpha(colors.legacyNavy, 0.38),
+    fontFamily: fonts.bodyMedium,
+    color: withAlpha(colors.ink, 0.38),
     textAlign: 'center',
   },
   columnLabelDay: {
@@ -374,7 +376,7 @@ const styles = StyleSheet.create({
     left: 8,
     right: 8,
     height: 2,
-    backgroundColor: colors.legacyGold,
+    backgroundColor: colors.gold,
     opacity: 0.6,
   },
 
@@ -400,13 +402,13 @@ const styles = StyleSheet.create({
   },
   itemTextSelected: {
     fontSize: 18,
-    fontWeight: '700',
-    color: colors.legacyNavy,
+    fontFamily: fonts.bodyBold,
+    color: colors.ink,
   },
   itemTextUnselected: {
     fontSize: 16,
-    fontWeight: '400',
-    color: withAlpha(colors.legacyNavy, 0.35),
+    fontFamily: fonts.body,
+    color: withAlpha(colors.ink, 0.35),
   },
 
   // Action row
@@ -419,7 +421,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 18,
     borderTopWidth: 1,
-    borderTopColor: withAlpha(colors.legacyNavy, 0.08),
+    borderTopColor: withAlpha(colors.ink, 0.08),
     backgroundColor: colors.canvasSoft,
   },
   cancelBtn: {
@@ -428,18 +430,18 @@ const styles = StyleSheet.create({
   },
   cancelText: {
     fontSize: 14,
-    fontWeight: '500',
-    color: withAlpha(colors.legacyNavy, 0.45),
+    fontFamily: fonts.bodyMedium,
+    color: withAlpha(colors.ink, 0.45),
   },
   confirmBtn: {
     paddingHorizontal: 22,
     paddingVertical: 10,
-    backgroundColor: colors.legacyGold,
+    backgroundColor: colors.gold,
     borderRadius: 22,
   },
   confirmText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: colors.legacyNavySoft,
+    fontFamily: fonts.bodySemiBold,
+    color: colors.surfaceRaised,
   },
 });

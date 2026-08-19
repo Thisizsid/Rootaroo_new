@@ -9,9 +9,9 @@ import {
   KeyboardAvoidingView,
   StatusBar,
   ActivityIndicator,
-  Alert,
   Image,
 } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../shared/store/authStore';
@@ -19,7 +19,7 @@ import { authApi } from '../shared/api/auth';
 import { householdApi } from '../shared/api/household';
 import { feedApi } from '../shared/api/feed';
 import apiClient from '../shared/api/client';
-import { colors, fonts, withAlpha } from '../shared/theme';
+import { colors, fonts, radius, withAlpha } from '../shared/theme';
 import PostCard from '../shared/components/PostCard';
 import { KEYBOARD_BEHAVIOR } from '../shared/components/KeyboardAware';
 import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
@@ -77,7 +77,7 @@ export default function EditProfileScreen({ navigation }) {
       .finally(() => setPostsLoading(false));
   }, [user?.id]);
   const handleDeletePost = useCallback((postId) => {
-    Alert.alert('Delete post', 'This cannot be undone.', [
+    showAlert('Delete post', 'This cannot be undone.', [
       {
         text: 'Cancel',
         style: 'cancel',
@@ -90,7 +90,7 @@ export default function EditProfileScreen({ navigation }) {
             await feedApi.delete(postId);
             setMyPosts((prev) => prev.filter((p) => p.id !== postId));
           } catch {
-            Alert.alert('Error', 'Could not delete post');
+            showAlert('Error', 'Could not delete post');
           }
         },
       },
@@ -100,7 +100,7 @@ export default function EditProfileScreen({ navigation }) {
     if (!householdId) return;
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Allow access to your photo library.');
+      showAlert('Permission needed', 'Allow access to your photo library.');
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -115,7 +115,7 @@ export default function EditProfileScreen({ navigation }) {
       const hh = await householdApi.uploadCoverPhoto(householdId, result.assets[0].uri);
       setCoverPhotoUrl(hh.coverPhotoUrl);
     } catch (e) {
-      Alert.alert('Upload failed', e?.response?.data?.error || 'Could not upload cover photo');
+      showAlert('Upload failed', e?.response?.data?.error || 'Could not upload cover photo');
     } finally {
       setUploadingCover(false);
     }
@@ -127,7 +127,7 @@ export default function EditProfileScreen({ navigation }) {
       const hh = await householdApi.removeCoverPhoto(householdId);
       setCoverPhotoUrl(hh.coverPhotoUrl);
     } catch (e) {
-      Alert.alert('Error', e?.response?.data?.error || 'Could not remove cover photo');
+      showAlert('Error', e?.response?.data?.error || 'Could not remove cover photo');
     } finally {
       setUploadingCover(false);
     }
@@ -150,12 +150,12 @@ export default function EditProfileScreen({ navigation }) {
       text: 'Cancel',
       style: 'cancel',
     });
-    Alert.alert('Cover photo', undefined, options);
+    showAlert('Cover photo', undefined, options);
   }, [coverPhotoUrl, pickCoverPhoto, removeCoverPhoto]);
   const pickAvatar = useCallback(async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Allow access to your photo library.');
+      showAlert('Permission needed', 'Allow access to your photo library.');
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -175,7 +175,7 @@ export default function EditProfileScreen({ navigation }) {
           avatarUrl: data.avatarUrl,
         });
     } catch (e) {
-      Alert.alert('Upload failed', e?.message || 'Could not upload photo');
+      showAlert('Upload failed', e?.message || 'Could not upload photo');
     } finally {
       setUploadingAvatar(false);
     }
@@ -199,7 +199,7 @@ export default function EditProfileScreen({ navigation }) {
       }
       navigation.goBack();
     } catch (e) {
-      Alert.alert('Error', e?.message || 'Failed to save profile');
+      showAlert('Error', e?.message || 'Failed to save profile');
     } finally {
       setSaving(false);
     }
@@ -529,7 +529,7 @@ const styles = StyleSheet.create({
   },
   input: {
     height: 52,
-    borderRadius: 14,
+    borderRadius: radius.card,
     backgroundColor: colors.surface,
     borderWidth: 1.5,
     borderColor: colors.border,

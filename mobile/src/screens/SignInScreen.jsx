@@ -9,10 +9,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
   ActivityIndicator,
   Image,
 } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../shared/store/authStore';
@@ -21,7 +21,7 @@ import { loadMyHousehold } from '../shared/api/household';
 import { useGoogleSignIn } from '../shared/hooks/useGoogleSignIn';
 import { resolvePostAuthNavigation } from '../shared/navigation/postAuthNavigation';
 import { loadSignupProgress } from '../shared/store/signupProgress';
-import { colors, fonts, withAlpha } from '../shared/theme';
+import { colors, fonts, radius, withAlpha } from '../shared/theme';
 import { KEYBOARD_BEHAVIOR } from '../shared/components/KeyboardAware';
 function SvgApple() {
   return (
@@ -43,11 +43,11 @@ export default function SignInScreen({ navigation }) {
   });
   const handleSignIn = async () => {
     if (!email.trim()) {
-      Alert.alert('Error', 'Please enter your email.');
+      showAlert('Error', 'Please enter your email.');
       return;
     }
     if (!password) {
-      Alert.alert('Error', 'Please enter your password.');
+      showAlert('Error', 'Please enter your password.');
       return;
     }
     setLoading(true);
@@ -68,7 +68,7 @@ export default function SignInScreen({ navigation }) {
       }
     } catch (e) {
       const msg = e?.response?.data?.error || e?.message || 'Login failed.';
-      Alert.alert('Sign In Error', msg);
+      showAlert('Sign In Error', msg);
     } finally {
       setLoading(false);
     }
@@ -118,7 +118,7 @@ export default function SignInScreen({ navigation }) {
           <TouchableOpacity
             style={[styles.socialBtn, styles.socialBtnApple]}
             activeOpacity={0.75}
-            onPress={() => Alert.alert('Apple Sign In', 'Apple sign-in is coming soon.')}
+            onPress={() => showAlert('Apple Sign In', 'Apple sign-in is coming soon.')}
           >
             <SvgApple />
             <Text style={[styles.socialBtnText, styles.socialBtnTextApple]}>
@@ -192,7 +192,7 @@ export default function SignInScreen({ navigation }) {
             </View>
           </View>
 
-          {/* Forgot password — mockup: right-aligned link-blue #33507A */}
+          {/* Forgot password — right-aligned link */}
           <TouchableOpacity
             style={styles.forgotRow}
             onPress={() => navigation.navigate('ForgotPassword')}
@@ -336,7 +336,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
     color: colors.labelWarm,
   },
-  // Forgot password — right-aligned, link-blue #33507A (mockup .link-center override)
+  // Forgot password — right-aligned link
   forgotRow: {
     alignSelf: 'flex-end',
     marginTop: 2,
@@ -350,7 +350,7 @@ const styles = StyleSheet.create({
   input: {
     height: 52,
     backgroundColor: colors.surface,
-    borderRadius: 14,
+    borderRadius: radius.card,
     borderWidth: 1.5,
     borderColor: colors.fieldBorder,
     paddingHorizontal: 16,
@@ -365,7 +365,7 @@ const styles = StyleSheet.create({
   inputRow: {
     height: 52,
     backgroundColor: colors.surface,
-    borderRadius: 14,
+    borderRadius: radius.card,
     borderWidth: 1.5,
     borderColor: colors.fieldBorder,
     flexDirection: 'row',

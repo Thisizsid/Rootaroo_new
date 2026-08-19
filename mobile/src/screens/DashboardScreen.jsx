@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   RefreshControl,
   StatusBar,
-  Alert,
   Image,
   Modal,
   Platform,
@@ -16,6 +15,7 @@ import {
   Animated,
   Easing,
 } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -560,7 +560,7 @@ export default function DashboardScreen() {
     try {
       await dashboardApi.quickNotify(action, ids, msg || undefined);
     } catch (e) {
-      Alert.alert(
+      showAlert(
         'Error',
         e?.response?.data?.message || e?.message || 'Could not send notification',
       );

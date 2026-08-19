@@ -7,10 +7,10 @@ import {
   TouchableOpacity,
   StatusBar,
   Platform,
-  Alert,
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import { useAuthStore } from '../shared/store/authStore';
 import { authApi } from '../shared/api/auth';
 import { colors, withAlpha } from '../shared/theme';
@@ -24,7 +24,7 @@ export default function AccountDeletionScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const handleSchedule = async () => {
     if (!password) {
-      Alert.alert('Error', 'Enter your password to confirm.');
+      showAlert('Error', 'Enter your password to confirm.');
       return;
     }
     setLoading(true);
@@ -33,7 +33,7 @@ export default function AccountDeletionScreen({ navigation }) {
       setStep('scheduled');
     } catch (e) {
       const msg = e?.response?.data?.error || 'Failed. Wrong password?';
-      Alert.alert('Error', msg);
+      showAlert('Error', msg);
     } finally {
       setLoading(false);
     }
@@ -42,17 +42,17 @@ export default function AccountDeletionScreen({ navigation }) {
     setLoading(true);
     try {
       await authApi.cancelDeletion();
-      Alert.alert('Cancelled', 'Your account deletion has been cancelled.');
+      showAlert('Cancelled', 'Your account deletion has been cancelled.');
       navigation.goBack();
     } catch (e) {
       const msg = e?.response?.data?.error || 'Failed to cancel.';
-      Alert.alert('Error', msg);
+      showAlert('Error', msg);
     } finally {
       setLoading(false);
     }
   };
   const handleConfirmImmediate = async () => {
-    Alert.alert(
+    showAlert(
       'Permanent Deletion',
       'This will immediately delete your account and all data. This cannot be undone.',
       [
@@ -70,7 +70,7 @@ export default function AccountDeletionScreen({ navigation }) {
               setStep('done');
             } catch (e) {
               const msg = e?.response?.data?.error || 'Deletion failed.';
-              Alert.alert('Error', msg);
+              showAlert('Error', msg);
             } finally {
               setLoading(false);
             }
@@ -271,6 +271,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 4,
     marginBottom: 14,
+    shadowColor: colors.legacyGold,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.28,
+    shadowRadius: 20,
+    elevation: 6,
   },
   primaryText: {
     fontSize: 14,

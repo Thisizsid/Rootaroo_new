@@ -7,8 +7,8 @@ import {
   TouchableOpacity,
   StatusBar,
   Image,
-  Alert,
 } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../shared/store/authStore';
 import apiClient from '../shared/api/client';
@@ -41,7 +41,7 @@ export default function MoreScreen({ navigation }) {
       }
     : null;
   const handleLogout = () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
+    showAlert('Logout', 'Are you sure you want to logout?', [
       {
         text: 'Cancel',
         style: 'cancel',

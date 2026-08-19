@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
-  Alert,
   StatusBar,
   Modal,
   KeyboardAvoidingView,
@@ -16,6 +15,7 @@ import {
   FlatList,
   ScrollView,
 } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { groceryApi } from '../shared/api/grocery';
 import { todoApi } from '../shared/api/todo';
@@ -25,6 +25,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { format, addDays } from 'date-fns';
 import { colors, radius, fonts, withAlpha } from '../shared/theme';
 import ConfirmSheet from '../components/ConfirmSheet';
+import EmptyState from '../components/EmptyState';
 import Avatar from '../components/Avatar';
 import { KEYBOARD_BEHAVIOR, keyboardScrollProps } from '../shared/components/KeyboardAware';
 import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
@@ -139,7 +140,7 @@ export default function GroceryListScreen({ navigation }) {
       const data = await groceryApi.list();
       setGrouped(data);
     } catch {
-      Alert.alert('Error', 'Could not load groceries');
+      showAlert('Error', 'Could not load groceries');
     } finally {
       setGroceryLoading(false);
       setRefreshing(false);
@@ -150,7 +151,7 @@ export default function GroceryListScreen({ navigation }) {
       const data = await todoApi.list();
       setTodos(data);
     } catch {
-      Alert.alert('Error', 'Could not load to-dos');
+      showAlert('Error', 'Could not load to-dos');
     } finally {
       setTodoLoading(false);
       setRefreshing(false);
@@ -162,7 +163,7 @@ export default function GroceryListScreen({ navigation }) {
   const handleSaveItem = useCallback(async () => {
     const trimmed = itemName.trim();
     if (!trimmed) {
-      Alert.alert('Required', 'Item name is required');
+      showAlert('Required', 'Item name is required');
       return;
     }
     setSaving(true);
@@ -200,7 +201,7 @@ export default function GroceryListScreen({ navigation }) {
     } catch (e) {
       const res = e?.response?.data;
       const msg = res?.error || res?.message || e?.message || 'Unknown error';
-      Alert.alert('Error', `Could not ${editItem ? 'update' : 'create'} item\n${msg}`);
+      showAlert('Error', `Could not ${editItem ? 'update' : 'create'} item\n${msg}`);
     } finally {
       setSaving(false);
     }
@@ -256,7 +257,7 @@ export default function GroceryListScreen({ navigation }) {
         await groceryApi.toggle(id);
         await loadGroceries();
       } catch {
-        Alert.alert('Error', 'Could not update item');
+        showAlert('Error', 'Could not update item');
       }
     },
     [loadGroceries],
@@ -281,7 +282,7 @@ export default function GroceryListScreen({ navigation }) {
               await groceryApi.archive(item.id);
               await loadGroceries();
             } catch {
-              Alert.alert('Error', 'Could not archive');
+              showAlert('Error', 'Could not archive');
             }
           },
         });
@@ -297,7 +298,7 @@ export default function GroceryListScreen({ navigation }) {
         });
       }
       if (opts.length > 1) {
-        Alert.alert(item.name, 'What would you like to do?', opts);
+        showAlert(item.name, 'What would you like to do?', opts);
       }
     },
     [loadGroceries, user],
@@ -308,7 +309,7 @@ export default function GroceryListScreen({ navigation }) {
         await todoApi.toggle(id);
         await loadTodos();
       } catch {
-        Alert.alert('Error', 'Could not update to-do');
+        showAlert('Error', 'Could not update to-do');
       }
     },
     [loadTodos],
@@ -329,7 +330,7 @@ export default function GroceryListScreen({ navigation }) {
         await loadTodos();
       }
     } catch {
-      Alert.alert('Error', 'Could not delete');
+      showAlert('Error', 'Could not delete');
     } finally {
       setConfirmDeleteItem(null);
       setConfirmDeleteAction(null);
@@ -585,10 +586,12 @@ export default function GroceryListScreen({ navigation }) {
           />
         }
         ListEmptyComponent={
-          <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>List is empty</Text>
-            <Text style={styles.emptySubtitle}>Add something above to get started</Text>
-          </View>
+          <EmptyState
+            icon={<Text style={styles.emptyEmoji}>🛒</Text>}
+            title="List is empty"
+            subtitle="Add something above to get started"
+            dark
+          />
         }
         contentContainerStyle={
           totalCount === 0
@@ -1063,22 +1066,8 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
   },
-  empty: {
-    alignItems: 'center',
-    paddingHorizontal: 40,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    fontFamily: fonts.display,
-    color: colors.ink,
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    fontFamily: fonts.body,
-    color: colors.textSecondary,
-    textAlign: 'center',
+  emptyEmoji: {
+    fontSize: 28,
   },
   // Edit sheet fields (SCREEN 20)
   form: {
@@ -1098,7 +1087,7 @@ const styles = StyleSheet.create({
   },
   input: {
     height: 52,
-    borderRadius: 14,
+    borderRadius: radius.card,
     backgroundColor: colors.canvas,
     borderWidth: 1.5,
     borderColor: colors.border,

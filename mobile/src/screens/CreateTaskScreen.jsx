@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   ScrollView,
   KeyboardAvoidingView,
@@ -13,6 +12,7 @@ import {
   Modal,
   FlatList,
 } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { taskApi } from '../shared/api/task';
 import { useAuthStore } from '../shared/store/authStore';
@@ -353,7 +353,7 @@ export default function CreateTaskScreen({ route, navigation }) {
         setRecurrence(task.recurrence);
         setSelectedAssignees(task.assignees.map((a) => a.id));
       } catch {
-        Alert.alert('Error', 'Could not load task');
+        showAlert('Error', 'Could not load task');
         navigation.goBack();
       }
     })();
@@ -378,7 +378,7 @@ export default function CreateTaskScreen({ route, navigation }) {
       }
       navigation.goBack();
     } catch (e) {
-      Alert.alert('Error', e?.message || 'Failed to save task');
+      showAlert('Error', e?.message || 'Failed to save task');
     } finally {
       setPosting(false);
     }
@@ -801,7 +801,7 @@ const styles = StyleSheet.create({
   },
   fieldInput: {
     height: 52,
-    borderRadius: 14,
+    borderRadius: radius.card,
     backgroundColor: colors.canvas,
     borderWidth: 1.5,
     borderColor: colors.border,

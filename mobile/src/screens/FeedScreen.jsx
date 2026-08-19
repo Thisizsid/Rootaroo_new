@@ -31,7 +31,7 @@ import OfflineBanner from '../components/OfflineBanner';
 import ConfirmSheet from '../components/ConfirmSheet';
 import { KeyboardAvoider, keyboardScrollProps } from '../shared/components/KeyboardAware';
 import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
-import { colors, withAlpha } from '../shared/theme';
+import { colors, radius, withAlpha } from '../shared/theme';
 import { GlassSheen } from '../shared/components/GlassCard';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -674,7 +674,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 220,
     backgroundColor: colors.canvas,
-    borderRadius: 14,
+    borderRadius: radius.card,
     paddingVertical: 6,
     paddingHorizontal: 14,
     borderWidth: 1,
@@ -812,7 +812,7 @@ const styles = StyleSheet.create({
   },
   headerFeeling: {
     backgroundColor: colors.goldTint,
-    borderRadius: 14,
+    borderRadius: radius.card,
     paddingHorizontal: 10,
     paddingVertical: 5,
     maxWidth: 110,
@@ -1008,6 +1008,11 @@ const styles = StyleSheet.create({
     borderRadius: 9999,
     paddingHorizontal: 24,
     paddingVertical: 10,
+    shadowColor: colors.gold,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.28,
+    shadowRadius: 14,
+    elevation: 4,
   },
   retryText: {
     fontSize: 14,
@@ -1025,7 +1030,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gold,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: colors.black,
+    shadowColor: colors.gold,
     shadowOffset: {
       width: 0,
       height: 10,

@@ -32,7 +32,7 @@ const styles = StyleSheet.create({
   iconTile: {
     width: 64,
     height: 64,
-    borderRadius: 18,
+    borderRadius: radius.cardLg,
     backgroundColor: colors.skeleton,
     alignItems: 'center',
     justifyContent: 'center',

@@ -5,9 +5,9 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import Svg, { Path } from 'react-native-svg';
 import SignupWizardShell from '../shared/components/SignupWizardShell';
 import { authApi } from '../shared/api/auth';
@@ -94,9 +94,9 @@ export default function EmailVerificationScreen({ navigation, route }) {
       setCountdown(RESEND_COOLDOWN);
       setInvalid(false);
       inputs.current[0]?.focus();
-      Alert.alert('Sent', `A new code has been sent to ${email}.`);
+      showAlert('Sent', `A new code has been sent to ${email}.`);
     } catch (e) {
-      Alert.alert('Error', e?.response?.data?.error || 'Failed to resend.');
+      showAlert('Error', e?.response?.data?.error || 'Failed to resend.');
     } finally {
       setResending(false);
     }

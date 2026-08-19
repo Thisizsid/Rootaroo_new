@@ -8,15 +8,15 @@ import {
   ScrollView,
   TextInput,
   ActivityIndicator,
-  Alert,
   Modal,
   Pressable,
 } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { SvgXml } from 'react-native-svg';
 import { feedApi } from '../shared/api/feed';
-import { colors, withAlpha } from '../shared/theme';
+import { colors, radius, withAlpha } from '../shared/theme';
 import { KeyboardAvoider } from '../shared/components/KeyboardAware';
 const INK = colors.ink;
 const MUTED = colors.textMuted;
@@ -89,7 +89,7 @@ export default function CommentsScreen() {
       setComments(res.comments);
       setNextCursor(res.nextCursor);
     } catch (e) {
-      Alert.alert('Error', e?.response?.data?.message || e?.message || 'Could not load comments');
+      showAlert('Error', e?.response?.data?.message || e?.message || 'Could not load comments');
     } finally {
       setLoading(false);
     }
@@ -138,7 +138,7 @@ export default function CommentsScreen() {
       }
       setInput('');
     } catch (e) {
-      Alert.alert('Error', e?.response?.data?.message || e?.message || 'Could not post comment');
+      showAlert('Error', e?.response?.data?.message || e?.message || 'Could not post comment');
     } finally {
       setSending(false);
     }
@@ -204,7 +204,7 @@ export default function CommentsScreen() {
       try {
         await feedApi.toggleCommentReaction(comment.id, emoji);
       } catch (e) {
-        Alert.alert('Error', e?.response?.data?.message || e?.message || 'Could not react');
+        showAlert('Error', e?.response?.data?.message || e?.message || 'Could not react');
         load(); // revert from server
       }
     },
@@ -212,7 +212,7 @@ export default function CommentsScreen() {
   );
   const handleDelete = useCallback(async (comment) => {
     setMenuComment(null);
-    Alert.alert('Delete comment?', 'This will remove the comment and all its replies.', [
+    showAlert('Delete comment?', 'This will remove the comment and all its replies.', [
       {
         text: 'Cancel',
         style: 'cancel',
@@ -239,7 +239,7 @@ export default function CommentsScreen() {
               setComments((prev) => prev.filter((c) => c.id !== comment.id));
             }
           } catch (e) {
-            Alert.alert('Error', e?.response?.data?.message || e?.message || 'Could not delete');
+            showAlert('Error', e?.response?.data?.message || e?.message || 'Could not delete');
           }
         },
       },
@@ -761,7 +761,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 200,
     backgroundColor: colors.surface,
-    borderRadius: 14,
+    borderRadius: radius.card,
     paddingVertical: 6,
     paddingHorizontal: 14,
     shadowColor: colors.shadow,

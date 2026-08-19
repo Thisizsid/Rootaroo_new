@@ -9,7 +9,7 @@ import {
   Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, fonts } from '../shared/theme';
+import { colors, fonts, radius } from '../shared/theme';
 import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
 const SUPPORT_EMAIL = 'support@rootaroo.app';
 const FAQS = [
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
   },
   faqRow: {
     backgroundColor: colors.surface,
-    borderRadius: 14,
+    borderRadius: radius.card,
     padding: 16,
     marginBottom: 8,
   },
@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
   },
   contactCard: {
     backgroundColor: colors.goldTint,
-    borderRadius: 14,
+    borderRadius: radius.card,
     padding: 16,
   },
   contactTitle: {

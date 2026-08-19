@@ -10,12 +10,12 @@ import {
   TextInput,
   StatusBar,
   Modal,
-  Alert,
   Animated,
   PanResponder,
   Dimensions,
   Linking,
 } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import {
   Map as MapLibreMap,
   Camera,
@@ -31,7 +31,7 @@ import { placeApi } from '../shared/api/place';
 import { householdApi } from '../shared/api/household';
 import { usePingStore } from '../shared/store/pingStore';
 import { useAuthStore } from '../shared/store/authStore';
-import { colors, fonts, withAlpha } from '../shared/theme';
+import { colors, fonts, radius, withAlpha } from '../shared/theme';
 import { haversineDistanceKm, formatDistance } from '../shared/utils/geo';
 import Avatar from '../components/Avatar';
 import { KeyboardAvoider } from '../shared/components/KeyboardAware';
@@ -219,7 +219,7 @@ export default function CheckInScreen({ navigation }) {
     if (!focusPin) return;
     const url = `https://www.google.com/maps/dir/?api=1&destination=${focusPin.latitude},${focusPin.longitude}`;
     Linking.openURL(url).catch(() => {
-      Alert.alert('Error', 'Could not open Maps.');
+      showAlert('Error', 'Could not open Maps.');
     });
   }, [focusPin]);
 
@@ -326,10 +326,10 @@ export default function CheckInScreen({ navigation }) {
     try {
       await pingApi.create(member.userId);
       setShowMemberPicker(false);
-      Alert.alert('Request sent', `Asked ${member.displayName} to share their location.`);
+      showAlert('Request sent', `Asked ${member.displayName} to share their location.`);
     } catch (e) {
       const msg = e?.response?.data?.error || 'Could not send the request. Please try again.';
-      Alert.alert('Error', msg);
+      showAlert('Error', msg);
     } finally {
       setRequestingPingId(null);
     }
@@ -367,7 +367,7 @@ export default function CheckInScreen({ navigation }) {
         await load();
       } catch (e) {
         const msg = e?.response?.data?.error || 'Could not respond. Please try again.';
-        Alert.alert('Error', msg);
+        showAlert('Error', msg);
       } finally {
         setRespondingPingId(null);
       }
@@ -420,7 +420,7 @@ export default function CheckInScreen({ navigation }) {
       await load();
     } catch (e) {
       const msg = e?.response?.data?.error || 'Could not share your location. Please try again.';
-      Alert.alert('Error', msg);
+      showAlert('Error', msg);
     } finally {
       setCheckingIn(false);
     }
@@ -468,7 +468,7 @@ export default function CheckInScreen({ navigation }) {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert(
+        showAlert(
           'Location permission needed',
           'Enable location access to save your current spot.',
         );
@@ -484,7 +484,7 @@ export default function CheckInScreen({ navigation }) {
         address,
       });
     } catch {
-      Alert.alert('Error', 'Could not get your current location.');
+      showAlert('Error', 'Could not get your current location.');
     } finally {
       setLocatingPlace(false);
     }
@@ -517,14 +517,14 @@ export default function CheckInScreen({ navigation }) {
       setPlaceCoords(null);
     } catch (e) {
       const msg = e?.response?.data?.error || 'Could not save this place. Please try again.';
-      Alert.alert('Error', msg);
+      showAlert('Error', msg);
     } finally {
       setSavingPlace(false);
     }
   }, [placeName, placeIcon, placeCoords, editingPlaceId, loadPlaces]);
   const handleDeletePlace = useCallback(
     (place) => {
-      Alert.alert('Delete place', `Remove "${place.name}" from saved places?`, [
+      showAlert('Delete place', `Remove "${place.name}" from saved places?`, [
         {
           text: 'Cancel',
           style: 'cancel',
@@ -543,7 +543,7 @@ export default function CheckInScreen({ navigation }) {
                 setPlaceCoords(null);
               }
             } catch {
-              Alert.alert('Error', 'Could not delete this place.');
+              showAlert('Error', 'Could not delete this place.');
             } finally {
               setDeletingPlaceId(null);
             }
@@ -832,7 +832,7 @@ export default function CheckInScreen({ navigation }) {
             activeOpacity={0.85}
           >
             {checkingIn ? (
-              <ActivityIndicator size="small" color={colors.onAccent} />
+              <ActivityIndicator size="small" color={colors.gold} />
             ) : (
               <>
                 <Text style={styles.actionIconPrimary}>◈</Text>
@@ -1479,12 +1479,15 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   pingBanner: {
-    backgroundColor: colors.goldTint,
-    borderRadius: 16,
+    // Opaque, not the translucent-glass pattern used elsewhere — this card
+    // floats over the map's light basemap rather than the app's dark canvas,
+    // so a translucent gold tint with light `ink` text was nearly invisible.
+    backgroundColor: colors.canvasSoft,
+    borderRadius: radius.card,
     borderWidth: 1.5,
     borderColor: colors.gold,
     padding: 14,
-    shadowColor: colors.goldDeep,
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: 8,
@@ -1525,6 +1528,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gold,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: colors.gold,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.28,
+    shadowRadius: 10,
+    elevation: 4,
   },
   pingAcceptText: {
     fontFamily: fonts.bodySemiBold,
@@ -1625,27 +1633,32 @@ const styles = StyleSheet.create({
     minHeight: 84,
   },
   actionPrimary: {
-    backgroundColor: colors.gold,
+    // Same glass surface as the secondary tile — matches the rest of the
+    // app's navy/glass theme. Primary emphasis comes from the gold accent
+    // on the icon/title, not a solid fill block.
+    backgroundColor: colors.surface,
+    borderWidth: 1.5,
+    borderColor: colors.border,
   },
   actionSecondary: {
     backgroundColor: colors.surface,
     borderWidth: 1.5,
-    borderColor: colors.gold,
+    borderColor: colors.border,
   },
   actionIconPrimary: {
     fontSize: 18,
-    color: colors.onAccent,
+    color: colors.gold,
     marginBottom: 2,
   },
   actionIconSecondary: {
     fontSize: 18,
-    color: colors.goldDeep,
+    color: colors.ink,
     marginBottom: 2,
   },
   actionTitlePrimary: {
     fontFamily: fonts.displayBold,
     fontSize: 14,
-    color: colors.onAccent,
+    color: colors.ink,
   },
   actionTitleSecondary: {
     fontFamily: fonts.displayBold,
@@ -1656,7 +1669,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: 11,
     lineHeight: 15,
-    color: withAlpha(colors.white, 0.85),
+    color: colors.textSecondary,
   },
   actionSubSecondary: {
     fontFamily: fonts.body,
@@ -2074,7 +2087,7 @@ const styles = StyleSheet.create({
   },
   fakeInput: {
     height: 46,
-    borderRadius: 14,
+    borderRadius: radius.card,
     backgroundColor: colors.canvasElevated,
     borderWidth: 1.4,
     borderColor: colors.border,
@@ -2110,10 +2123,15 @@ const styles = StyleSheet.create({
   },
   saveBtn: {
     height: 48,
-    borderRadius: 14,
+    borderRadius: radius.card,
     backgroundColor: colors.gold,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: colors.gold,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.28,
+    shadowRadius: 20,
+    elevation: 6,
   },
   saveBtnDisabled: {
     opacity: 0.5,

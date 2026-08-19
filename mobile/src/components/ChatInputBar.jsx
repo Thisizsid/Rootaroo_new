@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import ThreadedReplyPreview from './ThreadedReplyPreview';
 import { chatApi } from '../shared/api/chat';
-import { colors, radius } from '../shared/theme';
+import { colors, fonts, radius } from '../shared/theme';
 
 export default function ChatInputBar({ onSend, replyTo, onDismissReply }) {
   const insets = useSafeAreaInsets();
@@ -172,6 +172,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 10,
     fontSize: 15,
+    fontFamily: fonts.body,
     maxHeight: 100,
     color: colors.ink,
     shadowColor: colors.shadow,

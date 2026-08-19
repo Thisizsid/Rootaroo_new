@@ -9,10 +9,10 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   Keyboard,
   StatusBar,
 } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import PostCard from '../shared/components/PostCard';
 import { feedApi } from '../shared/api/feed';
 import { useAuthStore } from '../shared/store/authStore';
@@ -99,7 +99,7 @@ export default function PostDetailScreen({ navigation, route }) {
       setCommentText('');
       Keyboard.dismiss();
     } catch (e) {
-      Alert.alert('Error', e?.response?.data?.error || 'Could not add comment');
+      showAlert('Error', e?.response?.data?.error || 'Could not add comment');
     } finally {
       setSubmitting(false);
     }
@@ -208,7 +208,7 @@ export default function PostDetailScreen({ navigation, route }) {
               onOpen={handleOpen}
               canDelete={post.author.id === user?.id}
               onOptions={(_postId) => {
-                Alert.alert('Post', undefined, [
+                showAlert('Post', undefined, [
                   {
                     text: 'Cancel',
                     style: 'cancel',
@@ -221,7 +221,7 @@ export default function PostDetailScreen({ navigation, route }) {
                         await feedApi.delete(post.id);
                         navigation.goBack();
                       } catch {
-                        Alert.alert('Error', 'Could not delete post');
+                        showAlert('Error', 'Could not delete post');
                       }
                     },
                   },

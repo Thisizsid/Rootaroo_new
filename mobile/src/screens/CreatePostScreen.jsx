@@ -26,7 +26,7 @@ import apiClient from '../shared/api/client';
 import * as ImagePicker from 'expo-image-picker';
 import { useFeedStore } from '../shared/store/feedStore';
 import { useAuthStore } from '../shared/store/authStore';
-import { colors, withAlpha } from '../shared/theme';
+import { colors, radius, withAlpha } from '../shared/theme';
 import { KEYBOARD_BEHAVIOR } from '../shared/components/KeyboardAware';
 const MAX_CHARS = 10000;
 const MAX_MEDIA = 10;
@@ -867,7 +867,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     maxWidth: 150,
     backgroundColor: withAlpha(colors.legacyGold, 0.14),
-    borderRadius: 14,
+    borderRadius: radius.card,
     paddingLeft: 10,
     paddingRight: 4,
     paddingVertical: 5,
@@ -1092,6 +1092,11 @@ const styles = StyleSheet.create({
     borderRadius: 9999,
     alignItems: 'center',
     minWidth: 88,
+    shadowColor: colors.gold,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.28,
+    shadowRadius: 14,
+    elevation: 5,
   },
   postButtonDisabled: {
     opacity: 0.45,
@@ -1118,7 +1123,7 @@ const styles = StyleSheet.create({
     left: 24,
     right: 24,
     backgroundColor: colors.canvasBright,
-    borderRadius: 18,
+    borderRadius: radius.cardLg,
     padding: 16,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: withAlpha(colors.legacyNavy, 0.08),
@@ -1161,7 +1166,7 @@ const styles = StyleSheet.create({
     minWidth: 72,
     alignItems: 'center',
     paddingVertical: 12,
-    borderRadius: 14,
+    borderRadius: radius.card,
     backgroundColor: colors.canvas,
   },
   pickerCellOn: {

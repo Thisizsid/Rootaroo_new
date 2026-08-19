@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   ActivityIndicator,
-  Alert,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -13,6 +12,7 @@ import {
   Image,
   Dimensions,
 } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import * as Clipboard from 'expo-clipboard';
@@ -20,7 +20,7 @@ import { useChatStore } from '../shared/store/chatStore';
 import { registerChatSocket, unregisterChatSocket } from '../shared/socket/chatSocket';
 import { connectSocket } from '../shared/socket';
 import { useAuthStore } from '../shared/store/authStore';
-import { colors, radius, spacing, withAlpha } from '../shared/theme';
+import { colors, fonts, radius, spacing, withAlpha } from '../shared/theme';
 import MessageBubble from '../components/MessageBubble';
 import ChatInputBar from '../components/ChatInputBar';
 import TypingIndicator from '../components/TypingIndicator';
@@ -122,7 +122,7 @@ export default function ChatScreen({ route }) {
     `<path d="M15 5l-7 7 7 7" stroke="${colors.ink}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>` +
     '</svg>';
   const handleDeleteConversation = useCallback(() => {
-    Alert.alert(
+    showAlert(
       'Delete Conversation',
       'Are you sure you want to delete this conversation? All messages will be permanently deleted.',
       [
@@ -138,7 +138,7 @@ export default function ChatScreen({ route }) {
               await deleteConversation(conversationId);
               nav.goBack();
             } catch (err) {
-              Alert.alert('Error', err?.message || 'Failed to delete conversation');
+              showAlert('Error', err?.message || 'Failed to delete conversation');
             }
           },
         },
@@ -146,7 +146,7 @@ export default function ChatScreen({ route }) {
     );
   }, [conversationId, deleteConversation, nav]);
   const handleOpenMenu = useCallback(() => {
-    Alert.alert(
+    showAlert(
       'Options',
       undefined,
       [
@@ -252,7 +252,7 @@ export default function ChatScreen({ route }) {
       try {
         await deleteMessage(messageId);
       } catch (e) {
-        Alert.alert('Error', e.message);
+        showAlert('Error', e.message);
       }
     },
     [deleteMessage],
@@ -276,7 +276,7 @@ export default function ChatScreen({ route }) {
       await updateMessage(id, content.trim());
       setEditingMessage(null);
     } catch (e) {
-      Alert.alert('Error', e.message);
+      showAlert('Error', e.message);
     }
   }, [editingMessage, updateMessage]);
   const handleMediaPress = useCallback((mediaUrl) => {
@@ -791,7 +791,7 @@ const styles = StyleSheet.create({
   menuBox: {
     width: 210,
     backgroundColor: colors.surface,
-    borderRadius: 18,
+    borderRadius: radius.cardLg,
     overflow: 'hidden',
     shadowColor: colors.shadow,
     shadowOffset: {
@@ -813,7 +813,7 @@ const styles = StyleSheet.create({
   },
   menuItemText: {
     fontSize: 16,
-    fontWeight: '500',
+    fontFamily: fonts.bodyMedium,
     color: colors.ink,
   },
   menuItemDelete: {
@@ -879,7 +879,7 @@ const styles = StyleSheet.create({
   },
   dropdownItemTextDestructive: {
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: fonts.bodySemiBold,
     color: colors.danger,
   },
   headerTitleContainer: {
@@ -887,11 +887,12 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 17,
-    fontWeight: '700',
+    fontFamily: fonts.displayBold,
     color: colors.ink,
   },
   headerSubtitle: {
     fontSize: 12,
+    fontFamily: fonts.body,
     color: colors.textMuted,
     marginTop: 2,
   },
@@ -911,6 +912,7 @@ const styles = StyleSheet.create({
   },
   dateText: {
     fontSize: 11,
+    fontFamily: fonts.bodyMedium,
     color: colors.textSecondary,
     backgroundColor: withAlpha(colors.shadow, 0.05),
     paddingHorizontal: 14,
@@ -926,11 +928,12 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: fonts.bodySemiBold,
     color: colors.textSecondary,
   },
   emptySubtitle: {
     fontSize: 13,
+    fontFamily: fonts.body,
     color: colors.textMuted,
     marginTop: 4,
     textAlign: 'center',
@@ -939,6 +942,7 @@ const styles = StyleSheet.create({
   errorText: {
     color: colors.danger,
     fontSize: 14,
+    fontFamily: fonts.body,
   },
   // ---- Fix 4: Scroll-to-bottom FAB styles ----
   scrollToBottom: {
@@ -982,7 +986,7 @@ const styles = StyleSheet.create({
   },
   editModalTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontFamily: fonts.displayBold,
     color: colors.ink,
     marginBottom: 12,
   },
@@ -992,6 +996,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     padding: 12,
     fontSize: 15,
+    fontFamily: fonts.body,
     color: colors.ink,
     minHeight: 80,
     maxHeight: 200,
@@ -1009,6 +1014,7 @@ const styles = StyleSheet.create({
   },
   editCancelText: {
     fontSize: 15,
+    fontFamily: fonts.body,
     color: colors.textSecondary,
   },
   editSaveBtn: {
@@ -1020,7 +1026,7 @@ const styles = StyleSheet.create({
   editSaveText: {
     fontSize: 15,
     color: colors.onAccent,
-    fontWeight: '600',
+    fontFamily: fonts.bodySemiBold,
   },
   // ---- Fix 3: Image Preview/Lightbox styles ----
   previewOverlay: {

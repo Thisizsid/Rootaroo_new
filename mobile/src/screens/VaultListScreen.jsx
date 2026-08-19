@@ -16,11 +16,11 @@ import {
   TouchableOpacity,
   RefreshControl,
   Modal,
-  Alert,
   ActivityIndicator,
   StatusBar,
   TextInput,
 } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import Svg, { SvgXml, Rect, Path, Circle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -30,7 +30,7 @@ import { vaultApi } from '../shared/api/vault';
 import { getPrivateKey } from '../shared/crypto/secureKeyStore';
 import Avatar from '../components/Avatar';
 import { formatFileSize, formatDate } from '../shared/utils/format';
-import { colors, fonts, withAlpha } from '../shared/theme';
+import { colors, fonts, radius, withAlpha } from '../shared/theme';
 import EmptyState from '../components/EmptyState';
 import ErrorState from '../components/ErrorState';
 import LoadingSkeleton from '../components/LoadingSkeleton';
@@ -125,7 +125,7 @@ export default function VaultListScreen({ navigation }) {
         // A key exists on this device but authentication failed/was cancelled —
         // stay locked. Must NOT fall through to the "no local key" branch below,
         // which would unlock without ever requiring biometric confirmation.
-        Alert.alert(
+        showAlert(
           'Authentication failed',
           'Could not verify your fingerprint or Face ID. Please try again.',
         );
@@ -193,10 +193,10 @@ export default function VaultListScreen({ navigation }) {
       await vaultApi.deleteDocument(deleteDoc.id);
       useVaultStore.getState().removeDocument(deleteDoc.id);
       setDeleteDoc(null);
-      Alert.alert('Deleted', 'Document deleted successfully');
+      showAlert('Deleted', 'Document deleted successfully');
     } catch (e) {
       setDeleteDoc(null);
-      Alert.alert('Error', e?.response?.data?.message || 'Could not delete');
+      showAlert('Error', e?.response?.data?.message || 'Could not delete');
     }
   };
   const openRename = (document) => {
@@ -228,7 +228,7 @@ export default function VaultListScreen({ navigation }) {
         name,
       });
     } catch (e) {
-      Alert.alert('Error', e?.response?.data?.message || 'Could not rename');
+      showAlert('Error', e?.response?.data?.message || 'Could not rename');
     } finally {
       closeRename();
     }
@@ -618,7 +618,7 @@ const styles = StyleSheet.create({
   skeletonCard: {
     flex: 1,
     backgroundColor: colors.surfaceRaised,
-    borderRadius: 18,
+    borderRadius: radius.cardLg,
     padding: 16,
     height: 122,
     justifyContent: 'space-between',
@@ -743,7 +743,7 @@ const styles = StyleSheet.create({
   card: {
     flex: 1,
     backgroundColor: colors.surfaceRaised,
-    borderRadius: 18,
+    borderRadius: radius.cardLg,
     padding: 16,
     height: 142,
     justifyContent: 'space-between',
@@ -834,6 +834,11 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 9999,
     marginTop: 16,
+    shadowColor: colors.gold,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.28,
+    shadowRadius: 20,
+    elevation: 6,
   },
   emptyAddButtonText: {
     color: colors.onAccent,

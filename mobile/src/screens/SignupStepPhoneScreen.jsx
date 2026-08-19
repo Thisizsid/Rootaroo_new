@@ -5,14 +5,14 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  Alert,
   Modal,
   FlatList,
   SafeAreaView,
 } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import SignupWizardShell from '../shared/components/SignupWizardShell';
 import { loadSignupProgress, updateSignupProgress } from '../shared/store/signupProgress';
-import { colors, fonts } from '../shared/theme';
+import { colors, fonts, radius } from '../shared/theme';
 const COUNTRY_CODES = [
   {
     code: '+1',
@@ -78,7 +78,7 @@ export default function SignupStepPhoneScreen({ navigation }) {
   const digits = phone.replace(/\D/g, '');
   const handleContinue = async () => {
     if (digits.length < 7) {
-      Alert.alert('Phone required', 'Please enter a valid phone number.');
+      showAlert('Phone required', 'Please enter a valid phone number.');
       return;
     }
     setLoading(true);
@@ -94,7 +94,7 @@ export default function SignupStepPhoneScreen({ navigation }) {
       });
       navigation.navigate('SignupStepAvatar');
     } catch (e) {
-      Alert.alert('Error', e?.message || 'Could not save phone number');
+      showAlert('Error', e?.message || 'Could not save phone number');
     } finally {
       setLoading(false);
     }
@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderRadius: 14,
+    borderRadius: radius.card,
     borderWidth: 1.5,
     borderColor: colors.fieldBorder,
     overflow: 'hidden',

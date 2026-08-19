@@ -5,16 +5,16 @@ import {
   StyleSheet,
   TouchableOpacity,
   Image,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import Svg, { Path, Circle as SvgCircle } from 'react-native-svg';
 import * as ImagePicker from 'expo-image-picker';
 import SignupWizardShell from '../shared/components/SignupWizardShell';
 import { authApi, storePendingAuthResponse } from '../shared/api/auth';
 import { useAuthStore } from '../shared/store/authStore';
 import { loadSignupProgress, updateSignupProgress } from '../shared/store/signupProgress';
-import { colors, fonts } from '../shared/theme';
+import { colors, fonts, radius } from '../shared/theme';
 const AVATAR_PRESETS = [
   {
     id: 'ava_01',
@@ -60,7 +60,7 @@ export default function SignupStepAvatarScreen({ navigation }) {
   const pickPhoto = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Allow photo library access.');
+      showAlert('Permission needed', 'Allow photo library access.');
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -88,7 +88,7 @@ export default function SignupStepAvatarScreen({ navigation }) {
           });
       }
     } catch (e) {
-      Alert.alert('Upload failed', e?.message || 'Could not upload photo');
+      showAlert('Upload failed', e?.message || 'Could not upload photo');
     } finally {
       setUploading(false);
     }
@@ -97,7 +97,7 @@ export default function SignupStepAvatarScreen({ navigation }) {
   const previewUri = localUri || (avatarUrl && avatarUrl.startsWith('http') ? avatarUrl : null);
   const handleContinue = async () => {
     if (!previewUri && !presetId) {
-      Alert.alert('Almost there', 'Add a photo or choose an avatar.');
+      showAlert('Almost there', 'Add a photo or choose an avatar.');
       return;
     }
     setLoading(true);
@@ -114,7 +114,7 @@ export default function SignupStepAvatarScreen({ navigation }) {
       if (method === 'phone') {
         const phone = progress?.phone || `${draft.countryCode || '+1'}${draft.phone || ''}`;
         if (!phone || phone.length < 8) {
-          Alert.alert('Error', 'Phone number missing. Go back to address step.');
+          showAlert('Error', 'Phone number missing. Go back to address step.');
           setLoading(false);
           return;
         }
@@ -196,7 +196,7 @@ export default function SignupStepAvatarScreen({ navigation }) {
         status === 404
           ? 'Phone signup API is missing. Restart the server (cd server && ./restart-dev.sh) and try again.'
           : e?.response?.data?.error || e?.message || 'Could not save profile';
-      Alert.alert('Error', msg);
+      showAlert('Error', msg);
     } finally {
       setLoading(false);
     }
@@ -399,7 +399,7 @@ const styles = StyleSheet.create({
   emojiChoice: {
     width: 52,
     height: 52,
-    borderRadius: 14,
+    borderRadius: radius.card,
     backgroundColor: colors.surface,
     borderWidth: 1.5,
     borderColor: colors.fieldBorder,

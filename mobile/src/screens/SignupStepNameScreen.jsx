@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, StyleSheet } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import SignupWizardShell from '../shared/components/SignupWizardShell';
 import { authApi } from '../shared/api/auth';
 import { useAuthStore } from '../shared/store/authStore';
 import { loadSignupProgress, updateSignupProgress } from '../shared/store/signupProgress';
-import { colors, fonts } from '../shared/theme';
+import { colors, fonts, radius } from '../shared/theme';
 export default function SignupStepNameScreen({ navigation }) {
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
@@ -41,7 +42,7 @@ export default function SignupStepNameScreen({ navigation }) {
       });
       navigation.navigate('SignupStepBirthday');
     } catch (e) {
-      Alert.alert('Error', e?.response?.data?.error || e?.message || 'Could not save name');
+      showAlert('Error', e?.response?.data?.error || e?.message || 'Could not save name');
     } finally {
       setLoading(false);
     }
@@ -59,7 +60,7 @@ export default function SignupStepNameScreen({ navigation }) {
           useAuthStore.getState().logout();
           navigation.navigate('SignUp');
         } catch {
-          Alert.alert('Error', 'Could not cancel registration. Try again.');
+          showAlert('Error', 'Could not cancel registration. Try again.');
         }
       }}
       onContinue={handleContinue}
@@ -113,7 +114,7 @@ const styles = StyleSheet.create({
   input: {
     height: 52,
     backgroundColor: colors.surface,
-    borderRadius: 14,
+    borderRadius: radius.card,
     borderWidth: 1.5,
     borderColor: colors.fieldBorder,
     paddingHorizontal: 16,

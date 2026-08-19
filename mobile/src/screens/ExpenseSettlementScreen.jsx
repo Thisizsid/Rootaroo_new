@@ -6,12 +6,12 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   StatusBar,
   SafeAreaView,
 } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import { expenseApi } from '../shared/api/expense';
-import { colors, withAlpha } from '../shared/theme';
+import { colors, radius, withAlpha } from '../shared/theme';
 import Avatar from '../components/Avatar';
 function formatCurrency(amount) {
   return new Intl.NumberFormat('en-IN', {
@@ -54,7 +54,7 @@ export default function ExpenseSettlementScreen({ navigation }) {
       setCursor(data.nextCursor);
       setHasMore(data.hasMore);
     } catch (e) {
-      Alert.alert('Error', e?.response?.data?.message || 'Failed to load settlements');
+      showAlert('Error', e?.response?.data?.message || 'Failed to load settlements');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: colors.surface,
-    borderRadius: 14,
+    borderRadius: radius.card,
     padding: 14,
     marginBottom: 10,
     borderWidth: 1,

@@ -6,13 +6,13 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   StatusBar,
   Modal,
   TextInput,
   KeyboardAvoidingView,
   FlatList,
 } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { expenseApi } from '../shared/api/expense';
@@ -65,7 +65,7 @@ export default function ExpenseDetailScreen({ navigation, route }) {
       const data = await expenseApi.getById(expenseId);
       setExpense(data);
     } catch {
-      Alert.alert('Error', 'Could not load expense');
+      showAlert('Error', 'Could not load expense');
       navigation.goBack();
     } finally {
       setLoading(false);
@@ -76,7 +76,7 @@ export default function ExpenseDetailScreen({ navigation, route }) {
     try {
       setMembers(await householdApi.getMembers(householdId));
     } catch {
-      Alert.alert('Error', 'Could not load household members');
+      showAlert('Error', 'Could not load household members');
     }
   }, [householdId]);
   useEffect(() => {
@@ -126,26 +126,26 @@ export default function ExpenseDetailScreen({ navigation, route }) {
   const handleSave = useCallback(async () => {
     const trimmedTitle = title.trim();
     if (!trimmedTitle) {
-      Alert.alert('Required', 'Title is required');
+      showAlert('Required', 'Title is required');
       return;
     }
     const amt = parseFloat(amount);
     if (isNaN(amt) || amt <= 0) {
-      Alert.alert('Required', 'Valid amount is required');
+      showAlert('Required', 'Valid amount is required');
       return;
     }
     if (!paidBy) {
-      Alert.alert('Required', 'Select who paid');
+      showAlert('Required', 'Select who paid');
       return;
     }
     if (participants.length === 0) {
-      Alert.alert('Required', 'Add at least one participant');
+      showAlert('Required', 'Add at least one participant');
       return;
     }
     if (splitType === 'custom') {
       const customTotal = participants.reduce((sum, p) => sum + (p.shareAmount || 0), 0);
       if (Math.abs(customTotal - amt) > 0.01) {
-        Alert.alert(
+        showAlert(
           'Split Mismatch',
           `Custom amounts total $${customTotal.toFixed(2)}, but the expense is $${amt.toFixed(2)}`,
         );
@@ -176,7 +176,7 @@ export default function ExpenseDetailScreen({ navigation, route }) {
       setExpense(updated);
       setShowEditModal(false);
     } catch (e) {
-      Alert.alert('Error', e?.response?.data?.message || 'Could not save expense');
+      showAlert('Error', e?.response?.data?.message || 'Could not save expense');
     } finally {
       setSaving(false);
     }
@@ -196,7 +196,7 @@ export default function ExpenseDetailScreen({ navigation, route }) {
         removeExpense(expense.id);
         navigation.goBack();
       } catch {
-        Alert.alert('Error', 'Could not delete');
+        showAlert('Error', 'Could not delete');
       }
     } else {
       setSettling(true);
@@ -205,14 +205,14 @@ export default function ExpenseDetailScreen({ navigation, route }) {
         updateExpense(updated);
         setExpense(updated);
       } catch {
-        Alert.alert('Error', 'Could not mark expense as settled');
+        showAlert('Error', 'Could not mark expense as settled');
       } finally {
         setSettling(false);
       }
     }
   }, [expense, confirmAction, navigation, removeExpense, updateExpense]);
   const handleReminder = useCallback(() => {
-    Alert.alert('Reminder sent', 'A payment reminder has been sent.');
+    showAlert('Reminder sent', 'A payment reminder has been sent.');
   }, []);
   if (loading) {
     return (
@@ -895,7 +895,7 @@ const styles = StyleSheet.create({
   },
   editInput: {
     height: 52,
-    borderRadius: 14,
+    borderRadius: radius.card,
     backgroundColor: colors.canvas,
     borderWidth: 1.5,
     borderColor: colors.border,

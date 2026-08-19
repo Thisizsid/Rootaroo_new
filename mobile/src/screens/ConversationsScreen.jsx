@@ -7,12 +7,12 @@ import {
   TouchableOpacity,
   Modal,
   TextInput,
-  Alert,
   ActivityIndicator,
   StatusBar,
   RefreshControl,
   Image,
 } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { chatApi } from '../shared/api/chat';
@@ -200,7 +200,7 @@ export default function ConversationsScreen() {
           participantCount: 2,
         });
       } catch (e) {
-        Alert.alert(
+        showAlert(
           'Error',
           e?.response?.data?.error || e?.message || 'Could not create conversation',
         );
@@ -241,7 +241,7 @@ export default function ConversationsScreen() {
         participantCount: otherMembers.length + 1,
       });
     } catch (e) {
-      Alert.alert('Error', e?.response?.data?.error || e?.message || 'Could not open Everyone chat');
+      showAlert('Error', e?.response?.data?.error || e?.message || 'Could not open Everyone chat');
     } finally {
       setCreating(false);
     }
@@ -378,7 +378,7 @@ export default function ConversationsScreen() {
                     participantCount: 2,
                   });
                 } catch {
-                  Alert.alert('Error', 'Could not start conversation');
+                  showAlert('Error', 'Could not start conversation');
                 }
               }}
             >
@@ -766,7 +766,7 @@ const styles = StyleSheet.create({
   chatIcon: {
     width: 64,
     height: 64,
-    borderRadius: 18,
+    borderRadius: radius.cardLg,
     backgroundColor: colors.skeleton,
     alignItems: 'center',
     justifyContent: 'center',
