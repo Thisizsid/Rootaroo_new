@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, fonts } from '../shared/theme';
+import { colors, fonts, radius } from '../shared/theme';
 import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
 const SECTIONS = [
   {
@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
   },
   draftBanner: {
     backgroundColor: colors.goldTint,
-    borderRadius: 14,
+    borderRadius: radius.card,
     padding: 14,
     marginBottom: 24,
   },

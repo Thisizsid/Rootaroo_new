@@ -7,13 +7,13 @@ import {
   TouchableOpacity,
   StatusBar,
   Platform,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import Svg, { Path } from 'react-native-svg';
 import { authApi } from '../shared/api/auth';
 import { updateSignupProgress } from '../shared/store/signupProgress';
-import { colors, fonts } from '../shared/theme';
+import { colors, fonts, radius } from '../shared/theme';
 import { KeyboardAwareScrollView } from '../shared/components/KeyboardAware';
 const OTP_LENGTH = 6;
 const RESEND_COOLDOWN = 30; // seconds
@@ -58,7 +58,7 @@ export default function PhoneVerificationScreen({ navigation, route }) {
       navigation.navigate('Ready');
     } catch (e) {
       setInvalid(true); // mockup screen10c: red boxes + inline error
-      Alert.alert('Error', e?.response?.data?.error || e?.message || 'Invalid code');
+      showAlert('Error', e?.response?.data?.error || e?.message || 'Invalid code');
     } finally {
       setVerifying(false);
     }
@@ -111,12 +111,12 @@ export default function PhoneVerificationScreen({ navigation, route }) {
       setInvalid(false);
       setCountdown(RESEND_COOLDOWN);
       inputs.current[0]?.focus();
-      Alert.alert(
+      showAlert(
         'Code sent',
         sent.code ? `Dev code: ${sent.code}` : `A new OTP has been sent to ${phone}.`,
       );
     } catch (e) {
-      Alert.alert('Error', e?.response?.data?.error || 'Failed to resend');
+      showAlert('Error', e?.response?.data?.error || 'Failed to resend');
     } finally {
       setResending(false);
     }
@@ -368,7 +368,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 58,
     backgroundColor: colors.surface,
-    borderRadius: 14,
+    borderRadius: radius.card,
     borderWidth: 1.5,
     borderColor: colors.fieldBorder,
     textAlign: 'center',

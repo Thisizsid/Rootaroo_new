@@ -6,13 +6,13 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   StatusBar,
   KeyboardAvoidingView,
   Modal,
   FlatList,
   ScrollView,
 } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { expenseApi } from '../shared/api/expense';
 import { householdApi } from '../shared/api/household';
@@ -74,7 +74,7 @@ export default function CreateExpenseScreen({ navigation }) {
         );
       }
     } catch {
-      Alert.alert('Error', 'Could not load household members');
+      showAlert('Error', 'Could not load household members');
     }
   }, [householdId, user]);
   useEffect(() => {
@@ -107,27 +107,27 @@ export default function CreateExpenseScreen({ navigation }) {
   }, []);
   const handleSubmit = useCallback(async () => {
     if (!title.trim()) {
-      Alert.alert('Required', 'Enter a description');
+      showAlert('Required', 'Enter a description');
       return;
     }
     const amt = parseFloat(amount);
     if (isNaN(amt) || amt <= 0) {
-      Alert.alert('Required', 'Enter a valid amount');
+      showAlert('Required', 'Enter a valid amount');
       return;
     }
     if (!paidBy) {
-      Alert.alert('Required', 'Select who paid');
+      showAlert('Required', 'Select who paid');
       return;
     }
     if (participants.length === 0) {
-      Alert.alert('Required', 'Add at least one participant');
+      showAlert('Required', 'Add at least one participant');
       return;
     }
     const splitType = splitMode === 'equal' ? 'equal' : 'custom';
     if (splitType === 'custom') {
       const customTotal = participants.reduce((sum, p) => sum + (p.shareAmount || 0), 0);
       if (Math.abs(customTotal - amt) > 0.01) {
-        Alert.alert(
+        showAlert(
           'Split Mismatch',
           `Custom amounts total $${customTotal.toFixed(2)}, but the expense is $${amt.toFixed(2)}`,
         );
@@ -156,7 +156,7 @@ export default function CreateExpenseScreen({ navigation }) {
       prependExpense(created);
       navigation.goBack();
     } catch (e) {
-      Alert.alert('Error', e?.response?.data?.message || 'Could not create expense');
+      showAlert('Error', e?.response?.data?.message || 'Could not create expense');
     } finally {
       setSaving(false);
     }
@@ -466,7 +466,7 @@ const styles = StyleSheet.create({
   },
   input: {
     height: 52,
-    borderRadius: 14,
+    borderRadius: radius.card,
     backgroundColor: colors.canvas,
     borderWidth: 1.5,
     borderColor: colors.border,

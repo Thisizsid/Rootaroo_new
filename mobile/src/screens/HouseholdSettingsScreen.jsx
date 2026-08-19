@@ -8,18 +8,18 @@ import {
   ActivityIndicator,
   RefreshControl,
   StatusBar,
-  Alert,
   Modal,
   Pressable,
   TextInput,
   Share,
 } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import QRCodeSvg from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
 import { useAuthStore } from '../shared/store/authStore';
 import { householdApi } from '../shared/api/household';
-import { colors, fonts, withAlpha } from '../shared/theme';
+import { colors, fonts, radius, withAlpha } from '../shared/theme';
 import ConfirmSheet from '../components/ConfirmSheet';
 import Avatar from '../components/Avatar';
 import { KeyboardAvoider } from '../shared/components/KeyboardAware';
@@ -96,7 +96,7 @@ export default function HouseholdSettingsScreen({ navigation }) {
       setScheduledDeletionAt(hh.scheduledDeletionAt);
       setMembers(memberList);
     } catch {
-      Alert.alert('Error', 'Failed to load household settings.');
+      showAlert('Error', 'Failed to load household settings.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -139,7 +139,7 @@ export default function HouseholdSettingsScreen({ navigation }) {
       setShowRoleModal(false);
       setSelectedMember(null);
     } catch (e) {
-      Alert.alert('Error', e?.response?.data?.error || 'Failed to change role.');
+      showAlert('Error', e?.response?.data?.error || 'Failed to change role.');
     } finally {
       setActionLoading(false);
     }
@@ -155,7 +155,7 @@ export default function HouseholdSettingsScreen({ navigation }) {
       await householdApi.removeMember(householdId, confirmRemoveMember.userId);
       setMembers((p) => p.filter((m) => m.userId !== confirmRemoveMember.userId));
     } catch (e) {
-      Alert.alert('Error', e?.response?.data?.error || 'Failed to remove member.');
+      showAlert('Error', e?.response?.data?.error || 'Failed to remove member.');
     } finally {
       setActionLoading(false);
       setConfirmRemoveMember(null);
@@ -168,7 +168,7 @@ export default function HouseholdSettingsScreen({ navigation }) {
   };
   const handleLeave = () => {
     if (isAdmin) {
-      Alert.alert('Transfer Admin First', 'Transfer admin to another member before leaving.');
+      showAlert('Transfer Admin First', 'Transfer admin to another member before leaving.');
       return;
     }
     setConfirmLeave(true);
@@ -180,7 +180,7 @@ export default function HouseholdSettingsScreen({ navigation }) {
       await householdApi.leave(householdId);
       logout();
     } catch (e) {
-      Alert.alert('Error', e?.response?.data?.error || 'Failed to leave.');
+      showAlert('Error', e?.response?.data?.error || 'Failed to leave.');
     } finally {
       setActionLoading(false);
       setConfirmLeave(false);
@@ -196,7 +196,7 @@ export default function HouseholdSettingsScreen({ navigation }) {
   };
   const handleScheduleDeletion = async () => {
     if (!householdId || !deletePassword) {
-      Alert.alert('Error', 'Enter your password to confirm.');
+      showAlert('Error', 'Enter your password to confirm.');
       return;
     }
     setDeleteLoading(true);
@@ -206,17 +206,17 @@ export default function HouseholdSettingsScreen({ navigation }) {
       setDeletePassword('');
       await load();
     } catch (e) {
-      Alert.alert('Error', e?.response?.data?.error || 'Failed. Wrong password?');
+      showAlert('Error', e?.response?.data?.error || 'Failed. Wrong password?');
     } finally {
       setDeleteLoading(false);
     }
   };
   const handleDeleteImmediately = () => {
     if (!householdId || !deletePassword) {
-      Alert.alert('Error', 'Enter your password to confirm.');
+      showAlert('Error', 'Enter your password to confirm.');
       return;
     }
-    Alert.alert(
+    showAlert(
       'Permanent Deletion',
       'This will immediately delete the household for every member. This cannot be undone.',
       [
@@ -234,7 +234,7 @@ export default function HouseholdSettingsScreen({ navigation }) {
               setShowDeletePasswordModal(false);
               logout();
             } catch (e) {
-              Alert.alert('Error', e?.response?.data?.error || 'Deletion failed.');
+              showAlert('Error', e?.response?.data?.error || 'Deletion failed.');
             } finally {
               setDeleteLoading(false);
             }
@@ -250,7 +250,7 @@ export default function HouseholdSettingsScreen({ navigation }) {
       await householdApi.cancelDeletion(householdId);
       await load();
     } catch (e) {
-      Alert.alert('Error', e?.response?.data?.error || 'Failed to cancel.');
+      showAlert('Error', e?.response?.data?.error || 'Failed to cancel.');
     } finally {
       setActionLoading(false);
     }
@@ -685,7 +685,7 @@ const styles = StyleSheet.create({
   headerSpacer: {
     width: 32,
   },
-  // Section label (mock: 600 11px, letter-spacing 0.4, #A6ABB0)
+  // Section label
   sectionLabel: {
     fontSize: 11,
     fontWeight: '600',
@@ -812,7 +812,7 @@ const styles = StyleSheet.create({
   invitePillBtnOutlineText: {
     color: colors.ink,
   },
-  // Danger zone (mock: #B54B3A)
+  // Danger zone
   dangerCard: {
     marginTop: 26,
   },
@@ -832,7 +832,7 @@ const styles = StyleSheet.create({
   },
   deletionBanner: {
     backgroundColor: colors.goldTint,
-    borderRadius: 14,
+    borderRadius: radius.card,
     padding: 14,
     marginVertical: 10,
     gap: 8,
@@ -849,7 +849,7 @@ const styles = StyleSheet.create({
   },
   deletePasswordInput: {
     height: 48,
-    borderRadius: 14,
+    borderRadius: radius.card,
     backgroundColor: colors.canvasElevated,
     borderWidth: 1.5,
     borderColor: colors.border,
@@ -910,7 +910,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    borderRadius: 18,
+    borderRadius: radius.cardLg,
     paddingVertical: 16,
     paddingHorizontal: 18,
   },

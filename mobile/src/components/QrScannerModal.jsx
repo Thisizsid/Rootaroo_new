@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, StatusBar } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, fonts } from '../shared/theme';
+import { colors, fonts, withAlpha } from '../shared/theme';
 
 /**
  * Full-screen QR scanner modal. Calls `onScanned(rawValue)` once per open
@@ -117,6 +117,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gold,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: colors.gold,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.28,
+    shadowRadius: 20,
+    elevation: 6,
   },
   permissionBtnText: {
     fontSize: 14,
@@ -150,7 +155,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: withAlpha(colors.black, 0.4),
     alignItems: 'center',
     justifyContent: 'center',
   },

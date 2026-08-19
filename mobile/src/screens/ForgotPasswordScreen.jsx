@@ -9,11 +9,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import { authApi } from '../shared/api/auth';
-import { colors, fonts } from '../shared/theme';
+import { colors, fonts, radius } from '../shared/theme';
 import { KEYBOARD_BEHAVIOR } from '../shared/components/KeyboardAware';
 const OTP_LENGTH = 6;
 export default function ForgotPasswordScreen({ navigation }) {
@@ -31,7 +31,7 @@ export default function ForgotPasswordScreen({ navigation }) {
 
   const handleSendCode = async () => {
     if (!email.trim()) {
-      Alert.alert('Error', 'Please enter your email.');
+      showAlert('Error', 'Please enter your email.');
       return;
     }
     setLoading(true);
@@ -39,7 +39,7 @@ export default function ForgotPasswordScreen({ navigation }) {
       await authApi.forgotPassword(email.trim());
       setStep('code');
     } catch (e) {
-      Alert.alert('Error', e?.response?.data?.error || e?.message || 'Failed to send code.');
+      showAlert('Error', e?.response?.data?.error || e?.message || 'Failed to send code.');
     } finally {
       setLoading(false);
     }
@@ -69,14 +69,14 @@ export default function ForgotPasswordScreen({ navigation }) {
   };
   const handleVerifyCode = () => {
     if (otp.join('').length !== OTP_LENGTH) {
-      Alert.alert('Error', 'Please enter the full 6-digit code.');
+      showAlert('Error', 'Please enter the full 6-digit code.');
       return;
     }
     setStep('reset');
   };
   const handleReset = async () => {
     if (password.length < 8) {
-      Alert.alert('Error', 'Password must be at least 8 characters.');
+      showAlert('Error', 'Password must be at least 8 characters.');
       return;
     }
     setLoading(true);
@@ -85,14 +85,14 @@ export default function ForgotPasswordScreen({ navigation }) {
         code: otp.join(''),
         password,
       });
-      Alert.alert('Password updated', 'Sign in with your new password.', [
+      showAlert('Password updated', 'Sign in with your new password.', [
         {
           text: 'Sign in',
           onPress: () => navigation.navigate('SignIn'),
         },
       ]);
     } catch (e) {
-      Alert.alert('Error', e?.response?.data?.error || e?.message || 'Failed to reset password.');
+      showAlert('Error', e?.response?.data?.error || e?.message || 'Failed to reset password.');
     } finally {
       setLoading(false);
     }
@@ -348,7 +348,7 @@ const styles = StyleSheet.create({
   input: {
     height: 52,
     backgroundColor: colors.surface,
-    borderRadius: 14,
+    borderRadius: radius.card,
     borderWidth: 1.5,
     borderColor: colors.fieldBorder,
     paddingHorizontal: 16,
@@ -363,7 +363,7 @@ const styles = StyleSheet.create({
   inputRow: {
     height: 52,
     backgroundColor: colors.surface,
-    borderRadius: 14,
+    borderRadius: radius.card,
     borderWidth: 1.5,
     borderColor: colors.fieldBorder,
     flexDirection: 'row',

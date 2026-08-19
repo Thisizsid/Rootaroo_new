@@ -17,7 +17,7 @@ import { KEYBOARD_BEHAVIOR } from './KeyboardAware';
 
 /**
  * Auth wizard shell — matches design/auth-designs/screen05..11 (rootaro signup).
- * Top bar: back chevron + 7-segment progress (filled = ink #1E1B16, rest = track #DEDAD0).
+ * Top bar: back chevron + 7-segment progress (filled = ink token, rest = track/border token).
  * Title 25px, subtitle 14.5px, gold active inputs, gold pill CTA.
  */
 export default function SignupWizardShell({

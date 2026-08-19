@@ -9,15 +9,15 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
   ActivityIndicator,
   FlatList,
   Modal,
   SafeAreaView,
 } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import Svg, { Path } from 'react-native-svg';
 import { authApi } from '../shared/api/auth';
-import { colors, fonts, withAlpha } from '../shared/theme';
+import { colors, fonts, radius, withAlpha } from '../shared/theme';
 import { KEYBOARD_BEHAVIOR } from '../shared/components/KeyboardAware';
 const COUNTRY_CODES = [
   {
@@ -132,7 +132,7 @@ export default function PhoneSignUpScreen({ navigation }) {
   const handleSendOtp = async () => {
     const digits = phone.replace(/\D/g, '');
     if (digits.length < 7) {
-      Alert.alert('Invalid number', 'Please enter a valid phone number.');
+      showAlert('Invalid number', 'Please enter a valid phone number.');
       return;
     }
     setLoading(true);
@@ -143,7 +143,7 @@ export default function PhoneSignUpScreen({ navigation }) {
       });
     } catch (e) {
       const msg = e?.response?.data?.error || 'Could not send the code. Please try again.';
-      Alert.alert('Error', msg);
+      showAlert('Error', msg);
     } finally {
       setLoading(false);
     }
@@ -428,7 +428,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderRadius: 14,
+    borderRadius: radius.card,
     borderWidth: 1.5,
     borderColor: colors.fieldBorder,
     overflow: 'hidden',

@@ -36,6 +36,7 @@ import {
   Modal,
   TextInput,
 } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Pdf from 'react-native-pdf';
 import { Video, ResizeMode, Audio } from 'expo-av';
@@ -94,7 +95,7 @@ export default function VaultViewerScreen({ navigation, route }) {
   // FR-129: Block screenshots at OS level while this screen is mounted
   ScreenCapture.usePreventScreenCapture('vault-viewer');
   ScreenCapture.useScreenshotListener(() => {
-    Alert.alert('Screenshot Blocked', 'Screenshots are disabled for vault documents (FR-129).');
+    showAlert('Screenshot Blocked', 'Screenshots are disabled for vault documents (FR-129).');
   });
   useEffect(() => {
     loadAndDecrypt();
@@ -203,7 +204,7 @@ export default function VaultViewerScreen({ navigation, route }) {
       try {
         privateKeyJwk = await getPrivateKey(user.id);
       } catch {
-        Alert.alert('Authentication failed', 'Could not verify your fingerprint or Face ID.', [
+        showAlert('Authentication failed', 'Could not verify your fingerprint or Face ID.', [
           {
             text: 'OK',
             onPress: () => navigation.goBack(),
@@ -214,7 +215,7 @@ export default function VaultViewerScreen({ navigation, route }) {
       if (!privateKeyJwk) {
         const backupMode = await getBackupMode(user.id);
         if (backupMode === 'none') {
-          Alert.alert(
+          showAlert(
             'Vault Access Lost',
             'This vault was set up in zero-knowledge mode — no server backup was created. ' +
               'The private key only existed on your original device.\n\n' +
@@ -235,12 +236,12 @@ export default function VaultViewerScreen({ navigation, route }) {
           const msg = recoveryErr?.message?.includes('Cancelled')
             ? 'Recovery cancelled.'
             : 'Wrong passphrase — decryption failed. Please try again.';
-          Alert.alert('Recovery Failed', msg);
+          showAlert('Recovery Failed', msg);
           setDecryptFailed(true);
           return;
         }
         if (!privateKeyJwk) {
-          Alert.alert(
+          showAlert(
             'No Vault Key',
             backupMode === null
               ? 'No vault key backup was found on the server for this account. ' +
@@ -281,13 +282,13 @@ export default function VaultViewerScreen({ navigation, route }) {
       setDataUri(`data:${document.mimeType};base64,${base64}`);
     } catch (err) {
       if (!doc) {
-        Alert.alert(
+        showAlert(
           'Error',
           `Could not load document: ${err?.response?.status ?? ''} ${err?.response?.data?.error || err?.message || 'unknown error'}`,
         );
         navigation.goBack();
       } else {
-        Alert.alert('Decryption Failed', err?.message || 'Could not decrypt document');
+        showAlert('Decryption Failed', err?.message || 'Could not decrypt document');
         setDecryptFailed(true);
       }
     } finally {
@@ -316,7 +317,7 @@ export default function VaultViewerScreen({ navigation, route }) {
     try {
       const canShare = await Sharing.isAvailableAsync();
       if (!canShare) {
-        Alert.alert('Not available', 'Sharing is not available on this device.');
+        showAlert('Not available', 'Sharing is not available on this device.');
         return;
       }
       const base64 = dataUri.split(',')[1] ?? '';
@@ -331,7 +332,7 @@ export default function VaultViewerScreen({ navigation, route }) {
         dialogTitle: doc.name,
       });
     } catch (e) {
-      Alert.alert('Could not open file', e?.message || 'Please try again.');
+      showAlert('Could not open file', e?.message || 'Please try again.');
     } finally {
       setExporting(false);
     }
@@ -353,7 +354,7 @@ export default function VaultViewerScreen({ navigation, route }) {
       });
       setDoc(updated);
     } catch (e) {
-      Alert.alert('Error', e?.response?.data?.message || 'Could not rename');
+      showAlert('Error', e?.response?.data?.message || 'Could not rename');
     } finally {
       setRenaming(false);
     }
@@ -367,7 +368,7 @@ export default function VaultViewerScreen({ navigation, route }) {
     } catch (e) {
       setDeleting(false);
       setShowDeleteConfirm(false);
-      Alert.alert('Error', e?.response?.data?.message || 'Could not delete');
+      showAlert('Error', e?.response?.data?.message || 'Could not delete');
     }
   };
 
@@ -401,7 +402,7 @@ export default function VaultViewerScreen({ navigation, route }) {
         setAudioStatus('playing');
       }
     } catch (e) {
-      Alert.alert('Playback failed', e?.message || 'Could not play audio');
+      showAlert('Playback failed', e?.message || 'Could not play audio');
     }
   };
   if (loading || decrypting) {
@@ -445,7 +446,7 @@ export default function VaultViewerScreen({ navigation, route }) {
               uri: dataUri,
             }}
             style={StyleSheet.absoluteFillObject}
-            onError={(e) => Alert.alert('PDF error', String(e))}
+            onError={(e) => showAlert('PDF error', String(e))}
           />
         );
       case 'video':
@@ -780,6 +781,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gold,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: colors.gold,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.28,
+    shadowRadius: 20,
+    elevation: 6,
   },
   openBtnText: {
     fontSize: 14,
@@ -794,6 +800,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gold,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: colors.gold,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.28,
+    shadowRadius: 20,
+    elevation: 6,
   },
   playBtnText: {
     fontSize: 14,

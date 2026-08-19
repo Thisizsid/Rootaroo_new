@@ -45,9 +45,9 @@ const styles = StyleSheet.create({
   buttonActive: {
     backgroundColor: colors.amberPale,
     borderWidth: 1,
-    borderColor: colors.legacyGold,
+    borderColor: colors.gold,
   },
   emoji: { fontSize: 14 },
   count: { fontSize: 11, color: colors.grayMuted, fontWeight: '600' },
-  countActive: { color: colors.legacyGold },
+  countActive: { color: colors.gold },
 });

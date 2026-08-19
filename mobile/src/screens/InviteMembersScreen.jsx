@@ -4,10 +4,10 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Alert,
   Share,
   ActivityIndicator,
 } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import QRCodeSvg from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
 import SignupWizardShell from '../shared/components/SignupWizardShell';
@@ -34,7 +34,7 @@ export default function InviteMembersScreen({ navigation }) {
       householdApi.getHousehold(householdId).then((hh) => setInviteCode(hh.inviteCode)),
       householdApi.getMembers(householdId).then(setMembers),
     ])
-      .catch(() => Alert.alert('Error', 'Failed to load invite details.'))
+      .catch(() => showAlert('Error', 'Failed to load invite details.'))
       .finally(() => setLoading(false));
   }, [householdId]);
   const displayCode = loading ? '···-···' : inviteCode || 'MND-482';

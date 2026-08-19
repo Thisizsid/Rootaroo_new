@@ -6,16 +6,16 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   StatusBar,
   Modal,
   TextInput,
   SafeAreaView,
 } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import { expenseApi } from '../shared/api/expense';
 import { householdApi } from '../shared/api/household';
 import { useAuthStore } from '../shared/store/authStore';
-import { colors, withAlpha } from '../shared/theme';
+import { colors, radius, withAlpha } from '../shared/theme';
 import Avatar from '../components/Avatar';
 import { KeyboardAvoider } from '../shared/components/KeyboardAware';
 function getInitials(name) {
@@ -80,7 +80,7 @@ export default function ExpenseLedgerScreen({ navigation }) {
   const handleSettle = useCallback(async () => {
     const amt = parseFloat(settleAmount);
     if (!settleFrom || !settleTo || isNaN(amt) || amt <= 0) {
-      Alert.alert('Required', 'Select users and enter a valid amount');
+      showAlert('Required', 'Select users and enter a valid amount');
       return;
     }
     setSaving(true);
@@ -92,10 +92,10 @@ export default function ExpenseLedgerScreen({ navigation }) {
       };
       await expenseApi.recordSettlement(body);
       setShowSettleModal(false);
-      Alert.alert('Settled', 'Settlement recorded successfully');
+      showAlert('Settled', 'Settlement recorded successfully');
       loadLedger(true);
     } catch (e) {
-      Alert.alert('Error', e?.response?.data?.message || 'Could not record settlement');
+      showAlert('Error', e?.response?.data?.message || 'Could not record settlement');
     } finally {
       setSaving(false);
     }
@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
   },
   entryCard: {
     backgroundColor: colors.surface,
-    borderRadius: 14,
+    borderRadius: radius.card,
     padding: 14,
     marginBottom: 10,
     borderWidth: 1,
@@ -582,6 +582,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     marginTop: 16,
+    shadowColor: colors.legacyGold,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.28,
+    shadowRadius: 20,
+    elevation: 6,
   },
   saveButtonDisabled: {
     opacity: 0.6,

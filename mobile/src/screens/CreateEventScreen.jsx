@@ -14,17 +14,17 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   StatusBar,
   ScrollView,
   KeyboardAvoidingView,
 } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { householdApi } from '../shared/api/household';
 import { eventApi } from '../shared/api/event';
 import { useAuthStore } from '../shared/store/authStore';
-import { colors, fonts, withAlpha } from '../shared/theme';
+import { colors, fonts, radius, withAlpha } from '../shared/theme';
 import Avatar from '../components/Avatar';
 import { KEYBOARD_BEHAVIOR } from '../shared/components/KeyboardAware';
 const REPEAT_OPTIONS = [
@@ -85,11 +85,11 @@ export default function CreateEventScreen({ navigation }) {
   const handleCreate = async () => {
     const trimmed = title.trim();
     if (!trimmed) {
-      Alert.alert('Required', 'Enter a title');
+      showAlert('Required', 'Enter a title');
       return;
     }
     if (ends <= starts) {
-      Alert.alert('Invalid time', 'End time must be after the start time');
+      showAlert('Invalid time', 'End time must be after the start time');
       return;
     }
     setSaving(true);
@@ -104,7 +104,7 @@ export default function CreateEventScreen({ navigation }) {
       });
       navigation.goBack();
     } catch (e) {
-      Alert.alert(
+      showAlert(
         'Could not create event',
         e?.response?.data?.message ||
           e?.message ||
@@ -335,7 +335,7 @@ const styles = StyleSheet.create({
   },
   input: {
     height: 52,
-    borderRadius: 14,
+    borderRadius: radius.card,
     backgroundColor: colors.canvas,
     paddingHorizontal: 16,
     fontSize: 14,

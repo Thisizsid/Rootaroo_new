@@ -8,13 +8,13 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   ScrollView,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import Svg, { Path } from 'react-native-svg';
 import { authApi, storePendingAuthResponse } from '../shared/api/auth';
 import { startEmailSignupProgress } from '../shared/navigation/postAuthNavigation';
-import { colors, fonts } from '../shared/theme';
+import { colors, fonts, radius } from '../shared/theme';
 import { KEYBOARD_BEHAVIOR } from '../shared/components/KeyboardAware';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -79,7 +79,7 @@ export default function SignUpScreen({ navigation }) {
       await startEmailSignupProgress(emailTrimmed);
     } catch (e) {
       const msg = e?.response?.data?.error || e?.message || 'Registration failed.';
-      Alert.alert('Registration Error', msg);
+      showAlert('Registration Error', msg);
     } finally {
       setLoading(false);
     }
@@ -269,7 +269,7 @@ const styles = StyleSheet.create({
   input: {
     height: 52,
     backgroundColor: colors.surface,
-    borderRadius: 14,
+    borderRadius: radius.card,
     paddingHorizontal: 16,
     fontSize: 16,
     color: colors.textPrimary,
@@ -279,7 +279,7 @@ const styles = StyleSheet.create({
   inputRow: {
     height: 52,
     backgroundColor: colors.surface,
-    borderRadius: 14,
+    borderRadius: radius.card,
     borderWidth: 1.5,
     borderColor: colors.fieldBorder,
     flexDirection: 'row',

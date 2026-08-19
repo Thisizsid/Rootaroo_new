@@ -6,9 +6,9 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   StatusBar,
 } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { taskApi } from '../shared/api/task';
 import { useAuthStore } from '../shared/store/authStore';
@@ -60,7 +60,7 @@ export default function TaskDetailScreen({ route, navigation }) {
       const data = await taskApi.getById(taskId);
       setTask(data);
     } catch {
-      Alert.alert('Error', 'Could not load task');
+      showAlert('Error', 'Could not load task');
       navigation.goBack();
     } finally {
       setLoading(false);
@@ -78,11 +78,11 @@ export default function TaskDetailScreen({ route, navigation }) {
           : await taskApi.complete(task.id);
       setTask(updated);
     } catch (e) {
-      Alert.alert('Error', e?.response?.data?.error || 'Could not update task');
+      showAlert('Error', e?.response?.data?.error || 'Could not update task');
     }
   }, [task]);
   const handleDelete = useCallback(() => {
-    Alert.alert('Delete Task', 'This action cannot be undone.', [
+    showAlert('Delete Task', 'This action cannot be undone.', [
       {
         text: 'Cancel',
         style: 'cancel',
@@ -95,7 +95,7 @@ export default function TaskDetailScreen({ route, navigation }) {
             await taskApi.delete(taskId);
             navigation.goBack();
           } catch {
-            Alert.alert('Error', 'Could not delete task');
+            showAlert('Error', 'Could not delete task');
           }
         },
       },

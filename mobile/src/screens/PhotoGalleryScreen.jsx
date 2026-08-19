@@ -18,6 +18,7 @@ import { useFeedPhotos } from '../shared/hooks/useFeedPhotos';
 import { useFeedStore } from '../shared/store/feedStore';
 import { useAuthStore } from '../shared/store/authStore';
 import { householdApi } from '../shared/api/household';
+import EmptyState from '../components/EmptyState';
 import { colors, fonts, withAlpha } from '../shared/theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -114,11 +115,12 @@ export default function PhotoGalleryScreen() {
           />
         }
         ListEmptyComponent={
-          <View style={styles.empty}>
-            <Text style={styles.emptyEmoji}>📸</Text>
-            <Text style={styles.emptyText}>No photos yet</Text>
-            <Text style={styles.emptyHint}>Photos shared to the Feed show up here.</Text>
-          </View>
+          <EmptyState
+            icon={<Text style={styles.emptyEmoji}>📸</Text>}
+            title="No photos yet"
+            subtitle="Photos shared to the Feed show up here."
+            dark
+          />
         }
       />
 
@@ -194,28 +196,8 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  empty: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingBottom: 80,
-  },
   emptyEmoji: {
-    fontSize: 34,
-    opacity: 0.5,
-    marginBottom: 12,
-  },
-  emptyText: {
-    fontSize: 16,
-    fontWeight: '700',
-    fontFamily: fonts.displayBold,
-    color: colors.ink,
-    marginBottom: 4,
-  },
-  emptyHint: {
-    fontSize: 13,
-    fontFamily: fonts.body,
-    color: colors.textSecondary,
+    fontSize: 28,
   },
   viewer: {
     flex: 1,

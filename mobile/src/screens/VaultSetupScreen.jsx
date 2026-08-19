@@ -19,16 +19,16 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
-  Alert,
   StatusBar,
 } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import Svg, { Rect, Path, Circle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../shared/store/authStore';
 import { useVaultStore } from '../shared/store/vaultStore';
 import { setupVaultKeys } from '../shared/crypto/vaultSetup';
 import { getPrivateKey } from '../shared/crypto/secureKeyStore';
-import { colors, fonts, withAlpha } from '../shared/theme';
+import { colors, fonts, radius, withAlpha } from '../shared/theme';
 import { KeyboardAvoider, keyboardScrollProps } from '../shared/components/KeyboardAware';
 export default function VaultSetupScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -53,16 +53,16 @@ export default function VaultSetupScreen({ navigation }) {
   const handleCreate = async () => {
     const user = useAuthStore.getState().user;
     if (!user?.id) {
-      Alert.alert('Error', 'Authentication required');
+      showAlert('Error', 'Authentication required');
       return;
     }
     if (backupChoice === 'passphrase') {
       if (passphrase.length < 8) {
-        Alert.alert('Weak passphrase', 'Use at least 8 characters.');
+        showAlert('Weak passphrase', 'Use at least 8 characters.');
         return;
       }
       if (passphrase !== confirm) {
-        Alert.alert('Passphrase mismatch', 'The two passphrases do not match.');
+        showAlert('Passphrase mismatch', 'The two passphrases do not match.');
         return;
       }
     }
@@ -79,7 +79,7 @@ export default function VaultSetupScreen({ navigation }) {
       });
       navigation.goBack();
     } catch (e) {
-      Alert.alert('Setup failed', e?.message || 'Could not set up your vault');
+      showAlert('Setup failed', e?.message || 'Could not set up your vault');
     } finally {
       setSettingUp(false);
     }
@@ -297,7 +297,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceRaised,
     borderWidth: 1,
     borderColor: 'transparent',
-    borderRadius: 18,
+    borderRadius: radius.cardLg,
     padding: 16,
     marginBottom: 12,
   },
@@ -322,7 +322,7 @@ const styles = StyleSheet.create({
   },
   input: {
     height: 52,
-    borderRadius: 14,
+    borderRadius: radius.card,
     backgroundColor: colors.surfaceRaised,
     borderWidth: 1.5,
     borderColor: withAlpha(colors.white, 0.1),

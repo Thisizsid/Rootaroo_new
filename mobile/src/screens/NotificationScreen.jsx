@@ -7,9 +7,9 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
-  Alert,
   StatusBar,
 } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { notificationApi } from '../shared/api/notification';
 import { colors, fonts } from '../shared/theme';
@@ -86,7 +86,7 @@ export default function NotificationScreen({ navigation }) {
         setCursor(data.nextCursor);
         setHasMore(data.hasMore);
       } catch {
-        Alert.alert('Error', 'Could not load notifications');
+        showAlert('Error', 'Could not load notifications');
       } finally {
         setLoading(false);
         setRefreshing(false);

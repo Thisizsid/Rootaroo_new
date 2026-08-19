@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import SignupWizardShell from '../shared/components/SignupWizardShell';
 import { authApi } from '../shared/api/auth';
 import { useAuthStore } from '../shared/store/authStore';
 import { loadSignupProgress, updateSignupProgress } from '../shared/store/signupProgress';
-import { colors, fonts, withAlpha } from '../shared/theme';
+import { colors, fonts, radius, withAlpha } from '../shared/theme';
 const ITEM_H = 46;
 const VISIBLE = 3; // previous / selected / next — selected centered
 const WHEEL_H = ITEM_H * VISIBLE;
@@ -210,7 +211,7 @@ export default function SignupStepBirthdayScreen({ navigation }) {
         navigation.navigate('SignupStepAvatar');
       }
     } catch (e) {
-      Alert.alert('Error', e?.response?.data?.error || e?.message || 'Could not save birthday');
+      showAlert('Error', e?.response?.data?.error || e?.message || 'Could not save birthday');
     } finally {
       setLoading(false);
     }
@@ -295,7 +296,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1.5,
     borderColor: colors.goldWarm,
-    borderRadius: 14,
+    borderRadius: radius.card,
     marginHorizontal: 2,
     shadowColor: colors.goldWarm,
     shadowOffset: {

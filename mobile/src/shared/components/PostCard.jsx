@@ -9,10 +9,10 @@ import {
   Pressable,
   ScrollView,
   Modal,
-  Alert,
   StatusBar,
   Share,
 } from 'react-native';
+import { showAlert } from '../services/themedAlert';
 import { Video, ResizeMode } from 'expo-av';
 import { colors, withAlpha } from '../theme';
 import Avatar, { resolveUrl } from '../../components/Avatar';
@@ -292,12 +292,12 @@ const PostCard = memo(function PostCard({
                 if (!viewerMedia) return;
                 const uri = resolveUrl(viewerMedia.mediaUrl);
                 if (!uri) return;
-                Alert.alert('Media', undefined, [
+                showAlert('Media', undefined, [
                   { text: 'Save / Share', onPress: async () => {
                     try {
                       await Share.share({ url: uri, message: uri });
                     } catch {
-                      Alert.alert('Error', 'Could not share media');
+                      showAlert('Error', 'Could not share media');
                     }
                   } },
                   { text: 'Cancel', style: 'cancel' },

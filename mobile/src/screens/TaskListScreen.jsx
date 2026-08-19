@@ -6,9 +6,9 @@ import {
   SectionList,
   TouchableOpacity,
   RefreshControl,
-  Alert,
   StatusBar,
 } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { SvgXml } from 'react-native-svg';
@@ -93,7 +93,7 @@ export default function TaskListScreen({ navigation }) {
       });
       setGrouped(data);
     } catch {
-      Alert.alert('Error', 'Could not load tasks');
+      showAlert('Error', 'Could not load tasks');
     } finally {
       setLoading(false);
       setRefreshing(false);

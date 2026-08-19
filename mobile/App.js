@@ -4,6 +4,7 @@ import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import RootNavigator from './src/navigation/RootNavigator';
+import AlertHost from './src/components/AlertHost';
 import { useAppFonts } from './src/shared/theme/useAppFonts';
 import { colors } from './src/shared/theme';
 
@@ -52,6 +53,7 @@ export default function App() {
         <NavigationContainer theme={navigationTheme}>
           <RootNavigator />
         </NavigationContainer>
+        <AlertHost />
       </SafeAreaProvider>
     </QueryClientProvider>
   );

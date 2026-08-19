@@ -4,12 +4,12 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Alert,
   StatusBar,
   ActivityIndicator,
   Platform,
   ImageBackground,
 } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../shared/store/authStore';
@@ -38,7 +38,7 @@ export default function ReadyScreen({ navigation }) {
       });
       completeSetup();
     } catch (e) {
-      Alert.alert('Error', e?.response?.data?.error || 'Failed to complete setup.');
+      showAlert('Error', e?.response?.data?.error || 'Failed to complete setup.');
     } finally {
       setLoading(false);
     }

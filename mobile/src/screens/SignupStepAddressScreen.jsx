@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, TextInput } from 'react-native';
+import { showAlert } from '../shared/services/themedAlert';
 import SignupWizardShell from '../shared/components/SignupWizardShell';
 import { authApi } from '../shared/api/auth';
 import { loadSignupProgress, updateSignupProgress } from '../shared/store/signupProgress';
 import { navigateAfterHouseholdSetup } from '../shared/navigation/postAuthNavigation';
-import { colors, fonts } from '../shared/theme';
+import { colors, fonts, radius } from '../shared/theme';
 export default function SignupStepAddressScreen({ navigation }) {
   const [street, setStreet] = useState('');
   const [city, setCity] = useState('');
@@ -43,7 +44,7 @@ export default function SignupStepAddressScreen({ navigation }) {
   })();
   const handleContinue = async () => {
     if (!street.trim() || !city.trim()) {
-      Alert.alert('Address required', 'Please enter your street and city.');
+      showAlert('Address required', 'Please enter your street and city.');
       return;
     }
     setLoading(true);
@@ -62,7 +63,7 @@ export default function SignupStepAddressScreen({ navigation }) {
       });
       await navigateAfterHouseholdSetup(navigation);
     } catch (e) {
-      Alert.alert('Error', e?.response?.data?.error || e?.message || 'Could not save address');
+      showAlert('Error', e?.response?.data?.error || e?.message || 'Could not save address');
     } finally {
       setLoading(false);
     }
@@ -158,7 +159,7 @@ const styles = StyleSheet.create({
   input: {
     height: 52,
     backgroundColor: colors.surface,
-    borderRadius: 14,
+    borderRadius: radius.card,
     borderWidth: 1.5,
     borderColor: colors.fieldBorder,
     paddingHorizontal: 16,

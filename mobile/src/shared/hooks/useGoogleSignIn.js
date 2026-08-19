@@ -1,7 +1,8 @@
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import { useMemo, useEffect, useState } from 'react';
-import { Platform, Alert } from 'react-native';
+import { Platform } from 'react-native';
+import { showAlert } from '../services/themedAlert';
 import { authApi } from '../api/auth';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -48,7 +49,7 @@ export function useGoogleSignIn(onSuccess) {
           })
           .catch((e) => {
             const msg = e?.response?.data?.error || 'Google sign-in failed.';
-            Alert.alert('Error', msg);
+            showAlert('Error', msg);
           })
           .finally(() => setBusy(false));
       }
@@ -58,7 +59,7 @@ export function useGoogleSignIn(onSuccess) {
   const signIn = async () => {
     const hasClientId = config && Object.values(config).some((v) => typeof v === 'string' && v.length > 0);
     if (!hasClientId) {
-      Alert.alert(
+      showAlert(
         'Not Configured',
         'Google Sign-In is not configured. Set EXPO_PUBLIC_GOOGLE_*_CLIENT_ID in your .env file.',
       );
