@@ -211,9 +211,24 @@ export default function ExpenseDetailScreen({ navigation, route }) {
       }
     }
   }, [expense, confirmAction, navigation, removeExpense, updateExpense]);
-  const handleReminder = useCallback(() => {
-    showAlert('Reminder sent', 'A payment reminder has been sent.');
-  }, []);
+  const [reminding, setReminding] = useState(false);
+  const handleReminder = useCallback(async () => {
+    if (!expense || reminding) return;
+    setReminding(true);
+    try {
+      const { remindedCount } = await expenseApi.sendReminder(expense.id);
+      showAlert(
+        remindedCount > 0 ? 'Reminder sent' : 'Nothing to remind',
+        remindedCount > 0
+          ? `Reminded ${remindedCount} member${remindedCount > 1 ? 's' : ''} to pay.`
+          : 'Everyone has already settled this expense.',
+      );
+    } catch (e) {
+      showAlert('Error', e?.response?.data?.message || 'Could not send reminder');
+    } finally {
+      setReminding(false);
+    }
+  }, [expense, reminding]);
   if (loading) {
     return (
       <View
@@ -348,8 +363,13 @@ export default function ExpenseDetailScreen({ navigation, route }) {
         )}
 
         <View style={styles.linkRow}>
-          <TouchableOpacity onPress={handleReminder} hitSlop={8} activeOpacity={0.6}>
-            <Text style={styles.linkText}>Send reminder</Text>
+          <TouchableOpacity
+            onPress={handleReminder}
+            disabled={reminding}
+            hitSlop={8}
+            activeOpacity={0.6}
+          >
+            <Text style={styles.linkText}>{reminding ? 'Sending…' : 'Send reminder'}</Text>
           </TouchableOpacity>
           {isCreatorOrAdmin && (
             <TouchableOpacity onPress={handleOpenEditModal} hitSlop={8} activeOpacity={0.6}>

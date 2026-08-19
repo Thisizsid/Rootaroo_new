@@ -9,8 +9,8 @@ import {
   StatusBar,
   Modal,
   TextInput,
-  SafeAreaView,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { showAlert } from '../shared/services/themedAlert';
 import { expenseApi } from '../shared/api/expense';
 import { householdApi } from '../shared/api/household';
@@ -27,14 +27,15 @@ function getInitials(name) {
     .slice(0, 2);
 }
 function formatCurrency(amount) {
-  return new Intl.NumberFormat('en-IN', {
+  return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'INR',
+    currency: 'USD',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount);
 }
 export default function ExpenseLedgerScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
   const householdId = useAuthStore((s) => s.householdId);
   const [ledger, setLedger] = useState([]);
@@ -171,14 +172,14 @@ export default function ExpenseLedgerScreen({ navigation }) {
   );
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <StatusBar barStyle="light-content" backgroundColor={colors.surface} />
         <ActivityIndicator size="large" color={colors.legacyGold} style={styles.loading} />
-      </SafeAreaView>
+      </View>
     );
   }
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="light-content" backgroundColor={colors.surface} />
 
       <View style={styles.header}>
@@ -330,7 +331,7 @@ export default function ExpenseLedgerScreen({ navigation }) {
           </View>
         </KeyboardAvoider>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 const styles = StyleSheet.create({

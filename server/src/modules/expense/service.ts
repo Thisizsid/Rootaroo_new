@@ -1,12 +1,14 @@
 import { Op } from 'sequelize';
 import {
+  sequelize,
   Expense,
   ExpenseParticipant,
   Settlement,
   User,
   HouseholdMember,
 } from '../../database/models';
-import { NotFoundError, ForbiddenError } from '../../shared/utils/errors';
+import { NotFoundError, ForbiddenError, ValidationError } from '../../shared/utils/errors';
+import * as notificationService from '../../shared/services/notifications';
 import type {
   ExpenseResponse,
   ExpenseSummaryResponse,
@@ -54,6 +56,45 @@ function toExpenseResponse(expense: Expense): ExpenseResponse {
         : undefined,
     })),
   };
+}
+
+/**
+ * Split `amount` across `participants`. For 'equal', shares are rounded to
+ * cents and any leftover penny from the division goes to the payer's share
+ * so the shares always sum exactly to `amount`. For 'custom', the supplied
+ * shareAmount is used verbatim but validated: every share must be a positive
+ * number and the shares must sum to `amount` (within a cent).
+ */
+function calculateShares(
+  amount: number,
+  paidBy: string,
+  splitType: 'equal' | 'custom',
+  participants: { userId: string; shareAmount?: number }[]
+): { userId: string; shareAmount: number }[] {
+  if (splitType === 'equal') {
+    const rawShare = amount / participants.length;
+    const roundedShare = Math.round(rawShare * 100) / 100;
+    const shares = participants.map((p) => ({ userId: p.userId, shareAmount: roundedShare }));
+    const remainder = Math.round((amount - roundedShare * participants.length) * 100) / 100;
+    if (remainder !== 0) {
+      const payerIdx = shares.findIndex((s) => s.userId === paidBy);
+      const idx = payerIdx !== -1 ? payerIdx : 0;
+      shares[idx].shareAmount = Math.round((shares[idx].shareAmount + remainder) * 100) / 100;
+    }
+    return shares;
+  }
+
+  const shares = participants.map((p) => ({ userId: p.userId, shareAmount: p.shareAmount ?? 0 }));
+  if (shares.some((s) => s.shareAmount <= 0)) {
+    throw new ValidationError('Each participant share must be a positive amount');
+  }
+  const total = Math.round(shares.reduce((sum, s) => sum + s.shareAmount, 0) * 100) / 100;
+  if (Math.abs(total - amount) > 0.01) {
+    throw new ValidationError(
+      `Custom shares total ${total.toFixed(2)}, but the expense amount is ${amount.toFixed(2)}`
+    );
+  }
+  return shares;
 }
 
 function toSettlementResponse(settlement: Settlement): SettlementResponse {
@@ -116,13 +157,7 @@ export async function createExpense(
   }
 
   // Calculate share amounts
-  let shareAmounts: { userId: string; shareAmount: number }[];
-  if (splitType === 'equal') {
-    const share = amount / participants.length;
-    shareAmounts = participants.map((p) => ({ userId: p.userId, shareAmount: share }));
-  } else {
-    shareAmounts = participants.map((p) => ({ userId: p.userId, shareAmount: p.shareAmount! }));
-  }
+  const shareAmounts = calculateShares(amount, paidBy, splitType, participants);
 
   const expense = await Expense.create({
     title,
@@ -248,17 +283,9 @@ export async function updateExpense(
     const participants = body.participants || existingParticipants.map((p) => ({ userId: p.userId, shareAmount: p.shareAmount }));
     const splitType = body.splitType || expense.splitType;
     const amount = body.amount !== undefined ? body.amount : parseFloat(expense.amount.toString());
+    const paidBy = body.paidBy !== undefined ? body.paidBy : expense.paidBy;
 
-    let shareAmounts: { userId: string; shareAmount: number }[];
-    if (splitType === 'equal') {
-      const share = amount / participants.length;
-      shareAmounts = participants.map((p) => ({ userId: p.userId, shareAmount: share }));
-    } else {
-      shareAmounts = participants.map((p) => ({
-        userId: p.userId,
-        shareAmount: p.shareAmount!,
-      }));
-    }
+    const shareAmounts = calculateShares(amount, paidBy, splitType, participants);
 
     // Verify all participants are household members
     const participantIds = participants.map((p) => p.userId);
@@ -327,13 +354,59 @@ export async function deleteExpense(
   await expense.destroy();
 }
 
-/** FR-107/108: Mark all participants of an expense as settled (creator or admin only) */
+/** Send a push reminder to every not-yet-settled participant (other than the payer). */
+export async function sendExpenseReminder(
+  expenseId: string,
+  userId: string
+): Promise<{ remindedCount: number }> {
+  const expense = await Expense.findByPk(expenseId, {
+    include: [{ model: ExpenseParticipant, as: 'participants' }],
+  });
+
+  if (!expense) {
+    throw new NotFoundError('Expense');
+  }
+
+  const householdId = await getUserHousehold(userId);
+  if (expense.householdId !== householdId) {
+    throw new ForbiddenError('Access denied');
+  }
+
+  const sender = await User.findByPk(userId);
+  const senderName = sender?.displayName || 'Someone';
+
+  const participants = expense.get('participants') as ExpenseParticipant[];
+  const unsettled = participants.filter((p) => !p.isSettled && p.userId !== expense.paidBy);
+
+  await Promise.all(
+    unsettled.map((p) =>
+      notificationService.notifyUser(
+        p.userId,
+        'expense_reminder',
+        'Payment Reminder',
+        `${senderName} reminded you to pay ${parseFloat(p.shareAmount.toString()).toFixed(2)} for "${expense.title}"`,
+        { type: 'expense_reminder', expenseId: expense.id }
+      )
+    )
+  );
+
+  return { remindedCount: unsettled.length };
+}
+
+/**
+ * FR-107/108: Mark all participants of an expense as settled (creator or admin only).
+ * For each not-yet-settled participant (other than the payer), this records a real
+ * Settlement (participant -> payer, for their share amount) so the balance/ledger
+ * reflect the settlement immediately, instead of only flipping a display flag.
+ */
 export async function markExpenseSettled(
   expenseId: string,
   userId: string,
   userRole: string
 ): Promise<ExpenseResponse> {
-  const expense = await Expense.findByPk(expenseId);
+  const expense = await Expense.findByPk(expenseId, {
+    include: [{ model: ExpenseParticipant, as: 'participants' }],
+  });
 
   if (!expense) {
     throw new NotFoundError('Expense');
@@ -348,7 +421,26 @@ export async function markExpenseSettled(
     throw new ForbiddenError('Only the creator or an admin can settle this expense');
   }
 
-  await ExpenseParticipant.update({ isSettled: true }, { where: { expenseId } });
+  const participants = expense.get('participants') as ExpenseParticipant[];
+  const toSettle = participants.filter((p) => !p.isSettled && p.userId !== expense.paidBy);
+
+  await sequelize.transaction(async (transaction) => {
+    if (toSettle.length > 0) {
+      await Settlement.bulkCreate(
+        toSettle.map((p) => ({
+          householdId,
+          fromUserId: p.userId,
+          toUserId: expense.paidBy,
+          amount: parseFloat(p.shareAmount.toString()),
+        })),
+        { transaction }
+      );
+    }
+    await ExpenseParticipant.update(
+      { isSettled: true },
+      { where: { expenseId }, transaction }
+    );
+  });
 
   const updated = await Expense.findByPk(expenseId, {
     include: [
@@ -379,6 +471,11 @@ export async function getExpenseSummary(userId: string): Promise<ExpenseSummaryR
     include: [{ model: ExpenseParticipant, as: 'participants' }],
   });
 
+  // Get all recorded settlements for household — these offset the raw
+  // paid/share balance below so a recorded settlement actually reduces
+  // what's owed instead of being a disconnected history entry.
+  const settlements = await Settlement.findAll({ where: { householdId } });
+
   // Calculate paid total and share total per user
   const userBalances = new Map<string, { paid: number; share: number }>();
   members.forEach((m) => userBalances.set(m.userId, { paid: 0, share: 0 }));
@@ -399,10 +496,25 @@ export async function getExpenseSummary(userId: string): Promise<ExpenseSummaryR
     });
   });
 
+  // A settlement fromUser -> toUser means fromUser paid down their debt
+  // (their balance moves up) and toUser's claim was paid off (moves down).
+  const settlementAdjustments = new Map<string, number>();
+  settlements.forEach((s) => {
+    const amount = parseFloat(s.amount.toString());
+    settlementAdjustments.set(
+      s.fromUserId,
+      (settlementAdjustments.get(s.fromUserId) || 0) + amount
+    );
+    settlementAdjustments.set(
+      s.toUserId,
+      (settlementAdjustments.get(s.toUserId) || 0) - amount
+    );
+  });
+
   // Build net balances
   const netBalances: NetBalanceResponse[] = members.map((m) => {
     const bal = userBalances.get(m.userId)!;
-    const netBalance = bal.paid - bal.share;
+    const netBalance = bal.paid - bal.share + (settlementAdjustments.get(m.userId) || 0);
     return {
       userId: m.userId,
       displayName: m.user!.displayName,

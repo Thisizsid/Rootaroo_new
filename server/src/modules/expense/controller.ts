@@ -79,6 +79,19 @@ export async function deleteExpenseCtrl(
   }
 }
 
+export async function sendExpenseReminderCtrl(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const result = await expenseService.sendExpenseReminder(req.params.id, getUserId(req));
+    res.json({ success: true, data: result });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function markExpenseSettledCtrl(
   req: Request,
   res: Response,

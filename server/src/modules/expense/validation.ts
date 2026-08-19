@@ -56,3 +56,7 @@ export const settlementSchema = {
 export const markSettledSchema = {
   params: z.object({ id: z.string().uuid() }),
 };
+
+export const remindSchema = {
+  params: z.object({ id: z.string().uuid() }),
+};

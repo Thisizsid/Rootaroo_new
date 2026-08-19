@@ -124,7 +124,31 @@ export default function CreateExpenseScreen({ navigation }) {
       return;
     }
     const splitType = splitMode === 'equal' ? 'equal' : 'custom';
-    if (splitType === 'custom') {
+    let splitParticipants;
+    if (splitType === 'equal') {
+      splitParticipants = participants.map((p) => ({ userId: p.userId }));
+    } else if (splitMode === 'percent') {
+      const percentTotal = participants.reduce((sum, p) => sum + (p.shareAmount || 0), 0);
+      if (Math.abs(percentTotal - 100) > 0.5) {
+        showAlert(
+          'Split Mismatch',
+          `Percentages total ${percentTotal.toFixed(1)}%, but must total 100%`,
+        );
+        return;
+      }
+      const shares = participants.map((p) => ({
+        userId: p.userId,
+        shareAmount: Math.round(((p.shareAmount || 0) / 100) * amt * 100) / 100,
+      }));
+      const shareTotal = shares.reduce((sum, s) => sum + s.shareAmount, 0);
+      const remainder = Math.round((amt - shareTotal) * 100) / 100;
+      if (Math.abs(remainder) >= 0.01) {
+        const idx = shares.findIndex((s) => s.userId === paidBy);
+        const target = idx !== -1 ? idx : 0;
+        shares[target].shareAmount = Math.round((shares[target].shareAmount + remainder) * 100) / 100;
+      }
+      splitParticipants = shares;
+    } else {
       const customTotal = participants.reduce((sum, p) => sum + (p.shareAmount || 0), 0);
       if (Math.abs(customTotal - amt) > 0.01) {
         showAlert(
@@ -133,6 +157,10 @@ export default function CreateExpenseScreen({ navigation }) {
         );
         return;
       }
+      splitParticipants = participants.map((p) => ({
+        userId: p.userId,
+        shareAmount: p.shareAmount,
+      }));
     }
     setSaving(true);
     try {
@@ -142,15 +170,7 @@ export default function CreateExpenseScreen({ navigation }) {
         paidBy,
         date: date || undefined,
         splitType,
-        participants:
-          splitType === 'equal'
-            ? participants.map((p) => ({
-                userId: p.userId,
-              }))
-            : participants.map((p) => ({
-                userId: p.userId,
-                shareAmount: p.shareAmount,
-              })),
+        participants: splitParticipants,
       };
       const created = await expenseApi.create(body);
       prependExpense(created);

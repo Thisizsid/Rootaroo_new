@@ -28,11 +28,9 @@ import { householdApi } from '../shared/api/household';
 import { useFeedStore } from '../shared/store/feedStore';
 import { useFeedPhotos } from '../shared/hooks/useFeedPhotos';
 import { taskApi } from '../shared/api/task';
-import { todoApi } from '../shared/api/todo';
 import { expenseApi } from '../shared/api/expense';
 import { vaultApi } from '../shared/api/vault';
 import { eventApi } from '../shared/api/event';
-import { checkInApi } from '../shared/api/checkin';
 import { colors, fonts, spacing, radius, withAlpha } from '../shared/theme';
 import Avatar from '../components/Avatar';
 import { KeyboardAvoider } from '../shared/components/KeyboardAware';
@@ -223,8 +221,6 @@ export default function DashboardScreen() {
   const [events, setEvents] = useState([]);
   const [weekAnchor, setWeekAnchor] = useState(() => startOfWeek(new Date()));
   const [selectedDate, setSelectedDate] = useState(() => new Date());
-  const [latestCheckIn, setLatestCheckIn] = useState(null);
-  const [checkedInTodayCount, setCheckedInTodayCount] = useState(0);
 
   // Streak strip — which of the 7 days the detail line describes (6 = today)
   const [streakIdx, setStreakIdx] = useState(6);
@@ -235,11 +231,6 @@ export default function DashboardScreen() {
   const [customMsg, setCustomMsg] = useState('');
   const [selMembers, setSelMembers] = useState(new Set());
   const [sending, setSending] = useState(false);
-
-  // Nudge — reminder tied to a specific pending task/todo
-  const [nudgeItems, setNudgeItems] = useState([]);
-  const [nudgeItemsLoading, setNudgeItemsLoading] = useState(false);
-  const [selectedNudgeItem, setSelectedNudgeItem] = useState(null);
   const load = useCallback(async () => {
     setFetchError(false);
     try {
@@ -258,35 +249,6 @@ export default function DashboardScreen() {
         setEvents(calendarEvents || []);
       } catch {
         setEvents([]);
-      }
-
-      // Household widget — latest check-in + how many members checked in today
-      try {
-        const ci = await checkInApi.list({
-          limit: 50,
-        });
-        const items = ci?.items || [];
-        if (items.length > 0) {
-          const latest = items[0]; // list is DESC by checkedInAt
-          const who = m.find((mem) => mem.userId === latest.userId);
-          const todayKey = new Date().toDateString();
-          const todayCount = new Set(
-            items
-              .filter((i) => new Date(i.checkedInAt).toDateString() === todayKey)
-              .map((i) => i.userId),
-          ).size;
-          setLatestCheckIn({
-            name: who?.displayName || latest.user?.displayName || 'Someone',
-            time: timeHM(latest.checkedInAt),
-          });
-          setCheckedInTodayCount(todayCount);
-        } else {
-          setLatestCheckIn(null);
-          setCheckedInTodayCount(0);
-        }
-      } catch {
-        setLatestCheckIn(null);
-        setCheckedInTodayCount(0);
       }
     } catch {
       setFetchError(true);
@@ -321,15 +283,15 @@ export default function DashboardScreen() {
         if (mine && Math.abs(mine.netBalance) > 0.01) {
           const amt = `$${Math.abs(mine.netBalance).toFixed(0)}`;
           if (mine.netBalance > 0) {
-            setOweText(`You owe ${amt}`);
-          } else {
             setOweText(`You're owed ${amt}`);
+          } else {
+            setOweText(`You owe ${amt}`);
           }
           // counterparty from ledger
           const entry = (s?.ledger || []).find(
             (l) => l.toUserId === user?.id || l.fromUserId === user?.id,
           );
-          if (entry) setOweName(mine.netBalance > 0 ? entry.toUserName : entry.fromUserName);
+          if (entry) setOweName(mine.netBalance > 0 ? entry.fromUserName : entry.toUserName);
         }
       })
       .catch(() => {});
@@ -461,8 +423,6 @@ export default function DashboardScreen() {
     .slice(0, 3);
   const topMemberName = data?.leaderboard?.[0]?.displayName || '';
 
-  /* ── Household status (real check-ins) ── */
-  const everyoneHome = members.length > 0 && checkedInTodayCount >= members.length;
   const QUICK_ACTIONS = [
     {
       glyph: '⌂',
@@ -484,69 +444,24 @@ export default function DashboardScreen() {
       label: 'Groceries',
       template: 'Heading out to grab groceries! 🛒',
     },
-    {
-      glyph: '🔔',
-      label: 'Nudge',
-      template: '',
-    },
+  ];
+  const NUDGE_PRESETS = [
+    'Just a reminder 👀',
+    "Don't forget!",
+    'Please check this',
+    'Can you take care of this?',
   ];
   const handleQuickNotify = (action) => {
     const q = QUICK_ACTIONS.find((x) => x.label === action);
     setPendingAction(q?.label || action);
     setCustomMsg(q?.template || '');
     setSelMembers(new Set());
-    setNudgeItems([]);
-    setSelectedNudgeItem(null);
     setShowPicker(true);
   };
   const selectPreset = (label) => {
     const q = QUICK_ACTIONS.find((x) => x.label === label);
     setPendingAction(q?.label || '');
     setCustomMsg(q?.template || '');
-    setNudgeItems([]);
-    setSelectedNudgeItem(null);
-    if (label === 'Nudge' && selMembers.size > 1) {
-      setSelMembers(new Set(Array.from(selMembers).slice(0, 1)));
-    }
-  };
-
-  // Nudge: fetch the single selected recipient's pending tasks + todos
-  useEffect(() => {
-    if (pendingAction !== 'Nudge' || selMembers.size !== 1) {
-      return;
-    }
-    const memberId = Array.from(selMembers)[0];
-    let cancelled = false;
-    setNudgeItemsLoading(true);
-    Promise.all([
-      taskApi.list({ group: 'pending' }).catch(() => []),
-      todoApi.list().catch(() => ({ pending: [] })),
-    ])
-      .then(([taskRes, todoRes]) => {
-        if (cancelled) return;
-        const tasks = Array.isArray(taskRes) ? taskRes : taskRes?.pending || [];
-        const todos = todoRes?.pending || [];
-        const items = [
-          ...tasks
-            .filter((t) => t.assignees?.some((a) => a.id === memberId))
-            .map((t) => ({ id: t.id, title: t.title, kind: 'task' })),
-          ...todos
-            .filter((t) => t.assignedTo?.id === memberId)
-            .map((t) => ({ id: t.id, title: t.title, kind: 'todo' })),
-        ];
-        setNudgeItems(items);
-      })
-      .finally(() => {
-        if (!cancelled) setNudgeItemsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [pendingAction, selMembers]);
-
-  const handleSelectNudgeItem = (item) => {
-    setSelectedNudgeItem(item);
-    setCustomMsg(`Reminder: "${item.title}" is still pending`);
   };
 
   const canSend = selMembers.size > 0 && (customMsg.trim().length > 0 || !!pendingAction);
@@ -909,7 +824,7 @@ export default function DashboardScreen() {
               </TouchableOpacity>
 
               {/* ── Today's Focus ── */}
-              <Card style={{ marginBottom: 20 }}>
+              {/*<Card style={{ marginBottom: 20 }}>
                 <WidgetLabel
                   style={{
                     marginBottom: 14,
@@ -934,7 +849,7 @@ export default function DashboardScreen() {
                     </TouchableOpacity>
                   ))
                 )}
-              </Card>
+              </Card>*/}
 
               {/* ── Calendar ── */}
               <TouchableOpacity
@@ -1129,7 +1044,7 @@ export default function DashboardScreen() {
                 </Text>
               </TouchableOpacity>
 
-              {/* ── Feed + Household two-up ── */}
+              {/* ── Feed + Nudge two-up ── */}
               <View style={styles.twoUp}>
                 <TouchableOpacity
                   style={styles.feedCard}
@@ -1179,38 +1094,26 @@ export default function DashboardScreen() {
                 <TouchableOpacity
                   style={[
                     styles.card,
-                    styles.hhCard,
+                    styles.nudgeCard,
                     {
                       borderRadius: 20,
                     },
                   ]}
-                  onPress={() =>
-                    nav.navigate('MoreStack', {
-                      screen: 'HouseholdSettings',
-                    })
-                  }
+                  onPress={() => handleQuickNotify('Nudge')}
                   activeOpacity={0.7}
                 >
                   <CardSheen radius={20} />
-                  <WidgetLabel>HOUSEHOLD</WidgetLabel>
+                  <WidgetLabel>NUDGE</WidgetLabel>
                   <View
                     style={{
                       marginTop: 10,
                     }}
                   >
-                    <Text style={styles.hhTitle} numberOfLines={1}>
-                      {everyoneHome
-                        ? "Everyone's home"
-                        : latestCheckIn
-                          ? 'On the move'
-                          : 'No pings yet'}
+                    <Text style={styles.nudgeCardTitle} numberOfLines={1}>
+                      Send a quick reminder
                     </Text>
-                    <Text style={styles.hhMeta} numberOfLines={1}>
-                      {everyoneHome
-                        ? `${members.length} member${members.length > 1 ? 's' : ''} at home`
-                        : latestCheckIn
-                          ? `${latestCheckIn.name.split(' ')[0]} arrived · ${latestCheckIn.time}`
-                          : 'Tap Ping to share your status'}
+                    <Text style={styles.nudgeCardMeta} numberOfLines={1}>
+                      Tap to nudge someone
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -1410,23 +1313,21 @@ export default function DashboardScreen() {
             />
 
             {/* Recipients */}
-            {pendingAction !== 'Nudge' && (
-              <TouchableOpacity
-                style={mo.allRow}
-                onPress={() => {
-                  const o = members.filter((m) => m.userId !== user?.id);
-                  selMembers.size === o.length
-                    ? setSelMembers(new Set())
-                    : setSelMembers(new Set(o.map((m) => m.userId)));
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={mo.allText}>Notify All</Text>
-                <View style={[mo.cb, selMembers.size > 0 && mo.cbOn]}>
-                  {selMembers.size > 0 && <CheckIcon size={10} color={colors.navyDeep} />}
-                </View>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+              style={mo.allRow}
+              onPress={() => {
+                const o = members.filter((m) => m.userId !== user?.id);
+                selMembers.size === o.length
+                  ? setSelMembers(new Set())
+                  : setSelMembers(new Set(o.map((m) => m.userId)));
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={mo.allText}>Notify All</Text>
+              <View style={[mo.cb, selMembers.size > 0 && mo.cbOn]}>
+                {selMembers.size > 0 && <CheckIcon size={10} color={colors.navyDeep} />}
+              </View>
+            </TouchableOpacity>
             <ScrollView style={mo.list} keyboardShouldPersistTaps="handled">
               {members
                 .filter((m) => m.userId !== user?.id)
@@ -1437,12 +1338,6 @@ export default function DashboardScreen() {
                       key={m.userId}
                       style={[mo.mRow, checked && mo.mRowSel]}
                       onPress={() => {
-                        if (pendingAction === 'Nudge') {
-                          setSelectedNudgeItem(null);
-                          setCustomMsg('');
-                          setSelMembers(checked ? new Set() : new Set([m.userId]));
-                          return;
-                        }
                         const n = new Set(selMembers);
                         checked ? n.delete(m.userId) : n.add(m.userId);
                         setSelMembers(n);
@@ -1473,44 +1368,24 @@ export default function DashboardScreen() {
                 })}
             </ScrollView>
 
-            {/* Nudge: their pending tasks/todos */}
-            {pendingAction === 'Nudge' && selMembers.size === 1 && (
+            {/* Nudge: predefined reminder messages */}
+            {pendingAction === 'Nudge' && (
               <View style={mo.nudgeSection}>
-                <Text style={mo.nudgeSectionLabel}>PENDING FOR THEM</Text>
-                {nudgeItemsLoading ? (
-                  <ActivityIndicator size="small" color={colors.gold} style={mo.nudgeLoading} />
-                ) : nudgeItems.length === 0 ? (
-                  <Text style={mo.nudgeEmpty}>No pending tasks or todos right now.</Text>
-                ) : (
-                  <ScrollView style={mo.nudgeList} keyboardShouldPersistTaps="handled">
-                    {nudgeItems.map((item) => {
-                      const picked = selectedNudgeItem?.id === item.id && selectedNudgeItem?.kind === item.kind;
-                      return (
-                        <TouchableOpacity
-                          key={`${item.kind}-${item.id}`}
-                          style={[mo.mRow, picked && mo.mRowSel]}
-                          onPress={() => handleSelectNudgeItem(item)}
-                          activeOpacity={0.7}
-                        >
-                          <View
-                            style={{
-                              flexDirection: 'row',
-                              alignItems: 'center',
-                              gap: 12,
-                              flex: 1,
-                            }}
-                          >
-                            <Text style={mo.nudgeItemGlyph}>{item.kind === 'task' ? '📋' : '📝'}</Text>
-                            <Text style={mo.mName} numberOfLines={1}>
-                              {item.title}
-                            </Text>
-                          </View>
-                          {picked && <CheckIcon size={12} color={colors.gold} />}
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
-                )}
+                <Text style={mo.nudgeSectionLabel}>QUICK MESSAGES</Text>
+                <View style={mo.chipRow}>
+                  {NUDGE_PRESETS.map((preset) => (
+                    <TouchableOpacity
+                      key={preset}
+                      style={[mo.chip, customMsg === preset && mo.chipActive]}
+                      onPress={() => setCustomMsg(preset)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[mo.chipText, customMsg === preset && mo.chipTextActive]}>
+                        {preset}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
             )}
             <View style={mo.actions}>
@@ -2129,20 +2004,20 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontFamily: 'PlusJakartaSans_600SemiBold',
   },
-  hhCard: {
+  nudgeCard: {
     padding: 18,
     marginBottom: 0,
     flex: 1,
     justifyContent: 'space-between',
   },
-  hhTitle: {
+  nudgeCardTitle: {
     fontSize: 15,
     fontWeight: '700',
     color: colors.textOnDarkSoft,
     marginBottom: 4,
     fontFamily: 'PlusJakartaSans_700Bold',
   },
-  hhMeta: {
+  nudgeCardMeta: {
     fontSize: 12,
     color: colors.textOnDarkMuted,
   },
@@ -2399,21 +2274,6 @@ const mo = StyleSheet.create({
     color: colors.textFaint,
     letterSpacing: 0.6,
     marginBottom: spacing.sm,
-  },
-  nudgeList: {
-    maxHeight: 180,
-  },
-  nudgeLoading: {
-    marginVertical: spacing.lg,
-  },
-  nudgeEmpty: {
-    fontSize: 13,
-    fontFamily: fonts.body,
-    color: colors.textFaint,
-    paddingVertical: spacing.md,
-  },
-  nudgeItemGlyph: {
-    fontSize: 16,
   },
   // Footer actions
   actions: {

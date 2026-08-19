@@ -175,8 +175,9 @@ export default function TaskDetailScreen({ route, navigation }) {
               <Text style={styles.metaValue}>Unassigned</Text>
             )}
           </View>
+          <MetaRow label="Assigned by" value={task.createdBy.displayName} />
           <MetaRow label="Due date" value={formatDueDate(task.dueDate)} />
-          <MetaRow label="Created by" value={task.createdBy.displayName} />
+          
           <MetaRow label="Points" value={String(task.points)} mono />
           <MetaRow label="Status" value={sm.label} color={sm.color} semibold last />
         </View>

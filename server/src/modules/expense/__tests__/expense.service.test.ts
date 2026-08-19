@@ -34,6 +34,9 @@ jest.mock('../../../database/models', () => {
     return cls;
   };
   return {
+    sequelize: {
+      transaction: jest.fn(async (cb: any) => cb({})),
+    },
     Expense: mockModel('Expense'),
     ExpenseParticipant: mockModel('ExpenseParticipant'),
     Settlement: mockModel('Settlement'),
@@ -43,6 +46,11 @@ jest.mock('../../../database/models', () => {
 });
 
 jest.mock('../../../shared/utils/logger');
+
+jest.mock('../../../shared/services/notifications', () => ({
+  notifyUser: jest.fn(),
+  notifyHousehold: jest.fn(),
+}));
 
 const modelsMock = models as any;
 
@@ -86,7 +94,7 @@ function mockExpenseWithParticipants(participants: any[] = [], overrides: any = 
       expenseId,
       userId: p.userId || userId,
       shareAmount: p.shareAmount || 800,
-      isSettled: false,
+      isSettled: p.isSettled || false,
       createdAt: new Date('2026-07-10T10:00:00Z'),
       get: jest.fn().mockReturnValue(userDisplay(p.userId || userId, 'Test User')),
     }))
@@ -119,6 +127,10 @@ beforeEach(() => {
   modelsMock.HouseholdMember.findOne.mockResolvedValue(
     memberWithUser(userId, 'Test User')
   );
+
+  // No recorded settlements by default — tests that care about the
+  // settlement/balance offset mock this explicitly.
+  modelsMock.Settlement.findAll.mockResolvedValue([]);
 
   // findAll: only the *active* members in each test scope
   // Each test that calls findAll should mock it explicitly with the expected count
@@ -208,6 +220,61 @@ describe('Expense Service', () => {
 
       await expect(createExpense(userId, validBody)).rejects.toThrow(
         'All participants must be household members'
+      );
+    });
+
+    it('should distribute the rounding remainder to the payer on an uneven equal split', async () => {
+      const body = {
+        ...validBody,
+        amount: 10,
+        participants: [{ userId }, { userId: otherUserId }, { userId: adminUserId }],
+      };
+      modelsMock.HouseholdMember.findAll.mockResolvedValue([
+        memberWithUser(userId, 'Me'),
+        memberWithUser(otherUserId, 'Other'),
+        memberWithUser(adminUserId, 'Admin'),
+      ]);
+      const expense = mockExpense({ amount: 10 });
+      modelsMock.Expense.create.mockResolvedValue(expense);
+      modelsMock.ExpenseParticipant.bulkCreate.mockResolvedValue([]);
+      modelsMock.Expense.findByPk.mockResolvedValue(expense);
+
+      await createExpense(userId, body);
+
+      const shares = modelsMock.ExpenseParticipant.bulkCreate.mock.calls[0][0];
+      const total = shares.reduce((sum: number, s: any) => sum + s.shareAmount, 0);
+      expect(Math.round(total * 100) / 100).toBe(10);
+      // 10 / 3 = 3.33..., payer (userId) absorbs the extra cent
+      expect(shares.find((s: any) => s.userId === userId).shareAmount).toBe(3.34);
+    });
+
+    it('should throw if custom shares do not sum to the expense amount', async () => {
+      const body = {
+        ...validBody,
+        splitType: 'custom' as const,
+        participants: [
+          { userId, shareAmount: 1000 },
+          { userId: otherUserId, shareAmount: 1000 },
+        ],
+      };
+
+      await expect(createExpense(userId, body)).rejects.toThrow(
+        'Custom shares total'
+      );
+    });
+
+    it('should throw if a custom share is zero or negative', async () => {
+      const body = {
+        ...validBody,
+        splitType: 'custom' as const,
+        participants: [
+          { userId, shareAmount: 3200 },
+          { userId: otherUserId, shareAmount: 0 },
+        ],
+      };
+
+      await expect(createExpense(userId, body)).rejects.toThrow(
+        'Each participant share must be a positive amount'
       );
     });
   });
@@ -364,7 +431,7 @@ describe('Expense Service', () => {
 
       expect(modelsMock.ExpenseParticipant.update).toHaveBeenCalledWith(
         { isSettled: true },
-        { where: { expenseId } }
+        { where: { expenseId }, transaction: {} }
       );
     });
 
@@ -379,8 +446,43 @@ describe('Expense Service', () => {
 
       expect(modelsMock.ExpenseParticipant.update).toHaveBeenCalledWith(
         { isSettled: true },
-        { where: { expenseId } }
+        { where: { expenseId }, transaction: {} }
       );
+    });
+
+    it('should record a settlement for each unsettled non-payer participant (not the payer)', async () => {
+      const expense = mockExpenseWithParticipants([
+        { userId, shareAmount: 1600 },
+        { userId: otherUserId, shareAmount: 1600 },
+      ]);
+      expense.paidBy = userId;
+      modelsMock.Expense.findByPk.mockResolvedValue(expense);
+
+      await markExpenseSettled(expenseId, userId, 'member');
+
+      expect(modelsMock.Settlement.bulkCreate).toHaveBeenCalledWith(
+        [
+          expect.objectContaining({
+            householdId,
+            fromUserId: otherUserId,
+            toUserId: userId,
+            amount: 1600,
+          }),
+        ],
+        { transaction: {} }
+      );
+    });
+
+    it('should not record a settlement for an already-settled participant', async () => {
+      const expense = mockExpenseWithParticipants([
+        { userId: otherUserId, shareAmount: 1600, isSettled: true },
+      ]);
+      expense.paidBy = userId;
+      modelsMock.Expense.findByPk.mockResolvedValue(expense);
+
+      await markExpenseSettled(expenseId, userId, 'member');
+
+      expect(modelsMock.Settlement.bulkCreate).not.toHaveBeenCalled();
     });
 
     it('should throw ForbiddenError when non-creator, non-admin tries to settle', async () => {
@@ -481,6 +583,34 @@ describe('Expense Service', () => {
       expect(summary.ledger[0].amount).toBe(100);
       expect(summary.totalExpenses).toBe(1);
       expect(summary.totalAmount).toBe(200);
+    });
+
+    it('should offset net balances by recorded settlements', async () => {
+      modelsMock.HouseholdMember.findAll.mockResolvedValue([
+        memberWithUser(userId, 'Test User'),
+        memberWithUser(otherUserId, 'Other User'),
+      ]);
+
+      const expense = mockExpenseWithParticipants([
+        { userId, shareAmount: 100 },
+        { userId: otherUserId, shareAmount: 100 },
+      ]);
+      expense.amount = 200;
+      expense.paidBy = userId;
+      modelsMock.Expense.findAll.mockResolvedValue([expense]);
+
+      // otherUser already paid back their full $100 debt
+      modelsMock.Settlement.findAll.mockResolvedValue([
+        mockSettlement({ fromUserId: otherUserId, toUserId: userId, amount: 100 }),
+      ]);
+
+      const summary = await getExpenseSummary(userId);
+
+      const userNet = summary.netBalances.find((nb: any) => nb.userId === userId);
+      const otherNet = summary.netBalances.find((nb: any) => nb.userId === otherUserId);
+      expect(userNet!.netBalance).toBe(0); // was owed 100, settlement paid it off
+      expect(otherNet!.netBalance).toBe(0); // owed 100, settlement cleared it
+      expect(summary.ledger).toHaveLength(0); // nothing outstanding left to net
     });
 
     it('should return empty summary when no expenses exist', async () => {

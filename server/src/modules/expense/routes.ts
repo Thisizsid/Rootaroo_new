@@ -8,6 +8,7 @@ import {
   expenseQuerySchema,
   settlementSchema,
   markSettledSchema,
+  remindSchema,
 } from './validation';
 
 const router = Router();
@@ -25,5 +26,6 @@ router.get('/:id', ctrl.getExpenseByIdCtrl);
 router.patch('/:id', validate(updateExpenseSchema), ctrl.updateExpenseCtrl);       // FR-107/108
 router.delete('/:id', ctrl.deleteExpenseCtrl);                                     // FR-107/108
 router.post('/:id/settle', validate(markSettledSchema), ctrl.markExpenseSettledCtrl); // FR-107/108
+router.post('/:id/remind', validate(remindSchema), ctrl.sendExpenseReminderCtrl);
 
 export default router;

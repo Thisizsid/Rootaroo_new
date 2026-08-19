@@ -111,9 +111,7 @@ export default function TaskListScreen({ navigation }) {
   const applyFilter = useCallback(
     (tasks) => {
       if (filter === 'MINE') {
-        return tasks.filter(
-          (t) => t.assignees.some((a) => a.id === user?.id) || t.createdBy.id === user?.id,
-        );
+        return tasks.filter((t) => t.assignees.some((a) => a.id === user?.id));
       }
       return tasks;
     },

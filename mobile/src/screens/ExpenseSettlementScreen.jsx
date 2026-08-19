@@ -14,9 +14,9 @@ import { expenseApi } from '../shared/api/expense';
 import { colors, radius, withAlpha } from '../shared/theme';
 import Avatar from '../components/Avatar';
 function formatCurrency(amount) {
-  return new Intl.NumberFormat('en-IN', {
+  return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'INR',
+    currency: 'USD',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount);

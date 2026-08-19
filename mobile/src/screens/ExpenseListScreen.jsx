@@ -294,9 +294,9 @@ export default function ExpenseListScreen({ navigation }) {
         {/* ── Family balance ── */}
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionLabel}>FAMILY BALANCE</Text>
-          {/* <TouchableOpacity onPress={() => navigation.navigate('ExpenseLedger')} hitSlop={8}>
+          <TouchableOpacity onPress={() => navigation.navigate('ExpenseLedger')} hitSlop={8}>
             <Text style={styles.sectionLink}>Ledger ›</Text>
-           </TouchableOpacity> */}
+          </TouchableOpacity>
         </View>
         {(summary?.netBalances ?? []).map((nb) => {
           const pos = nb.netBalance > 0;

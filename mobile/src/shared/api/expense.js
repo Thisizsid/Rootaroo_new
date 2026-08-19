@@ -29,6 +29,11 @@ export const expenseApi = {
       .post(`/expenses/${id}/settle`)
       .then((r) => r.data.data),
 
+  sendReminder: (id) =>
+    apiClient
+      .post(`/expenses/${id}/remind`)
+      .then((r) => r.data.data),
+
   getSummary: () =>
     apiClient
       .get('/expenses/summary')
