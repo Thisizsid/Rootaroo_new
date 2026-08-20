@@ -2,6 +2,7 @@ import { io } from 'socket.io-client';
 import apiClient from './api/client';
 import { useFeedStore } from './store/feedStore';
 import { usePingStore } from './store/pingStore';
+import { useEngagementStore } from './store/engagementStore';
 
 let socket = null;
 let listenersAttached = false;
@@ -62,15 +63,26 @@ function attachListeners() {
 
   socket.on('feed:new-post', (post) => {
     useFeedStore.getState().prependPost(post);
+    useEngagementStore.getState().bump();
   });
 
   socket.on('ping:request', (request) => {
     usePingStore.getState().addIncoming(request);
+    useEngagementStore.getState().bump();
   });
 
   socket.on('ping:response', (request) => {
     usePingStore.getState().upsertOutgoing(request);
+    useEngagementStore.getState().bump();
   });
+
+  // Streak/activity/leaderboard-relevant completions — no per-event UI to
+  // update yet, just bump so the Dashboard knows to refetch.
+  socket.on('task:completed', () => useEngagementStore.getState().bump());
+  socket.on('todo:completed', () => useEngagementStore.getState().bump());
+  socket.on('grocery:bought', () => useEngagementStore.getState().bump());
+  socket.on('checkin:created', () => useEngagementStore.getState().bump());
+  socket.on('calendar:event-created', () => useEngagementStore.getState().bump());
 }
 
 /**

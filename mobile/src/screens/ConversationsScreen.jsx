@@ -13,6 +13,7 @@ import {
   Image,
 } from 'react-native';
 import { showAlert } from '../shared/services/themedAlert';
+import Svg, { Circle, Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { chatApi } from '../shared/api/chat';
@@ -52,6 +53,41 @@ function formatTimestamp(dateStr) {
 }
 function getOtherParticipant(conversation, currentUserId) {
   return conversation.participants.find((p) => p.id !== currentUserId);
+}
+
+/* ──────────────────────────────────────────── */
+/*  Header icons — hand-drawn, no icon library   */
+/* ──────────────────────────────────────────── */
+
+/* New message: a pencil, tip lower-left / cap upper-right */
+function ComposeIcon({ size = 18, color = colors.ink }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path
+        d="M9 3h6a1.5 1.5 0 0 1 1.5 1.5v10L12 21l-4.5-6.5v-10A1.5 1.5 0 0 1 9 3Z"
+        fill={color}
+        opacity={0.5}
+        transform="rotate(-45 12 12)"
+      />
+      <Path
+        d="M9 3h6v9a1.5 1.5 0 0 1-1.5 1.5h-3A1.5 1.5 0 0 1 9 12Z"
+        fill={color}
+        transform="rotate(-45 12 12)"
+      />
+    </Svg>
+  );
+}
+
+/* Household chat: two overlapping people */
+function PeopleIcon({ size = 20, color = colors.ink }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Circle cx="8" cy="8" r="3" fill={color} opacity={0.45} />
+      <Path d="M2,20 A6,6 0 0 1 14,20 Z" fill={color} opacity={0.45} />
+      <Circle cx="15.5" cy="9" r="3.5" fill={color} />
+      <Path d="M8.5,21 A7,7 0 0 1 22.5,21 Z" fill={color} />
+    </Svg>
+  );
 }
 
 /* ──────────────────────────────────────────── */
@@ -326,10 +362,7 @@ export default function ConversationsScreen() {
               setModalVisible(true);
             }}
           >
-            <View style={styles.searchIcon}>
-              <View style={styles.searchGlass} />
-              <View style={styles.searchHandle} />
-            </View>
+            <ComposeIcon size={18} color={colors.ink} />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.iconBtn}
@@ -340,7 +373,7 @@ export default function ConversationsScreen() {
             {creating ? (
               <ActivityIndicator size="small" color={colors.gold} />
             ) : (
-              <Text style={styles.everyoneIcon}>{'👥'}</Text>
+              <PeopleIcon size={20} color={colors.ink} />
             )}
           </TouchableOpacity>
         </View>
@@ -647,35 +680,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 3,
     elevation: 2,
-  },
-  searchIcon: {
-    width: 18,
-    height: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  searchGlass: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    borderWidth: 1.5,
-    borderColor: colors.textMuted,
-  },
-  searchHandle: {
-    position: 'absolute',
-    bottom: 2,
-    right: 0,
-    width: 7,
-    height: 1.5,
-    backgroundColor: colors.surfaceRaised,
-    transform: [
-      {
-        rotate: '45deg',
-      },
-    ],
-  },
-  everyoneIcon: {
-    fontSize: 18,
   },
   brand: {
     fontSize: 15,

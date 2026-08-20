@@ -60,8 +60,8 @@ export default function SignInScreen({ navigation }) {
       await loadMyHousehold();
       const hasHousehold = !!useAuthStore.getState().householdId;
       if (hasHousehold) {
-        // Returning user → show Ready screen (fetched image + Enter Rootaroo)
-        navigation.navigate('Ready');
+        // Returning user → straight into the app, no welcome screen
+        useAuthStore.getState().completeSetup();
       } else {
         // Returning user missing household — skip profile wizard
         navigation.replace('HouseholdSetup');

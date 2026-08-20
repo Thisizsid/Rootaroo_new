@@ -14,6 +14,7 @@ export const useAuthStore = create((set, get) => ({
   isLoading: true,
   householdId: null,
   signupProgress: null,
+  celebrate: false,
 
   setAuth: (user, accessToken, refreshToken) => {
     set({ user, accessToken, refreshToken, isAuthenticated: true, isLoading: false });
@@ -56,6 +57,11 @@ export const useAuthStore = create((set, get) => ({
     clearTokens().catch(() => {});
     clearSignupProgress().catch(() => {});
   },
+
+  // Fresh account finishing onboarding fires a one-time confetti burst on
+  // the first Home screen it lands on; returning logins skip it.
+  triggerCelebration: () => set({ celebrate: true }),
+  clearCelebration: () => set({ celebrate: false }),
 
   completeSetup: () => {
     const { accessToken, refreshToken, user } = get();

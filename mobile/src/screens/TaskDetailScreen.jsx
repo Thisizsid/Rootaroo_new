@@ -183,15 +183,12 @@ export default function TaskDetailScreen({ route, navigation }) {
         </View>
       </ScrollView>
 
-      {/* ── Bottom actions (SCREEN 18) ── */}
-      <View
-        style={[
-          styles.actions,
-          {
-            paddingBottom: insets.bottom + 134,
-          },
-        ]}
-      >
+      {/* ── Bottom actions (SCREEN 18) ──
+          Docked in normal flow directly above the tab bar (same as the
+          ScrollView above it) — it doesn't need to add the device's
+          safe-area inset or guess the dock's height itself; the dock
+          already reserves its own space and pads for that inset. */}
+      <View style={styles.actions}>
         {canComplete ? (
           <TouchableOpacity style={styles.primaryBtn} onPress={handleToggle} activeOpacity={0.8}>
             <Text style={styles.primaryBtnText}>Mark complete</Text>
@@ -346,6 +343,7 @@ const styles = StyleSheet.create({
   actions: {
     paddingHorizontal: spacing.xxl,
     paddingTop: spacing.md,
+    paddingBottom: spacing.xl,
     gap: 12,
   },
   primaryBtn: {

@@ -342,15 +342,12 @@ export default function ExpenseDetailScreen({ navigation, route }) {
         </Text>
       </ScrollView>
 
-      {/* ── Bottom actions (SCREEN 24) ── */}
-      <View
-        style={[
-          styles.actions,
-          {
-            paddingBottom: insets.bottom + 120,
-          },
-        ]}
-      >
+      {/* ── Bottom actions (SCREEN 24) ──
+          Docked in normal flow directly above the tab bar (same as the
+          ScrollView above it) — it doesn't need to add the device's
+          safe-area inset or guess the dock's height itself; the dock
+          already reserves its own space and pads for that inset. */}
+      <View style={styles.actions}>
         {isCreatorOrAdmin && !allSettled && (
           <TouchableOpacity
             style={[styles.primaryBtn, settling && styles.primaryBtnDisabled]}
@@ -770,6 +767,7 @@ const styles = StyleSheet.create({
   actions: {
     paddingHorizontal: 24,
     paddingTop: 12,
+    paddingBottom: 20,
     gap: 12,
   },
   primaryBtn: {

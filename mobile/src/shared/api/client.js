@@ -60,6 +60,16 @@ apiClient.interceptors.request.use(
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    if (config.headers) {
+      // Lets the server bucket "today" in the household's own timezone
+      // instead of its own (see dashboard streak/activity) — cheap to send
+      // on every request, and harmless where the server doesn't use it yet.
+      try {
+        config.headers['X-Timezone'] = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      } catch {
+        /* Intl unavailable — server falls back to the household's stored zone */
+      }
+    }
     return config;
   },
   (error) => Promise.reject(error),

@@ -59,8 +59,10 @@ export default function InviteMembersScreen({ navigation }) {
   const finish = async () => {
     await updateSignupProgress({
       step: 'done',
+      setupComplete: true,
     });
-    navigation.navigate('Ready');
+    useAuthStore.getState().triggerCelebration();
+    completeSetup();
   };
   return (
     <SignupWizardShell

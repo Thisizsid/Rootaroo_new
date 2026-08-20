@@ -14,6 +14,7 @@ import {
   TextInput,
   Animated,
   Easing,
+  Dimensions,
 } from 'react-native';
 import { showAlert } from '../shared/services/themedAlert';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -21,11 +22,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import Svg, { Circle, SvgXml } from 'react-native-svg';
+import ConfettiCannon from 'react-native-confetti-cannon';
+import { Ionicons } from '@expo/vector-icons';
 import { dashboardApi } from '../shared/api/dashboard';
+import { notificationApi } from '../shared/api/notification';
 import * as NavigationBar from 'expo-navigation-bar';
 import { useAuthStore } from '../shared/store/authStore';
 import { householdApi } from '../shared/api/household';
 import { useFeedStore } from '../shared/store/feedStore';
+import { useEngagementStore } from '../shared/store/engagementStore';
 import { useFeedPhotos } from '../shared/hooks/useFeedPhotos';
 import { taskApi } from '../shared/api/task';
 import { expenseApi } from '../shared/api/expense';
@@ -189,7 +194,17 @@ export default function DashboardScreen() {
   const dockHeight = useTabBarDockHeight();
   const user = useAuthStore((s) => s.user);
   const householdId = useAuthStore((s) => s.householdId);
+  const celebrate = useAuthStore((s) => s.celebrate);
+  const clearCelebration = useAuthStore((s) => s.clearCelebration);
+  const engagementEventAt = useEngagementStore((s) => s.lastEventAt);
+  const [showConfetti, setShowConfetti] = useState(false);
+  useEffect(() => {
+    if (!celebrate) return;
+    setShowConfetti(true);
+    clearCelebration();
+  }, [celebrate, clearCelebration]);
   const [data, setData] = useState(null);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -231,7 +246,12 @@ export default function DashboardScreen() {
   const [customMsg, setCustomMsg] = useState('');
   const [selMembers, setSelMembers] = useState(new Set());
   const [sending, setSending] = useState(false);
+  // Throttles the focus-triggered refetch below so switching tabs quickly
+  // doesn't hammer the API — still catches "did something elsewhere, came
+  // back to Home" without a manual pull-to-refresh.
+  const lastLoadAtRef = useRef(0);
   const load = useCallback(async () => {
+    lastLoadAtRef.current = Date.now();
     setFetchError(false);
     try {
       const [d, m, hh] = await Promise.all([
@@ -242,6 +262,7 @@ export default function DashboardScreen() {
       setData(d);
       setMembers(m);
       setCoverPhotoUrl(hh?.coverPhotoUrl || null);
+      setUnreadCount(d?.notifications?.unreadCount || 0);
 
       // Calendar widget — all household events (filtered per selected day in the widget)
       try {
@@ -260,6 +281,13 @@ export default function DashboardScreen() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // A household member completed something (task/todo/grocery/check-in/
+  // calendar/feed/ping) on another device — refetch so the streak ring and
+  // leaderboard update without waiting for a focus or manual refresh.
+  useEffect(() => {
+    if (engagementEventAt > 0) load();
+  }, [engagementEventAt, load]);
 
   // Today's Focus — top 3 pending tasks
   useEffect(() => {
@@ -321,6 +349,29 @@ export default function DashboardScreen() {
     }, [refreshFeed]),
   );
 
+  // Re-check unread count on every focus so the bell badge clears as soon as
+  // the user comes back from reading notifications (cheap single-field call —
+  // no need for a full dashboard reload just for this).
+  useFocusEffect(
+    useCallback(() => {
+      notificationApi.getUnreadCount().then(setUnreadCount).catch(() => {});
+    }, []),
+  );
+
+  // Re-check the full dashboard (streak, activity, leaderboard, tasks/
+  // groceries counts) on focus so completing something on another tab and
+  // tabbing back to Home shows it immediately — not just on manual
+  // pull-to-refresh. Throttled so rapid tab-switching doesn't refetch every
+  // time; the initial mount's own `load()` already sets the timer so this
+  // never double-fires on first render.
+  useFocusEffect(
+    useCallback(() => {
+      if (Date.now() - lastLoadAtRef.current > 15000) {
+        load();
+      }
+    }, [load]),
+  );
+
   // Seed both layers whenever the photo set changes.
   useEffect(() => {
     feedIndexRef.current = 0;
@@ -367,7 +418,11 @@ export default function DashboardScreen() {
   const recentActivity = data?.recentActivity || [];
   const completedToday = data?.tasks.completedToday || 0;
 
-  /* ── Streak: 7 day pills ── */
+  /* ── Streak: 7 day pills ──
+     `engaged` comes straight from the server's streak truth — a chore OR a
+     chat message/ping/check-in/feed post/calendar event — so a pill can
+     never show "done" while the copy below it says "no activity", and vice
+     versa. */
   const streakDays = (() => {
     const days = activity.slice(-7);
     while (days.length < 7)
@@ -376,13 +431,13 @@ export default function DashboardScreen() {
         tasksCompleted: 0,
         todosCompleted: 0,
         groceriesBought: 0,
+        engaged: false,
       });
     return days.map((d, i) => {
       const total = (d.tasksCompleted || 0) + (d.todosCompleted || 0) + (d.groceriesBought || 0);
       const isToday = i === days.length - 1;
-      const done = total > 0 || (isToday && completedToday > 0);
       return {
-        done,
+        done: !!d.engaged,
         isToday,
         total,
         label: d.date
@@ -397,11 +452,15 @@ export default function DashboardScreen() {
   const selDay = streakDays[streakIdx] || streakDays[6];
   const streakDetail = selDay?.isToday
     ? completedToday > 0
-      ? `${completedToday} task${completedToday > 1 ? 's' : ''} completed today — keep it going.`
-      : 'No completions yet today — complete a task to keep the streak alive.'
+      ? `${completedToday} task${completedToday > 1 ? 's' : ''} completed today. Keep it going.`
+      : selDay.done
+        ? 'Streak kept alive today. Nice work.'
+        : 'Nothing yet today. A task, a check-in, or catching up with the family keeps it going.'
     : selDay?.total > 0
       ? `${selDay.total} activit${selDay.total === 1 ? 'y' : 'ies'} completed this day.`
-      : 'No activity recorded this day.';
+      : selDay?.done
+        ? 'The family stayed connected this day.'
+        : 'No activity recorded this day.';
   const streakDetailMeta = selDay?.isToday ? 'TODAY' : selDay?.label || '';
   const bestStreak = data?.streak?.longest ?? data?.streak?.best ?? null;
 
@@ -425,22 +484,22 @@ export default function DashboardScreen() {
 
   const QUICK_ACTIONS = [
     {
-      glyph: '⌂',
+      icon: 'home-outline',
       label: 'Home',
       template: "I've reached home safe! 🏠",
     },
     {
-      glyph: '➤',
+      icon: 'car-outline',
       label: 'On My Way',
       template: "I'm on my way now! 🚗",
     },
     {
-      glyph: '✓',
+      icon: 'shield-checkmark-outline',
       label: 'Safe',
       template: "Just checking in — I'm safe! ✅",
     },
     {
-      glyph: '🛒',
+      icon: 'cart-outline',
       label: 'Groceries',
       template: 'Heading out to grab groceries! 🛒',
     },
@@ -458,12 +517,6 @@ export default function DashboardScreen() {
     setSelMembers(new Set());
     setShowPicker(true);
   };
-  const selectPreset = (label) => {
-    const q = QUICK_ACTIONS.find((x) => x.label === label);
-    setPendingAction(q?.label || '');
-    setCustomMsg(q?.template || '');
-  };
-
   const canSend = selMembers.size > 0 && (customMsg.trim().length > 0 || !!pendingAction);
   const handleSendNotify = async () => {
     const ids = Array.from(selMembers);
@@ -603,6 +656,13 @@ export default function DashboardScreen() {
             }}
           >
             <SvgXml xml={BELL_SVG} width={22} height={22} />
+            {unreadCount > 0 && (
+              <View style={styles.notifBadge}>
+                <Text style={styles.notifBadgeText}>
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -1145,7 +1205,7 @@ export default function DashboardScreen() {
                       activeOpacity={0.7}
                     >
                       <View style={styles.qaGlyph}>
-                        <Text style={styles.qaGlyphText}>{q.glyph}</Text>
+                        <Ionicons name={q.icon} size={20} color={GOLD} />
                       </View>
                       <Text style={styles.qaLabel} numberOfLines={1}>
                         {q.label}
@@ -1283,52 +1343,64 @@ export default function DashboardScreen() {
             ]}
           >
             <View style={mo.handle} />
-            <Text style={mo.title}>Notify Members</Text>
+            <Text style={mo.title}>Send a Nudge</Text>
 
-            {/* Quick action presets */}
-            <View style={mo.chipRow}>
-              {QUICK_ACTIONS.map((q) => (
-                <TouchableOpacity
-                  key={q.label}
-                  style={[mo.chip, pendingAction === q.label && mo.chipActive]}
-                  onPress={() => selectPreset(q.label)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[mo.chipText, pendingAction === q.label && mo.chipTextActive]}>
-                    {q.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {/* Custom message */}
-            <TextInput
-              style={mo.input}
-              value={customMsg}
-              onChangeText={setCustomMsg}
-              placeholder="Type a custom message…"
-              placeholderTextColor={colors.textOnDarkDim}
-              multiline
-              maxLength={500}
-            />
-
-            {/* Recipients */}
-            <TouchableOpacity
-              style={mo.allRow}
-              onPress={() => {
-                const o = members.filter((m) => m.userId !== user?.id);
-                selMembers.size === o.length
-                  ? setSelMembers(new Set())
-                  : setSelMembers(new Set(o.map((m) => m.userId)));
-              }}
-              activeOpacity={0.7}
+            <ScrollView
+              style={mo.body}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
             >
-              <Text style={mo.allText}>Notify All</Text>
-              <View style={[mo.cb, selMembers.size > 0 && mo.cbOn]}>
-                {selMembers.size > 0 && <CheckIcon size={10} color={colors.navyDeep} />}
+              {/* Quick messages */}
+              <Text style={mo.nudgeSectionLabel}>QUICK MESSAGES</Text>
+              <View style={mo.chipRow}>
+                {NUDGE_PRESETS.map((preset) => (
+                  <TouchableOpacity
+                    key={preset}
+                    style={[mo.chip, customMsg === preset && mo.chipActive]}
+                    onPress={() => setCustomMsg(preset)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[mo.chipText, customMsg === preset && mo.chipTextActive]}>
+                      {preset}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
               </View>
-            </TouchableOpacity>
-            <ScrollView style={mo.list} keyboardShouldPersistTaps="handled">
+
+              {/* Custom message */}
+              <TextInput
+                style={mo.input}
+                value={customMsg}
+                onChangeText={setCustomMsg}
+                placeholder="Type a custom message…"
+                placeholderTextColor={colors.textOnDarkDim}
+                multiline
+                maxLength={500}
+              />
+
+              {/* Recipients */}
+              <TouchableOpacity
+                style={mo.allRow}
+                onPress={() => {
+                  const o = members.filter((m) => m.userId !== user?.id);
+                  selMembers.size === o.length
+                    ? setSelMembers(new Set())
+                    : setSelMembers(new Set(o.map((m) => m.userId)));
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={mo.allText}>Notify All</Text>
+                {(() => {
+                  const allSelected =
+                    selMembers.size > 0 &&
+                    selMembers.size === members.filter((m) => m.userId !== user?.id).length;
+                  return (
+                    <View style={[mo.cb, allSelected && mo.cbOn]}>
+                      {allSelected && <CheckIcon size={10} color={colors.navyDeep} />}
+                    </View>
+                  );
+                })()}
+              </TouchableOpacity>
               {members
                 .filter((m) => m.userId !== user?.id)
                 .map((m) => {
@@ -1368,26 +1440,6 @@ export default function DashboardScreen() {
                 })}
             </ScrollView>
 
-            {/* Nudge: predefined reminder messages */}
-            {pendingAction === 'Nudge' && (
-              <View style={mo.nudgeSection}>
-                <Text style={mo.nudgeSectionLabel}>QUICK MESSAGES</Text>
-                <View style={mo.chipRow}>
-                  {NUDGE_PRESETS.map((preset) => (
-                    <TouchableOpacity
-                      key={preset}
-                      style={[mo.chip, customMsg === preset && mo.chipActive]}
-                      onPress={() => setCustomMsg(preset)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[mo.chipText, customMsg === preset && mo.chipTextActive]}>
-                        {preset}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            )}
             <View style={mo.actions}>
               <TouchableOpacity
                 style={mo.cancelBtn}
@@ -1412,6 +1464,18 @@ export default function DashboardScreen() {
           </View>
         </KeyboardAvoider>
       </Modal>
+
+      {showConfetti && (
+        <ConfettiCannon
+          count={150}
+          origin={{ x: Dimensions.get('window').width / 2, y: -20 }}
+          fallSpeed={5500}
+          fadeOut
+          explosionSpeed={450}
+          colors={[GOLD, colors.goldWarm, colors.white, colors.navyBase]}
+          onAnimationEnd={() => setShowConfetti(false)}
+        />
+      )}
     </View>
   );
 }
@@ -1481,6 +1545,28 @@ const styles = StyleSheet.create({
     borderColor: GLASS_BORDER,
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
+  },
+  notifBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    minWidth: 17,
+    height: 17,
+    borderRadius: 8.5,
+    paddingHorizontal: 4,
+    backgroundColor: colors.dangerOnDark,
+    borderWidth: 1.5,
+    borderColor: colors.navyBase,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notifBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    fontFamily: fonts.bodySemiBold,
+    color: colors.white,
+    lineHeight: 12,
   },
   selfAvatarRing: {
     borderWidth: 2,
@@ -2035,17 +2121,9 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: withAlpha(colors.white, 0.07),
-    borderWidth: 1,
-    borderColor: withAlpha(colors.white, 0.12),
+    backgroundColor: withAlpha(GOLD, 0.16),
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  qaGlyphText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: GOLD,
-    fontFamily: 'PlusJakartaSans_700Bold',
   },
   qaLabel: {
     fontSize: 10,
@@ -2167,6 +2245,9 @@ const mo = StyleSheet.create({
     color: colors.textOnDark,
     marginBottom: spacing.lg,
   },
+  body: {
+    flexGrow: 0,
+  },
   // Preset action chips
   chipRow: {
     flexDirection: 'row',
@@ -2225,9 +2306,6 @@ const mo = StyleSheet.create({
     fontFamily: fonts.displayBold,
     color: colors.textOnDark,
   },
-  list: {
-    maxHeight: 240,
-  },
   mRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2259,13 +2337,6 @@ const mo = StyleSheet.create({
   cbOn: {
     backgroundColor: colors.goldGlow,
     borderColor: colors.goldGlow,
-  },
-  // Nudge: pending items for the selected recipient
-  nudgeSection: {
-    marginTop: spacing.md,
-    paddingTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
   },
   nudgeSectionLabel: {
     fontSize: 11,

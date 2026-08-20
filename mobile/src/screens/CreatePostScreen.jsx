@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SvgXml } from 'react-native-svg';
+import { Ionicons } from '@expo/vector-icons';
 import { Video, ResizeMode } from 'expo-av';
 import { feedApi } from '../shared/api/feed';
 import { householdApi } from '../shared/api/household';
@@ -44,96 +45,119 @@ const MOODS = [
   {
     label: 'Grateful',
     emoji: '🙏',
+    icon: 'heart-outline',
   },
   {
     label: 'Excited',
     emoji: '🎉',
+    icon: 'sparkles-outline',
   },
   {
     label: 'Happy',
     emoji: '😊',
+    icon: 'happy-outline',
   },
   {
     label: 'Tired',
     emoji: '😴',
+    icon: 'moon-outline',
   },
   {
     label: 'Loved',
     emoji: '🥰',
+    icon: 'heart-circle-outline',
   },
   {
     label: 'Proud',
     emoji: '💪',
+    icon: 'trophy-outline',
   },
   {
     label: 'Blessed',
     emoji: '✨',
+    icon: 'star-outline',
   },
   {
     label: 'Motivated',
     emoji: '🔥',
+    icon: 'flame-outline',
   },
 ];
 const ACTIVITIES = [
   {
     label: 'Cooking',
     emoji: '🍳',
+    icon: 'restaurant-outline',
   },
   {
     label: 'Eating',
     emoji: '🍽️',
+    icon: 'fast-food-outline',
   },
   {
     label: 'Watching',
     emoji: '📺',
+    icon: 'tv-outline',
   },
   {
     label: 'Reading',
     emoji: '📖',
+    icon: 'book-outline',
   },
   {
     label: 'Playing',
     emoji: '🎮',
+    icon: 'game-controller-outline',
   },
   {
     label: 'Listening',
     emoji: '🎵',
+    icon: 'musical-notes-outline',
   },
   {
     label: 'Working',
     emoji: '💼',
+    icon: 'briefcase-outline',
   },
   {
     label: 'Studying',
     emoji: '📚',
+    icon: 'school-outline',
   },
   {
     label: 'Exercising',
     emoji: '🏋️',
+    icon: 'barbell-outline',
   },
   {
     label: 'Cleaning',
     emoji: '🧹',
+    icon: 'sparkles-outline',
   },
   {
     label: 'Gardening',
     emoji: '🌱',
+    icon: 'leaf-outline',
   },
   {
     label: 'Sleeping',
     emoji: '😴',
+    icon: 'moon-outline',
   },
   {
     label: 'Relaxing',
     emoji: '🧘',
+    icon: 'cafe-outline',
   },
   {
     label: 'Shopping',
     emoji: '🛒',
+    icon: 'cart-outline',
   },
   {
     label: 'Traveling',
     emoji: '🚗',
+    icon: 'car-outline',
   },
 ];
 const getServerBase = () => {
@@ -548,7 +572,7 @@ export default function CreatePostScreen({ navigation, route }) {
               disabled={uploading || posting}
               activeOpacity={0.7}
             >
-              <View style={styles.camBody} />
+              <Ionicons name="camera-outline" size={18} color={withAlpha(colors.legacyNavy, 0.55)} />
               <Text style={styles.toolText}>Camera</Text>
             </TouchableOpacity>
 
@@ -557,7 +581,11 @@ export default function CreatePostScreen({ navigation, route }) {
               onPress={() => setShowMoods((v) => !v)}
               activeOpacity={0.7}
             >
-              <Text style={styles.glyph}>☺</Text>
+              <Ionicons
+                name="happy-outline"
+                size={18}
+                color={showMoods ? colors.legacyGoldDark : withAlpha(colors.legacyNavy, 0.55)}
+              />
               <Text style={[styles.toolText, showMoods && styles.toolTextActive]}>Feeling</Text>
               {mood ? <View style={styles.toolBadge} /> : null}
             </TouchableOpacity>
@@ -567,7 +595,11 @@ export default function CreatePostScreen({ navigation, route }) {
               onPress={() => setShowActivity((v) => !v)}
               activeOpacity={0.7}
             >
-              <Text style={styles.glyph}>⚡</Text>
+              <Ionicons
+                name="flash-outline"
+                size={18}
+                color={showActivity ? colors.legacyGoldDark : withAlpha(colors.legacyNavy, 0.55)}
+              />
               <Text style={[styles.toolText, showActivity && styles.toolTextActive]}>Activity</Text>
               {activity ? <View style={styles.toolBadge} /> : null}
             </TouchableOpacity>
@@ -656,7 +688,13 @@ export default function CreatePostScreen({ navigation, route }) {
                     }}
                     activeOpacity={0.7}
                   >
-                    <Text style={styles.pickerEmoji}>{m.emoji}</Text>
+                    <View style={[styles.pickerIconChip, selected && styles.pickerIconChipOn]}>
+                      <Ionicons
+                        name={m.icon}
+                        size={18}
+                        color={selected ? colors.legacyGoldDark : withAlpha(colors.legacyNavy, 0.6)}
+                      />
+                    </View>
                     <Text style={[styles.pickerLabel, selected && styles.pickerLabelOn]}>
                       {m.label}
                     </Text>
@@ -698,7 +736,13 @@ export default function CreatePostScreen({ navigation, route }) {
                       }}
                       activeOpacity={0.7}
                     >
-                      <Text style={styles.pickerEmoji}>{a.emoji}</Text>
+                      <View style={[styles.pickerIconChip, selected && styles.pickerIconChipOn]}>
+                        <Ionicons
+                          name={a.icon}
+                          size={18}
+                          color={selected ? colors.legacyGoldDark : withAlpha(colors.legacyNavy, 0.6)}
+                        />
+                      </View>
                       <Text style={[styles.pickerLabel, selected && styles.pickerLabelOn]}>
                         {a.label}
                       </Text>
@@ -1044,13 +1088,6 @@ const styles = StyleSheet.create({
   toolActive: {
     backgroundColor: withAlpha(colors.legacyGold, 0.12),
   },
-  camBody: {
-    width: 18,
-    height: 13,
-    borderRadius: 3,
-    borderWidth: 1.5,
-    borderColor: withAlpha(colors.legacyNavy, 0.55),
-  },
   glyph: {
     fontSize: 15,
     lineHeight: 18,
@@ -1172,9 +1209,17 @@ const styles = StyleSheet.create({
   pickerCellOn: {
     backgroundColor: withAlpha(colors.legacyGold, 0.18),
   },
-  pickerEmoji: {
-    fontSize: 22,
+  pickerIconChip: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: withAlpha(colors.legacyNavy, 0.06),
     marginBottom: 4,
+  },
+  pickerIconChipOn: {
+    backgroundColor: withAlpha(colors.legacyGold, 0.18),
   },
   pickerLabel: {
     fontSize: 11,

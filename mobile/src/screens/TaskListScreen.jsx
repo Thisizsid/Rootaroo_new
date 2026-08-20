@@ -14,6 +14,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { SvgXml } from 'react-native-svg';
 import { taskApi } from '../shared/api/task';
 import { useAuthStore } from '../shared/store/authStore';
+import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
 import { colors, spacing, fonts } from '../shared/theme';
 import EmptyState from '../components/EmptyState';
 import LoadingSkeleton from '../components/LoadingSkeleton';
@@ -85,6 +86,7 @@ export default function TaskListScreen({ navigation }) {
   const [filter, setFilter] = useState('ALL');
   const user = useAuthStore((s) => s.user);
   const insets = useSafeAreaInsets();
+  const dockHeight = useTabBarDockHeight();
   const canCreateTask = user?.role === 'admin' || user?.role === 'member';
   const loadTasks = useCallback(async () => {
     try {
@@ -273,7 +275,11 @@ export default function TaskListScreen({ navigation }) {
             onAction={() => navigation.navigate('CreateTask')}
           />
         }
-        contentContainerStyle={totalCount === 0 ? styles.emptyContainer : styles.listContent}
+        contentContainerStyle={
+          totalCount === 0
+            ? styles.emptyContainer
+            : [styles.listContent, { paddingBottom: dockHeight + 24 }]
+        }
         stickySectionHeadersEnabled={false}
         showsVerticalScrollIndicator={false}
       />

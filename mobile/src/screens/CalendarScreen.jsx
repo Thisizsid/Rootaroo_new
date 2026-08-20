@@ -22,6 +22,7 @@ import { householdApi } from '../shared/api/household';
 import { eventApi } from '../shared/api/event';
 import { checkInApi } from '../shared/api/checkin';
 import { useGoogleCalendarConnect } from '../shared/hooks/useGoogleCalendarConnect';
+import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
 import { useAuthStore } from '../shared/store/authStore';
 import { colors, fonts } from '../shared/theme';
 import Avatar from '../components/Avatar';
@@ -78,6 +79,7 @@ function nextBirthday(members) {
 }
 export default function CalendarScreen({ navigation }) {
   const insets = useSafeAreaInsets();
+  const dockHeight = useTabBarDockHeight();
   const householdId = useAuthStore((s) => s.householdId);
   const [members, setMembers] = useState([]);
   const [events, setEvents] = useState([]);
@@ -221,7 +223,7 @@ export default function CalendarScreen({ navigation }) {
         contentContainerStyle={[
           styles.content,
           {
-            paddingBottom: insets.bottom + 120,
+            paddingBottom: dockHeight + 24,
           },
         ]}
         showsVerticalScrollIndicator={false}
@@ -412,7 +414,7 @@ export default function CalendarScreen({ navigation }) {
         style={[
           styles.fab,
           {
-            bottom: insets.bottom + 104,
+            bottom: dockHeight + 16,
           },
         ]}
         onPress={() => navigation.navigate('CreateEvent')}

@@ -12,6 +12,7 @@ import {
 import { showAlert } from '../shared/services/themedAlert';
 import Svg, { Path } from 'react-native-svg';
 import { authApi } from '../shared/api/auth';
+import { useAuthStore } from '../shared/store/authStore';
 import { updateSignupProgress } from '../shared/store/signupProgress';
 import { colors, fonts, radius } from '../shared/theme';
 import { KeyboardAwareScrollView } from '../shared/components/KeyboardAware';
@@ -50,12 +51,13 @@ export default function PhoneVerificationScreen({ navigation, route }) {
         phone,
         code,
       });
-      // Phone flow: verification done → straight to Ready (with fetched image)
+      // Phone flow: verification done → straight into the app, confetti on Home
       await updateSignupProgress({
         step: 'done',
         setupComplete: true,
       });
-      navigation.navigate('Ready');
+      useAuthStore.getState().triggerCelebration();
+      useAuthStore.getState().completeSetup();
     } catch (e) {
       setInvalid(true); // mockup screen10c: red boxes + inline error
       showAlert('Error', e?.response?.data?.error || e?.message || 'Invalid code');

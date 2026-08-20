@@ -5,6 +5,7 @@ import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { ActivityIndicator, Platform, View, TouchableOpacity, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as NavigationBar from 'expo-navigation-bar';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../shared/store/authStore';
 import { connectSocket, disconnectSocket } from '../shared/socket';
 import { registerForPushNotificationsAsync } from '../shared/pushNotifications';
@@ -24,7 +25,6 @@ import SignupStepBirthdayScreen from '../screens/SignupStepBirthdayScreen';
 import SignupStepPhoneScreen from '../screens/SignupStepPhoneScreen';
 import SignupStepAddressScreen from '../screens/SignupStepAddressScreen';
 import SignupStepAvatarScreen from '../screens/SignupStepAvatarScreen';
-import ReadyScreen from '../screens/ReadyScreen';
 import AccountDeletionScreen from '../screens/AccountDeletionScreen';
 import PostDetailScreen from '../screens/PostDetailScreen';
 import HouseholdSettingsScreen from '../screens/HouseholdSettingsScreen';
@@ -95,7 +95,6 @@ function AuthNavigator() {
       <AuthStack.Screen name="InviteMembers" component={InviteMembersScreen} />
       <AuthStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
       <AuthStack.Screen name="EmailVerification" component={EmailVerificationScreen} />
-      <AuthStack.Screen name="Ready" component={ReadyScreen} />
     </AuthStack.Navigator>
   );
 }
@@ -179,10 +178,7 @@ function TabHomeIcon({ color, focused }) {
   return (
     <View style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }}>
       {focused && <TabDot color={color} />}
-      <View style={{ width: 18, height: 18, alignItems: 'center', justifyContent: 'center' }}>
-        <View style={{ width: 0, height: 0, borderLeftWidth: 8, borderRightWidth: 8, borderBottomWidth: 7, borderLeftColor: 'transparent', borderRightColor: 'transparent', borderBottomColor: color, position: 'absolute', top: 1 }} />
-        <View style={{ width: 13, height: 11, borderWidth: 1.5, borderColor: color, borderRadius: 1.5, marginTop: 5 }} />
-      </View>
+      <Ionicons name={focused ? 'home' : 'home-outline'} size={20} color={color} />
     </View>
   );
 }
@@ -191,11 +187,7 @@ function TabFeedIcon({ color, focused }) {
   return (
     <View style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }}>
       {focused && <TabDot color={color} />}
-      <View style={{ width: 16, height: 16, borderWidth: 1.5, borderColor: color, borderRadius: 3, alignItems: 'center', justifyContent: 'center', gap: 2 }}>
-        <View style={{ width: 9, height: 1.5, backgroundColor: color, borderRadius: 0.75 }} />
-        <View style={{ width: 9, height: 1.5, backgroundColor: color, borderRadius: 0.75 }} />
-        <View style={{ width: 6, height: 1.5, backgroundColor: color, borderRadius: 0.75 }} />
-      </View>
+      <Ionicons name={focused ? 'images' : 'images-outline'} size={20} color={color} />
     </View>
   );
 }
@@ -204,12 +196,7 @@ function TabChatIcon({ color, focused }) {
   return (
     <View style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }}>
       {focused && <TabDot color={color} />}
-      <View style={{ width: 18, height: 16, borderWidth: 1.5, borderColor: color, borderRadius: 5, justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
-        <View style={{ width: 8, height: 1.5, backgroundColor: color, borderRadius: 0.75, marginBottom: 3 }} />
-        <View style={{ width: 12, height: 1.5, backgroundColor: color, borderRadius: 0.75 }} />
-        {/* Bubble tail */}
-        <View style={{ position: 'absolute', bottom: -3, left: 5, width: 0, height: 0, borderLeftWidth: 4, borderRightWidth: 4, borderTopWidth: 4, borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: color }} />
-      </View>
+      <Ionicons name={focused ? 'chatbubbles' : 'chatbubbles-outline'} size={20} color={color} />
     </View>
   );
 }
@@ -218,9 +205,7 @@ function TabTasksIcon({ color, focused }) {
   return (
     <View style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }}>
       {focused && <TabDot color={color} />}
-      <View style={{ width: 18, height: 18, borderWidth: 1.5, borderColor: color, borderRadius: 3, alignItems: 'center', justifyContent: 'center' }}>
-        <View style={{ width: 5, height: 9, borderRightWidth: 1.5, borderBottomWidth: 1.5, borderColor: color, transform: [{ rotate: '45deg' }], marginTop: -2 }} />
-      </View>
+      <Ionicons name={focused ? 'checkbox' : 'checkbox-outline'} size={20} color={color} />
     </View>
   );
 }
@@ -229,11 +214,11 @@ function TabMoreIcon({ color, focused }) {
   return (
     <View style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }}>
       {focused && <TabDot color={color} />}
-      <View style={{ width: 18, height: 18, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 3 }}>
-        {[0, 1, 2].map((i) => (
-          <View key={i} style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: color }} />
-        ))}
-      </View>
+      <Ionicons
+        name={focused ? 'ellipsis-horizontal' : 'ellipsis-horizontal-outline'}
+        size={20}
+        color={color}
+      />
     </View>
   );
 }
@@ -362,18 +347,24 @@ function GlassTabBar({ state, descriptors, navigation }) {
 }
 
 function MainNavigator() {
+  // GlassTabBar (a custom `tabBar` render prop, below) fully replaces
+  // React Navigation's own default tab bar, so this object's cosmetic
+  // properties (border/shadow/elevation) are never actually drawn — the
+  // default bar they'd style is never rendered. Its only real job is
+  // `display: 'none'`, merged in per-screen below to hide the dock on
+  // full-screen routes (chat thread, notification preferences, Vault).
+  //
+  // It previously also carried `position: 'absolute'` + `height: 0`, left
+  // over from an earlier floating-dock design. GlassTabBar has since moved
+  // into normal document flow (see its own comment below) — the screen
+  // above it already ends exactly where it begins — so a stray
+  // `position: 'absolute'` here was actively misleading: it read as "the
+  // dock floats over content," which is no longer true and is exactly the
+  // kind of stale claim that leads a screen to reserve space it doesn't
+  // need. `useTabBarDockHeight()` (src/shared/hooks/useTabBarDockHeight.js)
+  // is the one place that documents and returns the real answer.
   const tabBarStyle = {
     backgroundColor: 'transparent',
-    borderTopWidth: 0,
-    borderTopColor: 'transparent',
-    borderBottomWidth: 0,
-    position: 'absolute',
-    height: 0,
-    elevation: 0,
-    shadowColor: 'transparent',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0,
-    shadowRadius: 0,
   };
 
   useEffect(() => {
@@ -499,7 +490,12 @@ export default function RootNavigator() {
 
   return (
     <RootStack.Navigator screenOptions={{ presentation: 'modal', headerShown: false }}>
-      <RootStack.Screen name="MainTabs" component={MainNavigator} />
+      {/* The tab shell is the app's persistent base screen, not an overlay —
+          presenting it as a 'modal' (inherited from screenOptions above,
+          meant for CreatePost/Notifications) changes how native-stack
+          computes this screen's safe-area insets on some platforms, which is
+          what left a gap below the docked tab bar. */}
+      <RootStack.Screen name="MainTabs" component={MainNavigator} options={{ presentation: 'card' }} />
       <RootStack.Screen
         name="CreatePost"
         component={CreatePostScreen}
