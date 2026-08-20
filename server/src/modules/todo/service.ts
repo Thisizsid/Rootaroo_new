@@ -6,6 +6,7 @@ import {
 } from '../../database/models';
 import { NotFoundError, ForbiddenError } from '../../shared/utils/errors';
 import logger from '../../shared/utils/logger';
+import { getIO } from '../../shared/utils/socket';
 import * as notificationService from '../notification/service';
 import type {
   CreateTodoBody,
@@ -173,6 +174,7 @@ export async function toggleComplete(
     throw new ForbiddenError('Only the assignee or an admin can toggle this to-do');
   }
 
+  const becameCompleted = !item.isCompleted;
   if (item.isCompleted) {
     item.isCompleted = false;
     item.completedAt = null;
@@ -182,7 +184,18 @@ export async function toggleComplete(
   }
 
   await item.save();
-  return toTodoResponse(item);
+  const response = toTodoResponse(item);
+
+  // Only broadcast on the completing edge — reopening isn't streak-relevant.
+  if (becameCompleted) {
+    try {
+      getIO().to(`household:${householdId}`).emit('todo:completed', response);
+    } catch (e) {
+      logger.warn('[WS] Todo-completed broadcast failed:', (e as Error).message);
+    }
+  }
+
+  return response;
 }
 
 export async function getSummary(

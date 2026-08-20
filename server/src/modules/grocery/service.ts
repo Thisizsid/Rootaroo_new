@@ -5,6 +5,8 @@ import {
   HouseholdMember,
 } from '../../database/models';
 import { NotFoundError, ForbiddenError } from '../../shared/utils/errors';
+import logger from '../../shared/utils/logger';
+import { getIO } from '../../shared/utils/socket';
 import type {
   CreateGroceryBody,
   UpdateGroceryBody,
@@ -182,6 +184,7 @@ export async function toggleBought(
     throw new ForbiddenError('Only the assigned member or an admin can mark items as bought');
   }
 
+  const becameBought = !item.isBought;
   if (item.isBought) {
     item.isBought = false;
     item.boughtBy = null;
@@ -193,7 +196,18 @@ export async function toggleBought(
   }
 
   await item.save();
-  return toGroceryResponse(item);
+  const response = toGroceryResponse(item);
+
+  // Only broadcast on the bought edge — un-marking isn't streak-relevant.
+  if (becameBought) {
+    try {
+      getIO().to(`household:${householdId}`).emit('grocery:bought', response);
+    } catch (e) {
+      logger.warn('[WS] Grocery-bought broadcast failed:', (e as Error).message);
+    }
+  }
+
+  return response;
 }
 
 /** FR-088: Archive bought items (move out of default view). */

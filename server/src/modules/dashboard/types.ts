@@ -3,6 +3,10 @@ export interface DashboardActivity {
   tasksCompleted: number;
   todosCompleted: number;
   groceriesBought: number;
+  // True if the day counts toward the streak — a chore OR a chat message,
+  // ping/check-in, feed post, or calendar event. Same truth computeStreak
+  // uses, so the UI's day pills never contradict the streak number.
+  engaged: boolean;
 }
 
 export interface LeaderboardEntry {

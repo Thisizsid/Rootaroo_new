@@ -16,6 +16,8 @@ jest.mock('../../../database/models', () => ({
     create: jest.fn(),
     findByPk: jest.fn(),
     findAll: jest.fn(),
+    findOne: jest.fn(),
+    update: jest.fn(),
   },
   CheckIn: {
     create: jest.fn(),
@@ -64,6 +66,8 @@ function makePingRequest(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  (modelsMock.PingRequest.findOne as jest.Mock).mockResolvedValue(null);
+  (modelsMock.PingRequest.update as jest.Mock).mockResolvedValue([0]);
   (modelsMock.HouseholdMember.findOne as jest.Mock).mockImplementation(({ where }: any) => {
     if (where.userId === requesterId) return Promise.resolve({ householdId, userId: requesterId });
     if (where.userId === targetUserId) return Promise.resolve({ householdId, userId: targetUserId });

@@ -8,6 +8,7 @@ class Household extends Model {
   declare storageUsedBytes: number;
   declare storageLimitBytes: number;
   declare coverPhotoUrl: string | null;
+  declare timezone: CreationOptional<string>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare deletedAt: Date | null;
@@ -45,6 +46,14 @@ Household.init(
       type: DataTypes.STRING,
       allowNull: true,
       field: 'cover_photo_url',
+    },
+    // IANA zone (e.g. "America/New_York") — day-boundary math for the
+    // streak/activity chart uses this instead of the server's own
+    // timezone, so "today" means the household's today, not the server's.
+    timezone: {
+      type: DataTypes.STRING(64),
+      allowNull: false,
+      defaultValue: 'UTC',
     },
     createdAt: {
       type: DataTypes.DATE,

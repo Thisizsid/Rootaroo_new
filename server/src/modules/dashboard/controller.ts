@@ -5,7 +5,9 @@ import * as dashboardService from './service';
 export async function getDashboard(req: Request, res: Response, next: NextFunction) {
   try {
     const userId = (req as AuthenticatedRequest).user!.userId;
-    const result = await dashboardService.getDashboard(userId);
+    const timezoneHeader = req.headers['x-timezone'];
+    const clientTimeZone = typeof timezoneHeader === 'string' ? timezoneHeader : undefined;
+    const result = await dashboardService.getDashboard(userId, clientTimeZone);
     res.status(200).json({ success: true, data: result });
   } catch (e) { next(e); }
 }

@@ -12,6 +12,7 @@ import {
   deleteGoogleEvent,
 } from '../../shared/utils/googleCalendar';
 import logger from '../../shared/utils/logger';
+import { getIO } from '../../shared/utils/socket';
 import type {
   CalendarEventResponse,
   CreateEventBody,
@@ -133,7 +134,15 @@ export async function createEvent(
     include: [{ model: User, as: 'invitees' }],
   });
   if (!withInvitees) throw new NotFoundError('Event not found');
-  return toResponse(withInvitees);
+  const response = toResponse(withInvitees);
+
+  try {
+    getIO().to(`household:${householdId}`).emit('calendar:event-created', response);
+  } catch (e) {
+    logger.warn('[WS] Calendar event broadcast failed:', (e as Error).message);
+  }
+
+  return response;
 }
 
 export async function listEvents(

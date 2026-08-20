@@ -7,6 +7,7 @@ import {
 } from '../../database/models';
 import { NotFoundError, ForbiddenError } from '../../shared/utils/errors';
 import logger from '../../shared/utils/logger';
+import { getIO } from '../../shared/utils/socket';
 import * as notificationService from '../notification/service';
 import type {
   CreateTaskBody,
@@ -372,7 +373,17 @@ export async function completeTask(
     }
   }
 
-  return toTaskResponse(task);
+  const response = toTaskResponse(task);
+
+  // Live-update other household members' dashboards (streak/leaderboard) —
+  // same fire-and-forget pattern as feed's new-post broadcast.
+  try {
+    getIO().to(`household:${householdId}`).emit('task:completed', response);
+  } catch (e) {
+    logger.warn('[WS] Task-completed broadcast failed:', (e as Error).message);
+  }
+
+  return response;
 }
 
 /** FR-064: Re-open a completed task. */

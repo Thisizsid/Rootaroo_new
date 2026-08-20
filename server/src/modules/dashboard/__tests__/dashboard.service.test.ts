@@ -23,6 +23,12 @@ jest.mock('../../../database/models', () => ({
   Task: { findAll: jest.fn() },
   TodoItem: { findAll: jest.fn() },
   GroceryItem: { findAll: jest.fn() },
+  ChatMessage: { findAll: jest.fn() },
+  PingRequest: { findAll: jest.fn() },
+  CheckIn: { findAll: jest.fn() },
+  FeedPost: { findAll: jest.fn() },
+  CalendarEvent: { findAll: jest.fn() },
+  Household: { findByPk: jest.fn(), update: jest.fn() },
 }));
 
 jest.mock('../../task/service', () => ({
@@ -48,6 +54,17 @@ const modelsMock = models as any;
 
 beforeEach(() => {
   jest.clearAllMocks();
+  // Engagement-days sources default to empty — only the chore-completion
+  // tests below populate Task/TodoItem/GroceryItem explicitly.
+  (modelsMock.ChatMessage.findAll as jest.Mock).mockResolvedValue([]);
+  (modelsMock.PingRequest.findAll as jest.Mock).mockResolvedValue([]);
+  (modelsMock.CheckIn.findAll as jest.Mock).mockResolvedValue([]);
+  (modelsMock.FeedPost.findAll as jest.Mock).mockResolvedValue([]);
+  (modelsMock.CalendarEvent.findAll as jest.Mock).mockResolvedValue([]);
+  // Fixed UTC household so existing tests' `new Date()`-based fixtures keep
+  // landing on the calendar day they expect regardless of the CI host's tz.
+  (modelsMock.Household.findByPk as jest.Mock).mockResolvedValue({ timezone: 'UTC' });
+  (modelsMock.Household.update as jest.Mock).mockResolvedValue([1]);
 });
 
 describe('Dashboard Service', () => {
@@ -135,6 +152,122 @@ describe('Dashboard Service', () => {
       (modelsMock.HouseholdMember.findOne as jest.Mock).mockResolvedValue(null);
 
       await expect(getDashboard(userId)).rejects.toThrow(ForbiddenError);
+    });
+
+    it('keeps the streak alive on a day with no chores but a chat message', async () => {
+      (modelsMock.HouseholdMember.findOne as jest.Mock).mockResolvedValue({ householdId });
+      (modelsMock.HouseholdMember.findAll as jest.Mock).mockResolvedValue([
+        { userId, user: { displayName: 'Alice', avatarUrl: null, avatarEmoji: null } },
+      ]);
+      (taskService.getTaskSummary as jest.Mock).mockResolvedValue({ pending: 0, overdue: 0, completedToday: 0 });
+      (groceryService.getSummary as jest.Mock).mockResolvedValue({ pending: 0, boughtToday: 0 });
+      (todoService.getSummary as jest.Mock).mockResolvedValue({ pending: 0, completedToday: 0 });
+      (notificationService.getUnreadCount as jest.Mock).mockResolvedValue(0);
+
+      // No task/todo/grocery completions at all today...
+      (modelsMock.Task.findAll as jest.Mock).mockResolvedValue([]);
+      (modelsMock.TodoItem.findAll as jest.Mock).mockResolvedValue([]);
+      (modelsMock.GroceryItem.findAll as jest.Mock).mockResolvedValue([]);
+      // ...but someone sent a chat message today.
+      (modelsMock.ChatMessage.findAll as jest.Mock).mockResolvedValue([
+        { createdAt: new Date() },
+      ]);
+
+      const result = await getDashboard(userId);
+
+      expect(result.streak.current).toBeGreaterThanOrEqual(1);
+      // The chores chart itself is unaffected — chat isn't a "chore".
+      expect(result.activity[6]).toMatchObject({
+        tasksCompleted: 0,
+        todosCompleted: 0,
+        groceriesBought: 0,
+      });
+      // ...but the day still reads as "engaged" — this is what the
+      // dashboard's streak pills/copy should key off of, not the chore count.
+      expect(result.activity[6].engaged).toBe(true);
+    });
+
+    it('buckets a completion into the household-local day, not the server/UTC day', async () => {
+      (modelsMock.HouseholdMember.findOne as jest.Mock).mockResolvedValue({ householdId });
+      (modelsMock.HouseholdMember.findAll as jest.Mock).mockResolvedValue([
+        { userId, user: { displayName: 'Alice', avatarUrl: null, avatarEmoji: null } },
+      ]);
+      (taskService.getTaskSummary as jest.Mock).mockResolvedValue({ pending: 0, overdue: 0, completedToday: 0 });
+      (groceryService.getSummary as jest.Mock).mockResolvedValue({ pending: 0, boughtToday: 0 });
+      (todoService.getSummary as jest.Mock).mockResolvedValue({ pending: 0, completedToday: 0 });
+      (notificationService.getUnreadCount as jest.Mock).mockResolvedValue(0);
+
+      // Household is in Los Angeles.
+      (modelsMock.Household.findByPk as jest.Mock).mockResolvedValue({
+        timezone: 'America/Los_Angeles',
+      });
+
+      // "Now" is 2026-08-20T02:00:00Z — already Aug 20 in UTC, but still
+      // 2026-08-19 19:00 in Los Angeles (UTC-7, PDT in August).
+      const now = new Date('2026-08-20T02:00:00.000Z');
+      jest.useFakeTimers().setSystemTime(now);
+
+      try {
+        // The task was completed at that same instant — household-local "today".
+        (modelsMock.Task.findAll as jest.Mock).mockResolvedValue([
+          { completedAt: now, completedBy: userId, points: 1 },
+        ]);
+        (modelsMock.TodoItem.findAll as jest.Mock).mockResolvedValue([]);
+        (modelsMock.GroceryItem.findAll as jest.Mock).mockResolvedValue([]);
+
+        const result = await getDashboard(userId);
+
+        // Household-local today (Aug 19, LA time) is the last activity entry
+        // and shows the completion — naive UTC bucketing would have filed it
+        // under Aug 20 and left "today" looking empty.
+        expect(result.activity[6].date).toBe('2026-08-19');
+        expect(result.activity[6].tasksCompleted).toBe(1);
+        expect(result.activity[6].engaged).toBe(true);
+        expect(result.streak.current).toBeGreaterThanOrEqual(1);
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('self-heals the household timezone from the client-supplied header', async () => {
+      (modelsMock.HouseholdMember.findOne as jest.Mock).mockResolvedValue({ householdId });
+      (modelsMock.HouseholdMember.findAll as jest.Mock).mockResolvedValue([
+        { userId, user: { displayName: 'Alice', avatarUrl: null, avatarEmoji: null } },
+      ]);
+      (taskService.getTaskSummary as jest.Mock).mockResolvedValue({ pending: 0, overdue: 0, completedToday: 0 });
+      (groceryService.getSummary as jest.Mock).mockResolvedValue({ pending: 0, boughtToday: 0 });
+      (todoService.getSummary as jest.Mock).mockResolvedValue({ pending: 0, completedToday: 0 });
+      (notificationService.getUnreadCount as jest.Mock).mockResolvedValue(0);
+      // Stored timezone is still the UTC default — a legacy household.
+      (modelsMock.Household.findByPk as jest.Mock).mockResolvedValue({ timezone: 'UTC' });
+      (modelsMock.Task.findAll as jest.Mock).mockResolvedValue([]);
+      (modelsMock.TodoItem.findAll as jest.Mock).mockResolvedValue([]);
+      (modelsMock.GroceryItem.findAll as jest.Mock).mockResolvedValue([]);
+
+      await getDashboard(userId, 'America/Los_Angeles');
+
+      expect(modelsMock.Household.update).toHaveBeenCalledWith(
+        { timezone: 'America/Los_Angeles' },
+        { where: { id: householdId } },
+      );
+    });
+
+    it('ignores a bogus X-Timezone header instead of throwing', async () => {
+      (modelsMock.HouseholdMember.findOne as jest.Mock).mockResolvedValue({ householdId });
+      (modelsMock.HouseholdMember.findAll as jest.Mock).mockResolvedValue([
+        { userId, user: { displayName: 'Alice', avatarUrl: null, avatarEmoji: null } },
+      ]);
+      (taskService.getTaskSummary as jest.Mock).mockResolvedValue({ pending: 0, overdue: 0, completedToday: 0 });
+      (groceryService.getSummary as jest.Mock).mockResolvedValue({ pending: 0, boughtToday: 0 });
+      (todoService.getSummary as jest.Mock).mockResolvedValue({ pending: 0, completedToday: 0 });
+      (notificationService.getUnreadCount as jest.Mock).mockResolvedValue(0);
+      (modelsMock.Household.findByPk as jest.Mock).mockResolvedValue({ timezone: 'UTC' });
+      (modelsMock.Task.findAll as jest.Mock).mockResolvedValue([]);
+      (modelsMock.TodoItem.findAll as jest.Mock).mockResolvedValue([]);
+      (modelsMock.GroceryItem.findAll as jest.Mock).mockResolvedValue([]);
+
+      await expect(getDashboard(userId, 'not/a-real-zone')).resolves.toBeDefined();
+      expect(modelsMock.Household.update).not.toHaveBeenCalled();
     });
   });
 

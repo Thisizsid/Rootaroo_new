@@ -1,10 +1,17 @@
 import { Op } from 'sequelize';
+import { formatInTimeZone, fromZonedTime } from 'date-fns-tz';
 import {
+  Household,
   HouseholdMember,
   User,
   Task,
   TodoItem,
   GroceryItem,
+  ChatMessage,
+  PingRequest,
+  CheckIn,
+  FeedPost,
+  CalendarEvent,
 } from '../../database/models';
 import { ForbiddenError } from '../../shared/utils/errors';
 import * as taskService from '../task/service';
@@ -51,10 +58,23 @@ async function getUserHousehold(userId: string): Promise<string> {
   return membership.householdId;
 }
 
-export async function getDashboard(userId: string): Promise<DashboardResponse> {
+/** Guards against a bogus/malicious `X-Timezone` header reaching Intl/date-fns-tz. */
+function isValidTimeZone(tz: string): boolean {
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function getDashboard(
+  userId: string,
+  clientTimeZone?: string,
+): Promise<DashboardResponse> {
   const householdId = await getUserHousehold(userId);
 
-  const [taskSummary, grocerySummary, todoSummary, expenseSummary, unreadCount, members] =
+  const [taskSummary, grocerySummary, todoSummary, expenseSummary, unreadCount, members, household] =
     await Promise.all([
       taskService.getTaskSummary(userId),
       groceryService.getSummary(userId),
@@ -65,13 +85,30 @@ export async function getDashboard(userId: string): Promise<DashboardResponse> {
         where: { householdId },
         include: [{ model: User, as: 'user' }],
       }),
+      Household.findByPk(householdId, { attributes: ['id', 'timezone'] }),
     ]);
+
+  // The household's timezone drives every "today"/day-boundary calculation
+  // below. Self-heal it from whichever member's phone last loaded the
+  // dashboard — cheap, and means existing households never need a settings
+  // screen just to get this right. A bad/spoofed header is simply ignored.
+  let timeZone = household?.timezone || 'UTC';
+  if (clientTimeZone && clientTimeZone !== timeZone && isValidTimeZone(clientTimeZone)) {
+    timeZone = clientTimeZone;
+    Household.update({ timezone: clientTimeZone }, { where: { id: householdId } }).catch(
+      (e: Error) => logger.warn('[Dashboard] Timezone self-heal failed:', e.message),
+    );
+  }
 
   const myBalance = expenseSummary
     ? expenseSummary.netBalances.find((nb) => nb.userId === userId)?.netBalance || 0
     : 0;
 
-  const { activity, streak, leaderboard, recentActivity } = await computeEngagement(householdId, members);
+  const { activity, streak, leaderboard, recentActivity } = await computeEngagement(
+    householdId,
+    members,
+    timeZone,
+  );
 
   return {
     tasks: {
@@ -103,24 +140,37 @@ export async function getDashboard(userId: string): Promise<DashboardResponse> {
 
 // ── Engagement: real activity, streak & leaderboard ──
 
-/** Local-time "YYYY-MM-DD" key for a Date. */
-function dateKey(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+/** "YYYY-MM-DD" key for a Date, as seen in the household's own timezone —
+ *  not the server's, so "today" means the household's today. */
+function dateKey(d: Date, timeZone: string): string {
+  return formatInTimeZone(d, timeZone, 'yyyy-MM-dd');
 }
 
-/** Start of the day `n` days before today (local time). */
-function daysAgo(n: number): Date {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  d.setHours(0, 0, 0, 0);
-  return d;
+/** The `yyyy-MM-dd` key `n` days before `key` (plain calendar-day math). */
+function keyMinusDays(key: string, n: number): string {
+  const [y, m, day] = key.split('-').map(Number);
+  const d = new Date(Date.UTC(y, m - 1, day));
+  d.setUTCDate(d.getUTCDate() - n);
+  const pad = (v: number) => String(v).padStart(2, '0');
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+}
+
+/**
+ * The actual UTC instant of local midnight, `n` days before today, in the
+ * household's timezone (`n = 0` → today at 00:00 local). Used as the DB
+ * query lower-bound so a late-night completion isn't miscounted into the
+ * wrong calendar day just because the server's clock is in UTC.
+ */
+function daysAgo(n: number, timeZone: string): Date {
+  const today = dateKey(new Date(), timeZone);
+  const targetKey = keyMinusDays(today, n);
+  return fromZonedTime(`${targetKey} 00:00:00`, timeZone);
 }
 
 /** Load completed tasks/todos/bought groceries over the streak window. */
-async function loadCompletions(householdId: string): Promise<EngagementData> {
-  const windowStart = daysAgo(STREAK_WINDOW_DAYS - 1);
-  const weekStart = daysAgo(ACTIVITY_DAYS - 1);
+async function loadCompletions(householdId: string, timeZone: string): Promise<EngagementData> {
+  const windowStart = daysAgo(STREAK_WINDOW_DAYS - 1, timeZone);
+  const weekStart = daysAgo(ACTIVITY_DAYS - 1, timeZone);
 
   const [tasks, todos, groceries] = await Promise.all([
     Task.findAll({
@@ -150,7 +200,7 @@ async function loadCompletions(householdId: string): Promise<EngagementData> {
   ) => {
     if (!when) return;
     const t = new Date(when);
-    const k = dateKey(t);
+    const k = dateKey(t, timeZone);
     const d = daily[k] || (daily[k] = { tasksCompleted: 0, todosCompleted: 0, groceriesBought: 0 });
     d[key]++;
     if (!byUser) return;
@@ -168,18 +218,52 @@ async function loadCompletions(householdId: string): Promise<EngagementData> {
   return { daily, weekByUser, recent };
 }
 
+/**
+ * Days the household stayed *connected* even without finishing a chore —
+ * a chat message, a location ping/check-in, a feed post, or a new calendar
+ * event. These don't feed the chores chart or the leaderboard (that stays
+ * completion-only), but they're enough to keep the streak alive: the streak
+ * is meant to reward the family staying in touch, not just doing housework.
+ */
+async function loadEngagementDays(householdId: string, timeZone: string): Promise<Set<string>> {
+  const windowStart = daysAgo(STREAK_WINDOW_DAYS - 1, timeZone);
+  const where = { householdId, createdAt: { [Op.gte]: windowStart } };
+
+  const [messages, pings, checkIns, posts, events] = await Promise.all([
+    ChatMessage.findAll({ where, attributes: ['createdAt'] }),
+    PingRequest.findAll({ where, attributes: ['createdAt', 'respondedAt'] }),
+    CheckIn.findAll({ where, attributes: ['checkedInAt'] }),
+    FeedPost.findAll({ where, attributes: ['createdAt'] }),
+    CalendarEvent.findAll({ where, attributes: ['createdAt'] }),
+  ]);
+
+  const days = new Set<string>();
+  for (const m of messages) days.add(dateKey(m.createdAt, timeZone));
+  for (const p of pings) {
+    days.add(dateKey(p.createdAt, timeZone));
+    if (p.respondedAt) days.add(dateKey(p.respondedAt, timeZone));
+  }
+  for (const c of checkIns) days.add(dateKey(c.checkedInAt, timeZone));
+  for (const f of posts) days.add(dateKey(f.createdAt, timeZone));
+  for (const e of events) days.add(dateKey(e.createdAt, timeZone));
+
+  return days;
+}
+
 /** Last 7 days of household-wide completion totals (oldest → newest). */
-function buildActivity(daily: Record<string, ActivityTotals>): DashboardActivity[] {
+function buildActivity(
+  daily: Record<string, ActivityTotals>,
+  engagedDays: Set<string>,
+  timeZone: string,
+): DashboardActivity[] {
   const out: DashboardActivity[] = [];
-  const today = new Date();
+  const todayKey = dateKey(new Date(), timeZone);
   const empty = { tasksCompleted: 0, todosCompleted: 0, groceriesBought: 0 };
 
   for (let i = ACTIVITY_DAYS - 1; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    const k = dateKey(d);
+    const k = keyMinusDays(todayKey, i);
     const v = daily[k] || empty;
-    out.push({ date: k, ...v });
+    out.push({ date: k, ...v, engaged: totalFor(daily[k]) > 0 || engagedDays.has(k) });
   }
   return out;
 }
@@ -188,18 +272,25 @@ function totalFor(v: ActivityTotals | undefined): number {
   return v ? v.tasksCompleted + v.todosCompleted + v.groceriesBought : 0;
 }
 
-/** Consecutive-day completion streak over the window (current + all-time best). */
-function computeStreak(daily: Record<string, ActivityTotals>): StreakInfo {
-  const today = new Date();
+/**
+ * Consecutive-day streak over the window (current + all-time best). A day
+ * counts if the household got a chore done *or* stayed connected —
+ * messaged, pinged/checked in, posted, or scheduled something together.
+ */
+function computeStreak(
+  daily: Record<string, ActivityTotals>,
+  engagedDays: Set<string>,
+  timeZone: string,
+): StreakInfo {
+  const todayKey = dateKey(new Date(), timeZone);
+  const dayCounts = (k: string) => totalFor(daily[k]) > 0 || engagedDays.has(k);
   let best = 0;
   let run = 0;
 
-  // Oldest → newest: longest run of days with any completion.
+  // Oldest → newest: longest run of days with any completion or engagement.
   for (let i = STREAK_WINDOW_DAYS - 1; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    const k = dateKey(d);
-    if (totalFor(daily[k]) > 0) {
+    const k = keyMinusDays(todayKey, i);
+    if (dayCounts(k)) {
       run += 1;
       if (run > best) best = run;
     } else {
@@ -210,10 +301,8 @@ function computeStreak(daily: Record<string, ActivityTotals>): StreakInfo {
   // Today → backwards: current streak.
   let current = 0;
   for (let i = 0; i < STREAK_WINDOW_DAYS; i++) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    const k = dateKey(d);
-    if (totalFor(daily[k]) > 0) current += 1;
+    const k = keyMinusDays(todayKey, i);
+    if (dayCounts(k)) current += 1;
     else break;
   }
 
@@ -242,13 +331,17 @@ function buildLeaderboard(
 async function computeEngagement(
   householdId: string,
   members: HouseholdMember[],
+  timeZone: string,
 ): Promise<{
   activity: DashboardActivity[];
   streak: StreakInfo;
   leaderboard: LeaderboardEntry[];
   recentActivity: RecentActivityItem[];
 }> {
-  const { daily, weekByUser, recent } = await loadCompletions(householdId);
+  const [{ daily, weekByUser, recent }, engagedDays] = await Promise.all([
+    loadCompletions(householdId, timeZone),
+    loadEngagementDays(householdId, timeZone),
+  ]);
 
   const byId = new Map(members.map((m) => [m.userId, (m as unknown as { user?: User }).user]));
   const recentActivity: RecentActivityItem[] = recent
@@ -258,7 +351,7 @@ async function computeEngagement(
     .map((r) => {
       const u = byId.get(r.userId);
       return {
-        date: dateKey(r.when),
+        date: dateKey(r.when, timeZone),
         userId: r.userId,
         displayName: u?.displayName || 'Someone',
         avatarUrl: u?.avatarUrl || null,
@@ -269,8 +362,8 @@ async function computeEngagement(
     });
 
   return {
-    activity: buildActivity(daily),
-    streak: computeStreak(daily),
+    activity: buildActivity(daily, engagedDays, timeZone),
+    streak: computeStreak(daily, engagedDays, timeZone),
     leaderboard: buildLeaderboard(members, weekByUser),
     recentActivity,
   };

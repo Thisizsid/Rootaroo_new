@@ -2,6 +2,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { Op } from 'sequelize';
 import { CheckIn, User, HouseholdMember } from '../../database/models';
 import { ForbiddenError, NotFoundError } from '../../shared/utils/errors';
+import logger from '../../shared/utils/logger';
+import { getIO } from '../../shared/utils/socket';
 import * as notificationService from '../../shared/services/notifications';
 import type {
   CreateCheckInBody,
@@ -98,7 +100,15 @@ export async function createCheckIn(
   const full = await CheckIn.findByPk(checkIn.id, {
     include: [{ model: User, as: 'user' }],
   });
-  return toCheckInResponse(full || checkIn);
+  const response = toCheckInResponse(full || checkIn);
+
+  try {
+    getIO().to(`household:${householdId}`).emit('checkin:created', response);
+  } catch (e) {
+    logger.warn('[WS] Check-in broadcast failed:', (e as Error).message);
+  }
+
+  return response;
 }
 
 /**

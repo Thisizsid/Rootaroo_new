@@ -73,6 +73,18 @@ export async function createPingRequest(
     throw new NotFoundError('Household member');
   }
 
+  // Idempotent: re-requesting the same person while they still have an
+  // unanswered request from us should not stack up duplicate pending rows
+  // (each one re-notifies the target, so without this a few taps/retries
+  // show up as several near-identical "wants your location" banners).
+  const existingPending = await PingRequest.findOne({
+    where: { householdId, requesterId, targetUserId: body.targetUserId, status: 'pending' },
+  });
+  if (existingPending) {
+    const existingFull = await loadFull(existingPending.id);
+    return toPingRequestResponse(existingFull || existingPending);
+  }
+
   const requester = await User.findByPk(requesterId);
   const requesterName = requester?.displayName || 'Someone';
 
@@ -169,6 +181,23 @@ export async function respondToPingRequest(
       )
       .catch(() => {});
   }
+
+  // Resolve any other stale pending duplicates from the same requester —
+  // these could only exist from before createPingRequest started deduping
+  // pending requests, but if they're still there, answering one shouldn't
+  // leave the others sitting in the list to reappear later.
+  await PingRequest.update(
+    { status: 'expired', respondedAt: new Date() },
+    {
+      where: {
+        householdId: pingRequest.householdId,
+        requesterId: pingRequest.requesterId,
+        targetUserId: pingRequest.targetUserId,
+        status: 'pending',
+        id: { [Op.ne]: pingRequest.id },
+      },
+    },
+  );
 
   const full = await loadFull(pingRequest.id);
   const response = toPingRequestResponse(full || pingRequest);

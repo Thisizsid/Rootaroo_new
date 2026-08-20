@@ -236,7 +236,7 @@ export async function createPost(
 
   // FR-046: Broadcast new post to household via WebSocket
   try {
-    getIO().to(householdId).emit('feed:new-post', result);
+    getIO().to(`household:${householdId}`).emit('feed:new-post', result);
   } catch (e) {
     logger.warn('[WS] Feed broadcast failed:', (e as Error).message);
   }
