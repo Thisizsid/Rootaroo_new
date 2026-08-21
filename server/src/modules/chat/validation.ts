@@ -5,9 +5,12 @@ export const createMessageSchema = {
     conversationId: z.string().uuid(),
     content: z.string().min(1).max(5000).optional(),
     mediaIds: z.array(z.string().uuid()).max(10).optional(),
+    mediaUrl: z.string().url().optional(),
+    type: z.enum(['text', 'image', 'voice']).optional(),
+    durationSeconds: z.number().int().positive().max(600).optional(),
     replyToId: z.string().uuid().optional(),
   }).refine(
-    (data) => data.content || (data.mediaIds && data.mediaIds.length > 0),
+    (data) => data.content || (data.mediaIds && data.mediaIds.length > 0) || data.mediaUrl,
     { message: 'Message must have content or media' }
   ),
 };

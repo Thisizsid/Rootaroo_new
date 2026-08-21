@@ -43,6 +43,12 @@
           "cameraPermission": "Allow Rootaroo to use your camera to scan invite QR codes."
         }
       ],
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Allow Rootaroo to record voice messages."
+        }
+      ],
       "@react-native-community/datetimepicker",
       "@maplibre/maplibre-react-native",
       [

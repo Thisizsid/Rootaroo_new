@@ -102,7 +102,13 @@ function ConversationItem({ item, currentUserId, onPress }) {
     ? item.name || (isEveryone ? 'Everyone' : 'Group Chat')
     : otherUser?.displayName || 'Unknown';
   const avatarUrl = isGroup ? null : otherUser?.avatarUrl;
-  const lastMessage = item.lastMessage?.content || null;
+  const lastMessage =
+    item.lastMessage?.content ||
+    (item.lastMessage?.type === 'voice'
+      ? '🎤 Voice message'
+      : item.lastMessage?.type === 'image'
+        ? '📷 Photo'
+        : null);
   const timestamp = item.lastMessage?.createdAt || item.createdAt;
   const avatarColor =
     AVATAR_COLORS[

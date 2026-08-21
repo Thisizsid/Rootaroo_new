@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authenticate } from '../../shared/middleware/auth';
 import { validate } from '../../shared/middleware/validate';
+import { uploadChatVoice } from '../../shared/middleware/upload';
 import * as ctrl from './controller';
 import {
   createMessageSchema,
@@ -30,6 +31,9 @@ router.post('/conversations/:id/invite', validate(addParticipantSchema), ctrl.in
 
 // Typing indicator — before /:id
 router.post('/typing', validate(typingSchema), ctrl.typingCtrl);                                   // FR-149
+
+// Voice message upload — before /:id
+router.post('/media/voice', uploadChatVoice.single('file'), ctrl.uploadVoiceCtrl);
 
 // Chat CRUD
 router.post('/', validate(createMessageSchema), ctrl.sendMessageCtrl);                     // FR-140/143/144

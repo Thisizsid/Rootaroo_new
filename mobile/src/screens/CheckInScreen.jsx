@@ -11,10 +11,10 @@ import {
   StatusBar,
   Modal,
   Animated,
-  PanResponder,
   Dimensions,
   Linking,
 } from 'react-native';
+import { PanGestureHandler, State } from 'react-native-gesture-handler';
 import { showAlert } from '../shared/services/themedAlert';
 import {
   Map as MapLibreMap,
@@ -130,27 +130,35 @@ export default function CheckInScreen({ navigation }) {
     });
     return () => trayTranslateY.removeListener(id);
   }, [trayTranslateY]);
-  const dragStartValue = useRef(MAX_TRAY_TRANSLATE);
-  const trayPanResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onStartShouldSetPanResponderCapture: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponderCapture: () => true,
-      onPanResponderTerminationRequest: () => false,
-      onShouldBlockNativeResponder: () => true,
-      onPanResponderGrant: () => {
-        trayTranslateY.stopAnimation((val) => {
-          dragStartValue.current = val;
+  // Drag tracking runs entirely on the native thread via
+  // react-native-gesture-handler + Animated.event — PanResponder's JS-thread
+  // touch handling was the source of the visible lag/glitch while dragging.
+  // `trayTranslateY.setOffset/setValue(0)` on grant + feeding the gesture's
+  // raw `translationY` straight back into `trayTranslateY` itself (same
+  // Animated.Value that carries the offset) is the standard offset+delta
+  // pattern — Animated.event MUST target the offset-bearing value directly,
+  // a separate value here would never actually move the rendered transform.
+  const onTrayGestureEvent = useRef(
+    Animated.event([{ nativeEvent: { translationY: trayTranslateY } }], {
+      useNativeDriver: true,
+    }),
+  ).current;
+  const onTrayHandlerStateChange = useCallback(
+    (event) => {
+      const { state, oldState, translationY, velocityY } = event.nativeEvent;
+      if (state === State.BEGAN) {
+        trayTranslateY.stopAnimation(() => {
+          trayTranslateY.setOffset(trayTranslateValue.current);
+          trayTranslateY.setValue(0);
         });
-      },
-      onPanResponderMove: (_, gesture) => {
-        const next = clamp(dragStartValue.current + gesture.dy, 0, MAX_TRAY_TRANSLATE);
-        trayTranslateY.setValue(next);
-      },
-      onPanResponderRelease: (_, gesture) => {
-        const shouldExpand = gesture.dy < -40 || gesture.vy < -0.4;
-        const shouldCollapse = gesture.dy > 40 || gesture.vy > 0.4;
+        return;
+      }
+      if (oldState === State.ACTIVE) {
+        trayTranslateY.flattenOffset();
+        // PanGestureHandler reports velocity in px/s, PanResponder's old
+        // thresholds were px/ms — ×1000 to keep the same feel.
+        const shouldExpand = translationY < -40 || velocityY < -400;
+        const shouldCollapse = translationY > 40 || velocityY > 400;
         const willExpand = shouldCollapse
           ? false
           : shouldExpand
@@ -158,13 +166,14 @@ export default function CheckInScreen({ navigation }) {
             : trayTranslateValue.current < MAX_TRAY_TRANSLATE / 2;
         trayExpanded.current = willExpand;
         Animated.spring(trayTranslateY, {
-          toValue: willExpand ? 0 : MAX_TRAY_TRANSLATE,
+          toValue: clamp(willExpand ? 0 : MAX_TRAY_TRANSLATE, 0, MAX_TRAY_TRANSLATE),
           useNativeDriver: true,
           bounciness: 4,
         }).start();
-      },
-    }),
-  ).current;
+      }
+    },
+    [trayTranslateY, MAX_TRAY_TRANSLATE],
+  );
   const collapseTray = useCallback(() => {
     trayExpanded.current = false;
     Animated.spring(trayTranslateY, {
@@ -820,9 +829,14 @@ export default function CheckInScreen({ navigation }) {
           },
         ]}
       >
-        <View style={styles.handleGrabArea} {...trayPanResponder.panHandlers}>
-          <View style={styles.handle} />
-        </View>
+        <PanGestureHandler
+          onGestureEvent={onTrayGestureEvent}
+          onHandlerStateChange={onTrayHandlerStateChange}
+        >
+          <Animated.View style={styles.handleGrabArea}>
+            <View style={styles.handle} />
+          </Animated.View>
+        </PanGestureHandler>
 
         <View style={styles.actionRow}>
           <TouchableOpacity
@@ -1594,9 +1608,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.canvasElevated,
     borderTopLeftRadius: 26,
     borderTopRightRadius: 26,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderBottomWidth: 0,
+    // borderWidth: 1,
+    // borderColor: colors.border,
+    // borderBottomWidth: 0,
     paddingHorizontal: 20,
     paddingTop: 10,
     gap: 14,
@@ -1637,8 +1651,8 @@ const styles = StyleSheet.create({
     // app's navy/glass theme. Primary emphasis comes from the gold accent
     // on the icon/title, not a solid fill block.
     backgroundColor: colors.surface,
-    borderWidth: 1.5,
-    borderColor: colors.border,
+    // borderWidth: 1.5,
+    // borderColor: colors.border,
   },
   actionSecondary: {
     backgroundColor: colors.surface,

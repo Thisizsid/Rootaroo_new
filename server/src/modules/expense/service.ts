@@ -17,6 +17,7 @@ import type {
   PaginatedSettlements,
   PaginatedExpenses,
   NetBalanceResponse,
+  PairwiseBalanceResponse,
 } from './types';
 
 async function getUserHousehold(userId: string): Promise<string> {
@@ -62,8 +63,8 @@ function toExpenseResponse(expense: Expense): ExpenseResponse {
  * Split `amount` across `participants`. For 'equal', shares are rounded to
  * cents and any leftover penny from the division goes to the payer's share
  * so the shares always sum exactly to `amount`. For 'custom', the supplied
- * shareAmount is used verbatim but validated: every share must be a positive
- * number and the shares must sum to `amount` (within a cent).
+ * shareAmount is used verbatim but validated: every share must be non-negative
+ * and the shares must sum to `amount` (within a cent).
  */
 function calculateShares(
   amount: number,
@@ -85,8 +86,8 @@ function calculateShares(
   }
 
   const shares = participants.map((p) => ({ userId: p.userId, shareAmount: p.shareAmount ?? 0 }));
-  if (shares.some((s) => s.shareAmount <= 0)) {
-    throw new ValidationError('Each participant share must be a positive amount');
+  if (shares.some((s) => s.shareAmount < 0)) {
+    throw new ValidationError('Each participant share cannot be negative');
   }
   const total = Math.round(shares.reduce((sum, s) => sum + s.shareAmount, 0) * 100) / 100;
   if (Math.abs(total - amount) > 0.01) {
@@ -544,6 +545,70 @@ export async function getLedger(
 ): Promise<LedgerEntryResponse[]> {
   const summary = await getExpenseSummary(userId);
   return summary.ledger;
+}
+
+/**
+ * Get one member's pairwise balance against each other household member,
+ * without the min-transaction rerouting `computeSimplifiedLedger` does.
+ * amount > 0 means targetUserId owes that person; amount < 0 means that
+ * person owes targetUserId.
+ */
+export async function getPairwiseBalances(
+  callerId: string,
+  targetUserId: string
+): Promise<PairwiseBalanceResponse[]> {
+  const householdId = await getUserHousehold(callerId);
+
+  const members = await HouseholdMember.findAll({
+    where: { householdId },
+    include: [{ model: User, as: 'user' }],
+  });
+  if (!members.some((m) => m.userId === targetUserId)) {
+    throw new NotFoundError('Household member');
+  }
+
+  const expenses = await Expense.findAll({
+    where: { householdId },
+    include: [{ model: ExpenseParticipant, as: 'participants' }],
+  });
+  const settlements = await Settlement.findAll({ where: { householdId } });
+
+  // owed[ower][owedTo] = amount ower owes owedTo
+  const owed = new Map<string, Map<string, number>>();
+  const addOwed = (ower: string, owedTo: string, amount: number) => {
+    if (ower === owedTo) return;
+    const inner = owed.get(ower) ?? new Map<string, number>();
+    inner.set(owedTo, (inner.get(owedTo) ?? 0) + amount);
+    owed.set(ower, inner);
+  };
+
+  expenses.forEach((expense) => {
+    const paidBy = expense.paidBy;
+    const participants = expense.get('participants') as { userId: string; shareAmount: number | string }[] || [];
+    participants.forEach((p) => {
+      addOwed(p.userId, paidBy, parseFloat(p.shareAmount.toString()));
+    });
+  });
+
+  settlements.forEach((s) => {
+    addOwed(s.fromUserId, s.toUserId, -parseFloat(s.amount.toString()));
+  });
+
+  return members
+    .filter((m) => m.userId !== targetUserId)
+    .map((m) => {
+      const targetOwesThem = owed.get(targetUserId)?.get(m.userId) ?? 0;
+      const theyOweTarget = owed.get(m.userId)?.get(targetUserId) ?? 0;
+      const amount = Math.round((targetOwesThem - theyOweTarget) * 100) / 100;
+      return {
+        userId: m.userId,
+        displayName: m.user!.displayName,
+        avatarUrl: m.user!.avatarUrl,
+        avatarEmoji: m.user!.avatarEmoji,
+        amount,
+      };
+    })
+    .filter((b) => Math.abs(b.amount) > 0.01);
 }
 
 function computeSimplifiedLedger(

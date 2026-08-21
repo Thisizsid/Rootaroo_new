@@ -38,6 +38,8 @@ import PhoneVerification from './PhoneVerification';
 import PostTag from './PostTag';
 import Conversation from './Conversation';
 import ConversationParticipant from './ConversationParticipant';
+import JournalEntry from './JournalEntry';
+import JournalMedia from './JournalMedia';
 
 const models = {
   User,
@@ -77,6 +79,8 @@ const models = {
   NotificationPreference,
   NotificationHistory,
   DeviceToken,
+  JournalEntry,
+  JournalMedia,
 };
 
 export function setupAssociations(): void {
@@ -182,6 +186,15 @@ export function setupAssociations(): void {
   PostTag.belongsTo(FeedPost, { foreignKey: 'post_id', as: 'post' });
   PostTag.belongsTo(User, { foreignKey: 'user_id', as: 'taggedUser' });
   User.hasMany(PostTag, { foreignKey: 'user_id', as: 'postTags' });
+
+  // ── Journal associations ──
+  Household.hasMany(JournalEntry, { foreignKey: 'household_id', as: 'journalEntries' });
+  JournalEntry.belongsTo(Household, { foreignKey: 'household_id', as: 'household' });
+  JournalEntry.belongsTo(User, { foreignKey: 'user_id', as: 'author' });
+  User.hasMany(JournalEntry, { foreignKey: 'user_id', as: 'journalEntries' });
+
+  JournalEntry.hasMany(JournalMedia, { foreignKey: 'entry_id', as: 'media' });
+  JournalMedia.belongsTo(JournalEntry, { foreignKey: 'entry_id', as: 'entry' });
 
   // ── Task associations ──
   Task.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
@@ -308,6 +321,8 @@ export {
   NotificationPreference,
   NotificationHistory,
   DeviceToken,
+  JournalEntry,
+  JournalMedia,
 };
 
 export default models;

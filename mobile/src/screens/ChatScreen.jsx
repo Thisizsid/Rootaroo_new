@@ -5,12 +5,13 @@ import {
   StyleSheet,
   ActivityIndicator,
   FlatList,
-  KeyboardAvoidingView,
+  Keyboard,
   Modal,
   TextInput,
   TouchableOpacity,
   Image,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { showAlert } from '../shared/services/themedAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -27,7 +28,6 @@ import TypingIndicator from '../components/TypingIndicator';
 import { chatApi } from '../shared/api/chat';
 import { householdApi } from '../shared/api/household';
 import { SvgXml } from 'react-native-svg';
-import { KEYBOARD_BEHAVIOR } from '../shared/components/KeyboardAware';
 
 // Quick reactions shown in the long-press message actions dropdown (SCREEN 31)
 const MESSAGE_EMOJIS = ['👍', '❤️', '😂', '😲', '😢'];
@@ -65,6 +65,28 @@ export default function ChatScreen({ route }) {
   const [selectedAnchor, setSelectedAnchor] = useState(null);
   const [menuVisible, setMenuVisible] = useState(false);
   const navigation = useNavigation();
+
+  // Manual keyboard-height tracking — KeyboardAvoidingView's built-in
+  // 'height'/'padding' behaviors both get stuck mid-transition on Android
+  // under edge-to-edge (the padding/height never resets to 0 after the
+  // keyboard hides). Tracking real Keyboard events and driving padding
+  // ourselves guarantees it snaps back to exactly 0 on dismiss.
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates?.height || 0);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
   useEffect(() => {
     const hhId = user?.householdId;
     if (!hhId) return;
@@ -242,6 +264,14 @@ export default function ChatScreen({ route }) {
       const body = {};
       if (content) body.content = content;
       if (mediaIds) body.mediaIds = mediaIds;
+      if (replyTo) body.replyToId = replyTo.messageId;
+      await sendMessage(conversationId, body);
+    },
+    [replyTo, sendMessage, conversationId],
+  );
+  const handleSendVoice = useCallback(
+    async (mediaUrl, durationSeconds) => {
+      const body = { mediaUrl, type: 'voice', durationSeconds };
       if (replyTo) body.replyToId = replyTo.messageId;
       await sendMessage(conversationId, body);
     },
@@ -537,10 +567,7 @@ export default function ChatScreen({ route }) {
         </TouchableOpacity>
       )}
 
-      <KeyboardAvoidingView
-        style={styles.keyboardView}
-        behavior={KEYBOARD_BEHAVIOR}
-      >
+      <View style={[styles.keyboardView, { paddingBottom: keyboardHeight }]}>
         {/* Messages list — oldest at top, newest at bottom */}
         <FlatList
           ref={flatListRef}
@@ -733,10 +760,11 @@ export default function ChatScreen({ route }) {
         {/* Input bar */}
         <ChatInputBar
           onSend={handleSend}
+          onSendVoice={handleSendVoice}
           replyTo={replyTo}
           onDismissReply={() => setReplyTo(null)}
         />
-      </KeyboardAvoidingView>
+      </View>
     </View>
   );
 }

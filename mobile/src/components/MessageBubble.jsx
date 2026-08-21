@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,8 +6,80 @@ import {
   TouchableOpacity,
   Image,
 } from 'react-native';
+import { Audio } from 'expo-av';
 import { colors, fonts, radius } from '../shared/theme';
 import Avatar from './Avatar';
+
+function formatDuration(seconds) {
+  const total = Math.max(0, Math.round(seconds || 0));
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+function VoiceBubble({ mediaUrl, durationSeconds, isOwn, isSelected, onLongPress, onTapDeselect }) {
+  const [playing, setPlaying] = useState(false);
+  const soundRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      soundRef.current?.unloadAsync?.();
+    };
+  }, []);
+
+  const toggle = async () => {
+    try {
+      if (!soundRef.current) {
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: mediaUrl },
+          { shouldPlay: true },
+          (status) => {
+            if (status.isLoaded && status.didJustFinish) setPlaying(false);
+          },
+        );
+        soundRef.current = sound;
+        setPlaying(true);
+        return;
+      }
+      const status = await soundRef.current.getStatusAsync();
+      if (status.isLoaded && status.isPlaying) {
+        await soundRef.current.pauseAsync();
+        setPlaying(false);
+      } else {
+        await soundRef.current.playAsync();
+        setPlaying(true);
+      }
+    } catch {
+      setPlaying(false);
+    }
+  };
+
+  const handlePress = () => {
+    if (isSelected) {
+      onTapDeselect?.();
+    } else {
+      toggle();
+    }
+  };
+
+  return (
+    <TouchableOpacity
+      onPress={handlePress}
+      onLongPress={onLongPress}
+      activeOpacity={0.8}
+      style={styles.voiceRow}
+    >
+      <View style={[styles.voicePlayBtn, isOwn ? styles.voicePlayBtnOwn : styles.voicePlayBtnOther]}>
+        <Text style={isOwn ? styles.voicePlayIconOwn : styles.voicePlayIconOther}>
+          {playing ? '❚❚' : '▶'}
+        </Text>
+      </View>
+      <Text style={[styles.voiceDuration, isOwn ? styles.textOwn : styles.textOther]}>
+        {formatDuration(durationSeconds)}
+      </Text>
+    </TouchableOpacity>
+  );
+}
 
 export default function MessageBubble({
   message,
@@ -48,6 +120,17 @@ export default function MessageBubble({
   // Only reactions with count > 0 should be displayed in the main stream
   const activeReactions = (message.reactions || []).filter((r) => r.count > 0);
 
+  const handleLongPressSelect = () => {
+    containerRef.current?.measureInWindow((x, y, width, height) => {
+      onSelectMessage?.(message, { x, y, width, height });
+    });
+  };
+  const handleTapDeselect = () => {
+    if (isSelected) {
+      onSelectMessage?.(message);
+    }
+  };
+
   const bubbleContent = (
     <>
       {/* Reply preview */}
@@ -68,16 +151,8 @@ export default function MessageBubble({
 
       {/* Message content */}
       <TouchableOpacity
-        onLongPress={() => {
-          containerRef.current?.measureInWindow((x, y, width, height) => {
-            onSelectMessage?.(message, { x, y, width, height });
-          });
-        }}
-        onPress={() => {
-          if (isSelected) {
-            onSelectMessage?.(message);
-          }
-        }}
+        onLongPress={handleLongPressSelect}
+        onPress={handleTapDeselect}
         activeOpacity={0.9}
         style={[
           styles.bubble,
@@ -90,17 +165,28 @@ export default function MessageBubble({
             {message.content}
           </Text>
         )}
-        {message.mediaUrl && (
-          <TouchableOpacity
-            onPress={() => onMediaPress?.(message.mediaUrl)}
-            activeOpacity={0.8}
-          >
-            <Image
-              source={{ uri: message.mediaUrl }}
-              style={styles.media}
-              resizeMode="cover"
-            />
-          </TouchableOpacity>
+        {message.mediaUrl && message.type === 'voice' ? (
+          <VoiceBubble
+            mediaUrl={message.mediaUrl}
+            durationSeconds={message.durationSeconds}
+            isOwn={isOwn}
+            isSelected={isSelected}
+            onLongPress={handleLongPressSelect}
+            onTapDeselect={handleTapDeselect}
+          />
+        ) : (
+          message.mediaUrl && (
+            <TouchableOpacity
+              onPress={() => onMediaPress?.(message.mediaUrl)}
+              activeOpacity={0.8}
+            >
+              <Image
+                source={{ uri: message.mediaUrl }}
+                style={styles.media}
+                resizeMode="cover"
+              />
+            </TouchableOpacity>
+          )
         )}
       </TouchableOpacity>
 
@@ -243,6 +329,37 @@ const styles = StyleSheet.create({
     height: 150,
     borderRadius: 12,
     marginTop: 6,
+  },
+  voiceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    minWidth: 140,
+  },
+  voicePlayBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  voicePlayBtnOwn: {
+    backgroundColor: colors.onAccent,
+  },
+  voicePlayBtnOther: {
+    backgroundColor: colors.gold,
+  },
+  voicePlayIconOwn: {
+    fontSize: 12,
+    color: colors.gold,
+  },
+  voicePlayIconOther: {
+    fontSize: 12,
+    color: colors.onAccent,
+  },
+  voiceDuration: {
+    fontSize: 13,
+    fontFamily: fonts.mono,
   },
   metaRow: {
     flexDirection: 'row',

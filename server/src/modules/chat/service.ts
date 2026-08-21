@@ -44,6 +44,7 @@ function toConversationResponse(conv: Conversation): ConversationResponse {
     lastMessage: lastMsg
       ? {
           content: lastMsg.content,
+          type: lastMsg.type || 'text',
           createdAt: lastMsg.createdAt.toISOString(),
           senderName: (lastMsg.get('sender') as User)?.displayName || 'Unknown',
         }
@@ -298,6 +299,8 @@ async function toMessageResponse(msg: ChatMessage): Promise<MessageResponse> {
     sender: toSenderResponse(sender) || { id: '', displayName: 'Deleted', avatarUrl: null, avatarEmoji: null },
     content: msg.get('content') as string | null,
     mediaUrl: msg.get('mediaUrl') as string | null,
+    type: msg.get('type') as 'text' | 'image' | 'voice',
+    durationSeconds: msg.get('durationSeconds') as number | null,
     replyToId,
     replyPreview,
     reactions: reactionCounts,
@@ -323,11 +326,13 @@ export async function sendMessage(
   });
   if (!participant) throw new ForbiddenError('You are not a participant in this conversation');
 
-  if (!body.content && (!body.mediaIds || body.mediaIds.length === 0)) {
+  if (!body.content && (!body.mediaIds || body.mediaIds.length === 0) && !body.mediaUrl) {
     throw new ValidationError('Message must contain content or media');
   }
 
   let mediaUrl: string | null = null;
+  let type: 'text' | 'image' | 'voice' = 'text';
+  let durationSeconds: number | null = null;
 
   // FR-143: Attach media from feed upload
   if (body.mediaIds && body.mediaIds.length > 0) {
@@ -336,7 +341,13 @@ export async function sendMessage(
     });
     if (medias.length > 0) {
       mediaUrl = medias[0].get('secureUrl') as string;
+      type = 'image';
     }
+  } else if (body.mediaUrl) {
+    // Voice message — uploaded directly via POST /chat/media/voice
+    mediaUrl = body.mediaUrl;
+    type = body.type === 'voice' ? 'voice' : 'image';
+    durationSeconds = body.durationSeconds ?? null;
   }
 
   // FR-144: Validate replyTo exists
@@ -351,6 +362,8 @@ export async function sendMessage(
     senderId: userId,
     content: body.content || null,
     mediaUrl,
+    type,
+    durationSeconds,
     replyToId: body.replyToId || null,
   });
 

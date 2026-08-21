@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import * as chatService from './service';
+import { uploadBuffer } from '../../shared/utils/cloudinary';
 
 function getUserId(req: Request): string {
   return (req as any).user!.userId;
@@ -7,6 +8,32 @@ function getUserId(req: Request): string {
 
 function getUserRole(req: Request): string {
   return (req as any).user!.role;
+}
+
+export async function uploadVoiceCtrl(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const file = req.file;
+    if (!file) {
+      res.status(400).json({ success: false, error: 'No file provided' });
+      return;
+    }
+    const durationSeconds = req.body.durationSeconds ? Number(req.body.durationSeconds) : null;
+    const result = await uploadBuffer(file.buffer, {
+      folder: 'rootaru/chat/voice',
+      public_id: file.originalname.replace(/\.[^.]+$/, ''),
+      resource_type: 'video',
+    });
+    res.status(201).json({
+      success: true,
+      data: { url: result.secure_url, durationSeconds },
+    });
+  } catch (err) {
+    next(err);
+  }
 }
 
 export async function sendMessageCtrl(

@@ -20,6 +20,7 @@ router.post('/', validate(createExpenseSchema), ctrl.createExpenseCtrl);        
 router.get('/', validate(expenseQuerySchema), ctrl.listExpensesCtrl);              // FR-106
 router.get('/summary', ctrl.getExpenseSummaryCtrl);                                // FR-103/104/109
 router.get('/ledger', ctrl.getLedgerCtrl);                                         // FR-104
+router.get('/pairwise/:userId', ctrl.getPairwiseBalancesCtrl);
 router.get('/settlements', validate(expenseQuerySchema), ctrl.listSettlementsCtrl); // FR-106
 router.post('/settle', validate(settlementSchema), ctrl.recordSettlementCtrl);     // FR-105
 router.get('/:id', ctrl.getExpenseByIdCtrl);

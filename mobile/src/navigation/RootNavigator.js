@@ -53,6 +53,7 @@ import ExpenseDetailScreen from '../screens/ExpenseDetailScreen';
 import ExpenseLedgerScreen from '../screens/ExpenseLedgerScreen';
 import ExpenseSettlementScreen from '../screens/ExpenseSettlementScreen';
 import CreateExpenseScreen from '../screens/CreateExpenseScreen';
+import MemberBalanceDetailScreen from '../screens/MemberBalanceDetailScreen';
 
 import VaultUploadScreen from '../screens/VaultUploadScreen';
 import VaultSetupScreen from '../screens/VaultSetupScreen';
@@ -138,6 +139,7 @@ function MoreNavigator() {
       <MoreNav.Screen name="ExpenseDetail" component={ExpenseDetailScreen} />
       <MoreNav.Screen name="ExpenseLedger" component={ExpenseLedgerScreen} />
       <MoreNav.Screen name="ExpenseSettlements" component={ExpenseSettlementScreen} />
+      <MoreNav.Screen name="MemberBalanceDetail" component={MemberBalanceDetailScreen} />
       <MoreNav.Screen name="NotificationPreferences" component={NotificationPreferencesScreen} />
       <MoreNav.Screen name="Vault" component={VaultListScreen} />
       <MoreNav.Screen

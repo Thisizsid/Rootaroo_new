@@ -3,6 +3,7 @@ import multer from 'multer';
 const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
 const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.avi', '.webm', '.mkv'];
 const ALLOWED = [...IMAGE_EXTENSIONS, ...VIDEO_EXTENSIONS];
+const AUDIO_EXTENSIONS = ['.m4a', '.mp3', '.wav', '.aac', '.ogg', '.webm', '.caf'];
 
 const imageFilter: multer.Options['fileFilter'] = (_req, file, cb) => {
   const ext = file.originalname.toLowerCase().match(/\.[^.]+$/)?.[0] || '';
@@ -19,6 +20,15 @@ const mediaFilter: multer.Options['fileFilter'] = (_req, file, cb) => {
     cb(null, true);
   } else {
     cb(new Error(`Only images and videos (${ALLOWED.join(', ')}) are allowed.`));
+  }
+};
+
+const audioFilter: multer.Options['fileFilter'] = (_req, file, cb) => {
+  const ext = file.originalname.toLowerCase().match(/\.[^.]+$/)?.[0] || '';
+  if (AUDIO_EXTENSIONS.includes(ext)) {
+    cb(null, true);
+  } else {
+    cb(new Error(`Only audio files (${AUDIO_EXTENSIONS.join(', ')}) are allowed.`));
   }
 };
 
@@ -40,4 +50,10 @@ export const uploadFeedMedia = multer({
   storage: memory,
   fileFilter: mediaFilter,
   limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB (covers max 2min 720p video)
+});
+
+export const uploadChatVoice = multer({
+  storage: memory,
+  fileFilter: audioFilter,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB (short voice notes)
 });

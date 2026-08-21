@@ -122,6 +122,19 @@ export async function getExpenseSummaryCtrl(
   }
 }
 
+export async function getPairwiseBalancesCtrl(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const balances = await expenseService.getPairwiseBalances(getUserId(req), req.params.userId);
+    res.json({ success: true, data: balances });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function recordSettlementCtrl(
   req: Request,
   res: Response,

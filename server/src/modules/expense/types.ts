@@ -98,6 +98,15 @@ export interface ExpenseSummaryResponse {
   ledger: LedgerEntryResponse[];
 }
 
+export interface PairwiseBalanceResponse {
+  userId: string;
+  displayName: string;
+  avatarUrl: string | null;
+  avatarEmoji: string | null;
+  // positive = target member owes this person; negative = this person owes target member
+  amount: number;
+}
+
 export interface SettlementResponse {
   id: string;
   householdId: string;

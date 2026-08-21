@@ -61,11 +61,14 @@ function formatDate(dateStr) {
   });
 }
 
-/** Secondary line for a task row: assignee (+ due date). */
-function rowMeta(task) {
-  const person = task.assignees[0]?.displayName || task.createdBy?.displayName || '';
-  const due = formatDate(task.dueDate);
-  return [person, due].filter(Boolean).join(' · ');
+/** Assigned-to / assigned-by pair for a task row, each labeled. */
+function rowMetaParts(task) {
+  const assignee = task.assignees[0]?.displayName;
+  const creator = task.createdBy?.displayName;
+  return {
+    to: assignee ? `To: ${assignee}` : null,
+    by: creator ? `By: ${creator}` : null,
+  };
 }
 
 /** Right-aligned status label for a task row. */
@@ -174,37 +177,50 @@ export default function TaskListScreen({ navigation }) {
       }
       activeOpacity={0.6}
     >
-      {(() => {
-        const person = item.assignees[0] || item.createdBy;
-        return (
-          <Avatar
-            url={person?.avatarUrl}
-            emoji={person?.avatarEmoji}
-            name={person?.displayName || '?'}
-            id={person?.id}
-            size={30}
-            style={styles.taskRowAvatar}
-          />
-        );
-      })()}
-      <View style={styles.taskRowLeft}>
-        <Text style={styles.taskTitle} numberOfLines={1}>
-          {item.title}
-        </Text>
-        <Text style={styles.taskMeta} numberOfLines={1}>
-          {rowMeta(item)}
+      <View style={styles.taskRowTop}>
+        {(() => {
+          const person = item.assignees[0] || item.createdBy;
+          return (
+            <Avatar
+              url={person?.avatarUrl}
+              emoji={person?.avatarEmoji}
+              name={person?.displayName || '?'}
+              id={person?.id}
+              size={30}
+              style={styles.taskRowAvatar}
+            />
+          );
+        })()}
+        <View style={styles.taskRowLeft}>
+          <Text style={styles.taskTitle} numberOfLines={1}>
+            {item.title}
+          </Text>
+        </View>
+        <Text
+          style={[
+            styles.taskStatus,
+            {
+              color: section.statusColor,
+            },
+          ]}
+        >
+          {rowStatus(item, section.key)}
         </Text>
       </View>
-      <Text
-        style={[
-          styles.taskStatus,
-          {
-            color: section.statusColor,
-          },
-        ]}
-      >
-        {rowStatus(item, section.key)}
-      </Text>
+      {(() => {
+        const { to, by } = rowMetaParts(item);
+        if (!to && !by) return null;
+        return (
+          <View style={styles.taskMetaRow}>
+            <Text style={styles.taskMeta} numberOfLines={1}>
+              {to || ''}
+            </Text>
+            <Text style={styles.taskMeta} numberOfLines={1}>
+              {by || ''}
+            </Text>
+          </View>
+        );
+      })()}
     </TouchableOpacity>
   );
   if (loading) {
@@ -370,14 +386,16 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   taskRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 12,
     paddingVertical: 18,
     marginHorizontal: spacing.xxl,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
+  },
+  taskRowTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
   },
   taskRowLeft: {
     flex: 1,
@@ -387,7 +405,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontFamily: fonts.displayBold,
     color: colors.ink,
-    marginBottom: 6,
+  },
+  taskMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 6,
   },
   taskMeta: {
     fontSize: 13,

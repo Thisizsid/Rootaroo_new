@@ -9,16 +9,31 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
+import { Audio } from 'expo-av';
+import { Ionicons } from '@expo/vector-icons';
+import { showAlert } from '../shared/services/themedAlert';
 import ThreadedReplyPreview from './ThreadedReplyPreview';
 import { chatApi } from '../shared/api/chat';
 import { colors, fonts, radius } from '../shared/theme';
 
-export default function ChatInputBar({ onSend, replyTo, onDismissReply }) {
+function formatTimer(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+export default function ChatInputBar({ onSend, onSendVoice, replyTo, onDismissReply }) {
   const insets = useSafeAreaInsets();
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const typingTimer = useRef(null);
   const typingStopped = useRef(true);
+
+  // Voice recording
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordSeconds, setRecordSeconds] = useState(0);
+  const recordingRef = useRef(null);
+  const recordTimerRef = useRef(null);
 
   // Debounced typing indicator
   const handleTextChange = useCallback(
@@ -42,6 +57,7 @@ export default function ChatInputBar({ onSend, replyTo, onDismissReply }) {
   useEffect(() => {
     return () => {
       if (typingTimer.current) clearTimeout(typingTimer.current);
+      if (recordTimerRef.current) clearInterval(recordTimerRef.current);
       if (!typingStopped.current) {
         chatApi.typing('stop').catch(() => { });
       }
@@ -62,6 +78,16 @@ export default function ChatInputBar({ onSend, replyTo, onDismissReply }) {
         typingStopped.current = true;
         chatApi.typing('stop').catch(() => { });
       }
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleSendLike = async () => {
+    if (sending) return;
+    setSending(true);
+    try {
+      await onSend('👍');
     } finally {
       setSending(false);
     }
@@ -95,6 +121,64 @@ export default function ChatInputBar({ onSend, replyTo, onDismissReply }) {
     }
   };
 
+  const startRecording = async () => {
+    try {
+      const { status } = await Audio.requestPermissionsAsync();
+      if (status !== 'granted') {
+        showAlert('Microphone access needed', 'Enable microphone access to record voice messages.');
+        return;
+      }
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY,
+      );
+      recordingRef.current = recording;
+      setRecordSeconds(0);
+      setIsRecording(true);
+      recordTimerRef.current = setInterval(() => {
+        setRecordSeconds((s) => s + 1);
+      }, 1000);
+    } catch {
+      showAlert('Recording failed', 'Could not start recording.');
+    }
+  };
+
+  const stopRecording = async ({ send }) => {
+    const recording = recordingRef.current;
+    if (!recording) return;
+    if (recordTimerRef.current) {
+      clearInterval(recordTimerRef.current);
+      recordTimerRef.current = null;
+    }
+    const duration = recordSeconds;
+    recordingRef.current = null;
+    setIsRecording(false);
+    setRecordSeconds(0);
+    try {
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
+      if (send && uri && duration > 0) {
+        setSending(true);
+        const uploaded = await chatApi.uploadVoice({
+          uri,
+          name: `voice_${Date.now()}.m4a`,
+          type: 'audio/m4a',
+          durationSeconds: duration,
+        });
+        if (uploaded?.url) {
+          await onSendVoice(uploaded.url, uploaded.durationSeconds ?? duration);
+        }
+      }
+    } catch {
+      showAlert('Voice message failed', 'Could not send the voice message.');
+    } finally {
+      setSending(false);
+    }
+  };
+
   const isDisabled = !text.trim() && !replyTo;
 
   // No KeyboardAvoidingView here on purpose: ChatScreen already wraps this bar
@@ -109,9 +193,33 @@ export default function ChatInputBar({ onSend, replyTo, onDismissReply }) {
             onDismiss={onDismissReply}
           />
         )}
+        {isRecording ? (
+          <View style={styles.container}>
+            <View style={styles.recordingDot} />
+            <Text style={styles.recordingTimer}>{formatTimer(recordSeconds)}</Text>
+            <Text style={styles.recordingHint}>Recording…</Text>
+            <TouchableOpacity
+              onPress={() => stopRecording({ send: false })}
+              style={styles.iconBtn}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="close" size={18} color={colors.textSecondary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => stopRecording({ send: true })}
+              style={[styles.sendBtn, styles.sendBtnActive]}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="arrow-up" size={18} color={colors.onAccent} />
+            </TouchableOpacity>
+          </View>
+        ) : (
         <View style={styles.container}>
-          <TouchableOpacity onPress={handlePickImage} style={styles.attachBtn} disabled={sending}>
-            <Text style={styles.attachIcon}>+</Text>
+          <TouchableOpacity onPress={handlePickImage} style={styles.iconBtn} disabled={sending}>
+            <Ionicons name="image-outline" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={startRecording} style={styles.iconBtn} disabled={sending}>
+            <Ionicons name="mic-outline" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
           <TextInput
             style={styles.input}
@@ -123,17 +231,27 @@ export default function ChatInputBar({ onSend, replyTo, onDismissReply }) {
             maxLength={5000}
             editable={!sending}
           />
-          <TouchableOpacity
-            onPress={handleSend}
-            style={[styles.sendBtn, isDisabled ? styles.sendBtnDisabled : styles.sendBtnActive]}
-            disabled={isDisabled || sending}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.sendIconText, isDisabled ? styles.sendIconDisabled : styles.sendIconActive]}>
-              {sending ? '...' : '↑'}
-            </Text>
-          </TouchableOpacity>
+          {isDisabled ? (
+            <TouchableOpacity
+              onPress={handleSendLike}
+              style={[styles.sendBtn, styles.sendBtnActive]}
+              disabled={sending}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="thumbs-up" size={18} color={colors.onAccent} />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              onPress={handleSend}
+              style={[styles.sendBtn, styles.sendBtnActive]}
+              disabled={sending}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="arrow-up" size={18} color={colors.onAccent} />
+            </TouchableOpacity>
+          )}
         </View>
+        )}
     </View>
   );
 }
@@ -143,6 +261,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.canvas,
     paddingHorizontal: 12,
     paddingVertical: 8,
+    marginBottom: 10,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
@@ -151,7 +270,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  attachBtn: {
+  iconBtn: {
     width: 38,
     height: 38,
     borderRadius: 19,
@@ -164,7 +283,6 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 1,
   },
-  attachIcon: { fontSize: 20, color: colors.textSecondary, fontWeight: '500', lineHeight: 22 },
   input: {
     flex: 1,
     backgroundColor: colors.surface,
@@ -194,14 +312,21 @@ const styles = StyleSheet.create({
   sendBtnDisabled: {
     backgroundColor: colors.surfaceDark,
   },
-  sendIconText: {
-    fontSize: 17,
-    fontWeight: '800',
+  recordingDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.danger,
   },
-  sendIconActive: {
-    color: colors.onAccent,
+  recordingTimer: {
+    fontSize: 15,
+    fontWeight: '700',
+    fontFamily: fonts.mono,
+    color: colors.ink,
   },
-  sendIconDisabled: {
+  recordingHint: {
+    flex: 1,
+    fontSize: 14,
     color: colors.textMuted,
   },
 });

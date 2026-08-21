@@ -9,7 +9,12 @@ export interface ConversationResponse {
   name: string | null;
   createdBy: string;
   participants: Array<{ id: string; displayName: string; avatarUrl: string | null }>;
-  lastMessage: { content: string | null; createdAt: string; senderName: string } | null;
+  lastMessage: {
+    content: string | null;
+    type: 'text' | 'image' | 'voice';
+    createdAt: string;
+    senderName: string;
+  } | null;
   createdAt: string;
 }
 
@@ -29,6 +34,9 @@ export interface CreateMessageBody {
   conversationId: string;
   content?: string;
   mediaIds?: string[];
+  mediaUrl?: string;
+  type?: 'text' | 'image' | 'voice';
+  durationSeconds?: number;
   replyToId?: string;
 }
 
@@ -66,6 +74,8 @@ export interface MessageResponse {
   sender: MessageSenderResponse;
   content: string | null;
   mediaUrl: string | null;
+  type: 'text' | 'image' | 'voice';
+  durationSeconds: number | null;
   replyToId: string | null;
   replyPreview: { id: string; content: string | null; senderName: string } | null;
   reactions: ReactionCountResponse[];

@@ -9,6 +9,7 @@ import {
   recordSettlement,
   getSettlements,
   getLedger,
+  getPairwiseBalances,
 } from '../service';
 import * as models from '../../../database/models';
 import { Op } from 'sequelize';
@@ -263,7 +264,7 @@ describe('Expense Service', () => {
       );
     });
 
-    it('should throw if a custom share is zero or negative', async () => {
+    it('should allow a custom share of exactly zero', async () => {
       const body = {
         ...validBody,
         splitType: 'custom' as const,
@@ -272,9 +273,34 @@ describe('Expense Service', () => {
           { userId: otherUserId, shareAmount: 0 },
         ],
       };
+      const expense = mockExpense({ splitType: 'custom' });
+      modelsMock.Expense.create.mockResolvedValue(expense);
+      modelsMock.ExpenseParticipant.bulkCreate.mockResolvedValue([]);
+      modelsMock.Expense.findByPk.mockResolvedValue(expense);
+
+      const result = await createExpense(userId, body);
+
+      expect(modelsMock.ExpenseParticipant.bulkCreate).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ userId, shareAmount: 3200 }),
+          expect.objectContaining({ userId: otherUserId, shareAmount: 0 }),
+        ])
+      );
+      expect(result.splitType).toBe('custom');
+    });
+
+    it('should throw if a custom share is negative', async () => {
+      const body = {
+        ...validBody,
+        splitType: 'custom' as const,
+        participants: [
+          { userId, shareAmount: 3300 },
+          { userId: otherUserId, shareAmount: -100 },
+        ],
+      };
 
       await expect(createExpense(userId, body)).rejects.toThrow(
-        'Each participant share must be a positive amount'
+        'Each participant share cannot be negative'
       );
     });
   });
@@ -650,6 +676,79 @@ describe('Expense Service', () => {
       expect(ledger).toHaveLength(1);
       expect(ledger[0].fromUserId).toBe(otherUserId);
       expect(ledger[0].amount).toBe(100);
+    });
+  });
+
+  // ── getPairwiseBalances ──
+  describe('getPairwiseBalances', () => {
+    it('should return each pairwise debt, unnetted across the target member\'s own aggregate position', async () => {
+      // Dhiraj (userId) pays $60, equal split 3-way with Aaditya (otherUserId) and Niraj (adminUserId)
+      const expense1 = mockExpenseWithParticipants([
+        { userId, shareAmount: 20 },
+        { userId: otherUserId, shareAmount: 20 },
+        { userId: adminUserId, shareAmount: 20 },
+      ]);
+      expense1.amount = 60;
+      expense1.paidBy = userId;
+
+      // Aaditya pays $50, custom split: Dhiraj=30, Niraj=15, Aaditya=5
+      const expense2 = mockExpenseWithParticipants([
+        { userId, shareAmount: 30 },
+        { userId: adminUserId, shareAmount: 15 },
+        { userId: otherUserId, shareAmount: 5 },
+      ]);
+      expense2.amount = 50;
+      expense2.paidBy = otherUserId;
+
+      modelsMock.HouseholdMember.findAll.mockResolvedValue([
+        memberWithUser(userId, 'Dhiraj'),
+        memberWithUser(otherUserId, 'Aaditya'),
+        memberWithUser(adminUserId, 'Niraj'),
+      ]);
+      modelsMock.Expense.findAll.mockResolvedValue([expense1, expense2]);
+
+      const balances = await getPairwiseBalances(userId, userId);
+
+      expect(balances).toHaveLength(2);
+
+      const vsAaditya = balances.find((b) => b.userId === otherUserId);
+      expect(vsAaditya).toBeDefined();
+      expect(vsAaditya!.amount).toBe(10); // Dhiraj owes Aaditya $10 net (owed $30, owed-to $20)
+
+      const vsNiraj = balances.find((b) => b.userId === adminUserId);
+      expect(vsNiraj).toBeDefined();
+      expect(vsNiraj!.amount).toBe(-20); // Niraj owes Dhiraj $20
+    });
+
+    it('should offset a pairwise balance by a recorded settlement between that pair', async () => {
+      const expense = mockExpenseWithParticipants([
+        { userId, shareAmount: 100 },
+        { userId: otherUserId, shareAmount: 100 },
+      ]);
+      expense.amount = 200;
+      expense.paidBy = userId;
+
+      modelsMock.HouseholdMember.findAll.mockResolvedValue([
+        memberWithUser(userId, 'Test User'),
+        memberWithUser(otherUserId, 'Other User'),
+      ]);
+      modelsMock.Expense.findAll.mockResolvedValue([expense]);
+      modelsMock.Settlement.findAll.mockResolvedValue([
+        mockSettlement({ fromUserId: otherUserId, toUserId: userId, amount: 100 }),
+      ]);
+
+      const balances = await getPairwiseBalances(userId, userId);
+
+      // otherUser fully settled their $100 debt to userId, so no outstanding pairwise balance
+      expect(balances).toHaveLength(0);
+    });
+
+    it('should throw NotFoundError when targetUserId is not a household member', async () => {
+      modelsMock.HouseholdMember.findAll.mockResolvedValue([
+        memberWithUser(userId, 'Test User'),
+      ]);
+
+      await expect(getPairwiseBalances(userId, otherUserId)).rejects.toThrow();
     });
   });
 });

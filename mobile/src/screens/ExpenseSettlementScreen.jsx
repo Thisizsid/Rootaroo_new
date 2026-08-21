@@ -7,8 +7,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StatusBar,
-  SafeAreaView,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { showAlert } from '../shared/services/themedAlert';
 import { expenseApi } from '../shared/api/expense';
 import { colors, radius, withAlpha } from '../shared/theme';
@@ -37,6 +37,7 @@ function formatTime(dateStr) {
   });
 }
 export default function ExpenseSettlementScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const [settlements, setSettlements] = useState([]);
   const [cursor, setCursor] = useState(null);
   const [hasMore, setHasMore] = useState(true);
@@ -134,14 +135,14 @@ export default function ExpenseSettlementScreen({ navigation }) {
   }, [loadingMore]);
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <StatusBar barStyle="light-content" backgroundColor={colors.surface} />
         <ActivityIndicator size="large" color={colors.legacyGold} style={styles.loading} />
-      </SafeAreaView>
+      </View>
     );
   }
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="light-content" backgroundColor={colors.surface} />
 
       <View style={styles.header}>
@@ -167,7 +168,7 @@ export default function ExpenseSettlementScreen({ navigation }) {
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 const styles = StyleSheet.create({
@@ -206,7 +207,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: colors.legacyNavySoft,
+    color: colors.ink,
   },
   countText: {
     fontSize: 13,
@@ -257,7 +258,7 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 12,
     fontWeight: '600',
-    color: colors.legacyNavySoft,
+    color: colors.ink,
   },
   arrow: {
     fontSize: 14,
@@ -293,7 +294,7 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: colors.legacyNavySoft,
+    color: colors.ink,
     marginBottom: 6,
   },
   emptySubtitle: {

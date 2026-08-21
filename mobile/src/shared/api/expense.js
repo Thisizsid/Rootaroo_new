@@ -44,6 +44,11 @@ export const expenseApi = {
       .get('/expenses/ledger')
       .then((r) => r.data.data),
 
+  getPairwiseBalances: (userId) =>
+    apiClient
+      .get(`/expenses/pairwise/${userId}`)
+      .then((r) => r.data.data),
+
   recordSettlement: (data) =>
     apiClient
       .post('/expenses/settle', data)

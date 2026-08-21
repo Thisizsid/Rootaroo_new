@@ -75,4 +75,14 @@ export const chatApi = {
     });
     return res.data.data;
   },
+
+  uploadVoice: async ({ uri, name, type, durationSeconds }) => {
+    const formData = new FormData();
+    formData.append('file', { uri, name: name || `voice_${Date.now()}.m4a`, type: type || 'audio/m4a' });
+    formData.append('durationSeconds', String(Math.round(durationSeconds || 0)));
+    const res = await apiClient.post('/chat/media/voice', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data.data;
+  },
 };

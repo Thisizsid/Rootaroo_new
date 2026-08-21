@@ -11,21 +11,17 @@ import {
   TextInput,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { showAlert } from '../shared/services/themedAlert';
 import { expenseApi } from '../shared/api/expense';
 import { householdApi } from '../shared/api/household';
 import { useAuthStore } from '../shared/store/authStore';
-import { colors, radius, withAlpha } from '../shared/theme';
+import { colors, fonts, withAlpha } from '../shared/theme';
 import Avatar from '../components/Avatar';
 import { KeyboardAvoider } from '../shared/components/KeyboardAware';
-function getInitials(name) {
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-}
+
+const GOLD = colors.goldGlow;
+
 function formatCurrency(amount) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -34,6 +30,7 @@ function formatCurrency(amount) {
     maximumFractionDigits: 0,
   }).format(amount);
 }
+
 export default function ExpenseLedgerScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
@@ -121,45 +118,45 @@ export default function ExpenseLedgerScreen({ navigation }) {
       const fromMember = membersById[item.fromUserId];
       const toMember = membersById[item.toUserId];
       return (
-      <View style={styles.entryCard}>
-        <View style={styles.entryRow}>
-          <View style={styles.userChip}>
+        <View style={styles.row}>
+          <View style={styles.userBlock}>
             <Avatar
               url={fromMember?.avatarUrl}
               emoji={fromMember?.avatarEmoji}
               name={item.fromUserName}
               id={item.fromUserId}
-              size={18}
+              size={32}
             />
-            <Text style={styles.userName}>{item.fromUserName}</Text>
+            <Text style={styles.userName} numberOfLines={1}>
+              {item.fromUserName}
+            </Text>
           </View>
-          <Text style={styles.arrowText}>→</Text>
-          <View style={styles.userChip}>
+          <Ionicons name="arrow-forward" size={16} color={colors.textOnDarkMuted} />
+          <View style={styles.userBlock}>
             <Avatar
               url={toMember?.avatarUrl}
               emoji={toMember?.avatarEmoji}
               name={item.toUserName}
               id={item.toUserId}
-              size={18}
+              size={32}
             />
-            <Text style={styles.userName}>{item.toUserName}</Text>
+            <Text style={styles.userName} numberOfLines={1}>
+              {item.toUserName}
+            </Text>
+          </View>
+          <View style={styles.spacer} />
+          <View style={styles.rowRight}>
+            <Text style={styles.amountText}>{formatCurrency(item.amount)}</Text>
+            <TouchableOpacity onPress={() => handleQuickSettle(item)} activeOpacity={0.7}>
+              <Text style={styles.settleLink}>Settle ›</Text>
+            </TouchableOpacity>
           </View>
         </View>
-        <View style={styles.entryFooter}>
-          <Text style={styles.amountText}>{formatCurrency(item.amount)}</Text>
-          <TouchableOpacity
-            style={styles.settleButton}
-            onPress={() => handleQuickSettle(item)}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.settleButtonText}>Settle</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
       );
     },
     [handleQuickSettle, membersById],
   );
+  const renderSeparator = useCallback(() => <View style={styles.separator} />, []);
   const renderEmpty = useCallback(
     () => (
       <View style={styles.empty}>
@@ -173,14 +170,14 @@ export default function ExpenseLedgerScreen({ navigation }) {
   if (loading) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <StatusBar barStyle="light-content" backgroundColor={colors.surface} />
-        <ActivityIndicator size="large" color={colors.legacyGold} style={styles.loading} />
+        <StatusBar barStyle="light-content" backgroundColor={colors.navyDeep} />
+        <ActivityIndicator size="large" color={GOLD} style={styles.loading} />
       </View>
     );
   }
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.surface} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.navyDeep} />
 
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -189,11 +186,7 @@ export default function ExpenseLedgerScreen({ navigation }) {
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Ledger</Text>
         </View>
-        <TouchableOpacity
-          style={styles.customSettleButton}
-          onPress={handleOpenCustomSettle}
-          activeOpacity={0.8}
-        >
+        <TouchableOpacity onPress={handleOpenCustomSettle} activeOpacity={0.7}>
           <Text style={styles.customSettleText}>+ Settle</Text>
         </TouchableOpacity>
       </View>
@@ -219,6 +212,7 @@ export default function ExpenseLedgerScreen({ navigation }) {
         refreshing={refreshing}
         onRefresh={() => loadLedger(true)}
         ListEmptyComponent={renderEmpty}
+        ItemSeparatorComponent={renderSeparator}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
       />
@@ -253,22 +247,26 @@ export default function ExpenseLedgerScreen({ navigation }) {
                       member?.fromUserId === memberId
                         ? member.fromUserName
                         : member?.toUserName || 'Unknown';
+                    const active = settleFrom === memberId;
                     return (
                       <TouchableOpacity
                         key={memberId}
-                        style={[
-                          styles.userOption,
-                          settleFrom === memberId && styles.userOptionActive,
-                        ]}
+                        style={[styles.memberOption, active && styles.memberOptionActive]}
                         onPress={() => setSettleFrom(memberId)}
+                        activeOpacity={0.8}
                       >
+                        <Avatar
+                          url={membersById[memberId]?.avatarUrl}
+                          emoji={membersById[memberId]?.avatarEmoji}
+                          name={name}
+                          id={memberId}
+                          size={28}
+                        />
                         <Text
-                          style={[
-                            styles.userOptionText,
-                            settleFrom === memberId && styles.userOptionTextActive,
-                          ]}
+                          style={[styles.memberOptionText, active && styles.memberOptionTextActive]}
+                          numberOfLines={1}
                         >
-                          {getInitials(name)}
+                          {name}
                         </Text>
                       </TouchableOpacity>
                     );
@@ -287,22 +285,26 @@ export default function ExpenseLedgerScreen({ navigation }) {
                       member?.fromUserId === memberId
                         ? member.fromUserName
                         : member?.toUserName || 'Unknown';
+                    const active = settleTo === memberId;
                     return (
                       <TouchableOpacity
                         key={memberId}
-                        style={[
-                          styles.userOption,
-                          settleTo === memberId && styles.userOptionActive,
-                        ]}
+                        style={[styles.memberOption, active && styles.memberOptionActive]}
                         onPress={() => setSettleTo(memberId)}
+                        activeOpacity={0.8}
                       >
+                        <Avatar
+                          url={membersById[memberId]?.avatarUrl}
+                          emoji={membersById[memberId]?.avatarEmoji}
+                          name={name}
+                          id={memberId}
+                          size={28}
+                        />
                         <Text
-                          style={[
-                            styles.userOptionText,
-                            settleTo === memberId && styles.userOptionTextActive,
-                          ]}
+                          style={[styles.memberOptionText, active && styles.memberOptionTextActive]}
+                          numberOfLines={1}
                         >
-                          {getInitials(name)}
+                          {name}
                         </Text>
                       </TouchableOpacity>
                     );
@@ -312,7 +314,8 @@ export default function ExpenseLedgerScreen({ navigation }) {
 
               <TextInput
                 style={styles.input}
-                placeholder="Amount (₹)"
+                placeholder="Amount ($)"
+                placeholderTextColor={colors.textOnDarkMuted}
                 value={settleAmount}
                 onChangeText={setSettleAmount}
                 keyboardType="numeric"
@@ -337,7 +340,7 @@ export default function ExpenseLedgerScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.navyDeep,
   },
   loading: {
     flex: 1,
@@ -351,7 +354,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: withAlpha(colors.legacyNavy, 0.08),
+    borderBottomColor: withAlpha(colors.white, 0.08),
   },
   headerLeft: {
     flex: 1,
@@ -365,33 +368,27 @@ const styles = StyleSheet.create({
   backText: {
     fontSize: 15,
     fontWeight: '600',
-    color: colors.legacyGold,
+    color: GOLD,
   },
   headerTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: colors.legacyNavySoft,
-  },
-  customSettleButton: {
-    backgroundColor: withAlpha(colors.legacyGold, 0.08),
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
+    color: colors.ink,
   },
   customSettleText: {
-    color: colors.legacyGold,
+    color: GOLD,
     fontWeight: '600',
-    fontSize: 13,
+    fontSize: 15,
   },
   errorBanner: {
-    backgroundColor: withAlpha(colors.dangerBright, 0.08),
+    backgroundColor: colors.dangerSoft,
     padding: 12,
     marginHorizontal: 16,
     borderRadius: 8,
     marginTop: 8,
   },
   errorText: {
-    color: colors.dangerBright,
+    color: colors.dangerOnDark,
     fontSize: 13,
     textAlign: 'center',
     fontWeight: '500',
@@ -403,79 +400,51 @@ const styles = StyleSheet.create({
   summaryText: {
     fontSize: 12,
     fontWeight: '700',
-    color: withAlpha(colors.legacyNavy, 0.35),
+    color: colors.textOnDarkLabel,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   listContent: {
-    padding: 16,
+    paddingHorizontal: 16,
     paddingBottom: 24,
   },
-  entryCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.card,
-    padding: 14,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: withAlpha(colors.legacyNavy, 0.06),
-    shadowColor: colors.black,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  entryRow: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    marginBottom: 12,
+    gap: 10,
+    paddingVertical: 14,
   },
-  userChip: {
-    flexDirection: 'row',
+  separator: {
+    height: 1,
+    backgroundColor: withAlpha(colors.white, 0.08),
+  },
+  userBlock: {
     alignItems: 'center',
-    backgroundColor: withAlpha(colors.legacyNavy, 0.04),
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
-    gap: 6,
+    gap: 4,
   },
   userName: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '600',
-    color: colors.legacyNavySoft,
+    color: colors.ink,
+    maxWidth: 60,
   },
-  arrowText: {
-    fontSize: 18,
-    color: withAlpha(colors.legacyNavy, 0.25),
-    fontWeight: '300',
+  spacer: {
+    flex: 1,
   },
-  entryFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: withAlpha(colors.legacyNavy, 0.05),
+  rowRight: {
+    alignItems: 'flex-end',
+    gap: 3,
   },
   amountText: {
     fontSize: 18,
     fontWeight: '800',
-    color: colors.legacyGold,
+    fontFamily: fonts.mono,
+    color: GOLD,
   },
-  settleButton: {
-    backgroundColor: colors.legacyGold,
-    paddingHorizontal: 18,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  settleButtonText: {
-    color: colors.onAccent,
-    fontSize: 13,
-    fontWeight: '700',
+  settleLink: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: GOLD,
   },
   empty: {
     flex: 1,
@@ -491,24 +460,27 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: colors.legacyNavySoft,
+    color: colors.ink,
     marginBottom: 6,
   },
   emptySubtitle: {
     fontSize: 14,
-    color: withAlpha(colors.legacyNavy, 0.5),
+    color: colors.textOnDarkMuted,
     textAlign: 'center',
   },
   // Settlement modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: withAlpha(colors.black, 0.4),
+    backgroundColor: withAlpha(colors.black, 0.5),
     justifyContent: 'flex-end',
   },
   modalSheet: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.navyDeep,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
+    borderWidth: 1,
+    borderColor: withAlpha(colors.white, 0.08),
+    borderBottomWidth: 0,
     paddingBottom: 32,
   },
   modalHeader: {
@@ -518,16 +490,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: withAlpha(colors.legacyNavy, 0.08),
+    borderBottomColor: withAlpha(colors.white, 0.08),
   },
   modalTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: colors.legacyNavySoft,
+    color: colors.ink,
   },
   modalClose: {
     fontSize: 22,
-    color: withAlpha(colors.legacyNavy, 0.35),
+    color: colors.textOnDarkMuted,
   },
   modalContent: {
     padding: 16,
@@ -535,7 +507,7 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: withAlpha(colors.legacyNavy, 0.35),
+    color: colors.textOnDarkLabel,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 8,
@@ -546,54 +518,51 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
   },
-  userOption: {
-    backgroundColor: colors.canvasCool,
+  memberOption: {
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: withAlpha(colors.white, 0.045),
     borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
     borderWidth: 1,
-    borderColor: withAlpha(colors.legacyNavy, 0.08),
+    borderColor: withAlpha(colors.white, 0.08),
+    width: 72,
   },
-  userOptionActive: {
-    backgroundColor: withAlpha(colors.legacyGold, 0.12),
-    borderColor: colors.legacyGold,
+  memberOptionActive: {
+    borderColor: GOLD,
   },
-  userOptionText: {
-    fontSize: 13,
+  memberOptionText: {
+    fontSize: 11,
     fontWeight: '600',
-    color: withAlpha(colors.legacyNavy, 0.5),
+    color: colors.textOnDarkMuted,
   },
-  userOptionTextActive: {
-    color: colors.legacyGold,
+  memberOptionTextActive: {
+    color: GOLD,
   },
   input: {
-    backgroundColor: colors.canvasCool,
+    backgroundColor: withAlpha(colors.white, 0.045),
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
-    color: colors.legacyNavySoft,
+    color: colors.ink,
     marginTop: 12,
     borderWidth: 1,
-    borderColor: withAlpha(colors.legacyNavy, 0.08),
+    borderColor: withAlpha(colors.white, 0.08),
   },
   saveButton: {
-    backgroundColor: colors.legacyGold,
+    backgroundColor: GOLD,
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
     marginTop: 16,
-    shadowColor: colors.legacyGold,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.28,
-    shadowRadius: 20,
-    elevation: 6,
   },
   saveButtonDisabled: {
     opacity: 0.6,
   },
   saveButtonText: {
-    color: colors.onAccent,
+    color: colors.navyDeep,
     fontSize: 15,
     fontWeight: '700',
   },

@@ -167,6 +167,29 @@ describe('Chat Service', () => {
 
       await expect(sendMessage(userId, { conversationId, content: 'Hi' })).rejects.toThrow(ForbiddenError);
     });
+
+    it('should create a voice message from a direct mediaUrl', async () => {
+      (ChatMessage.create as jest.Mock).mockResolvedValue(
+        mockMessage({ mediaUrl: 'https://cloudinary.com/voice.m4a', type: 'voice', durationSeconds: 8 }),
+      );
+      (ChatMessage.findByPk as jest.Mock).mockResolvedValue(
+        mockMessage({ mediaUrl: 'https://cloudinary.com/voice.m4a', type: 'voice', durationSeconds: 8 }),
+      );
+
+      const result = await sendMessage(userId, {
+        conversationId,
+        mediaUrl: 'https://cloudinary.com/voice.m4a',
+        type: 'voice',
+        durationSeconds: 8,
+      });
+
+      expect(result.mediaUrl).toBe('https://cloudinary.com/voice.m4a');
+      expect(result.type).toBe('voice');
+      expect(result.durationSeconds).toBe(8);
+      expect(ChatMessage.create).toHaveBeenCalledWith(
+        expect.objectContaining({ mediaUrl: 'https://cloudinary.com/voice.m4a', type: 'voice', durationSeconds: 8 }),
+      );
+    });
   });
 
   // ── listMessages ──

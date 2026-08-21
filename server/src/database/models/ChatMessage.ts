@@ -8,6 +8,8 @@ class ChatMessage extends Model {
   declare senderId: string;
   declare content: string | null;
   declare mediaUrl: string | null;
+  declare type: 'text' | 'image' | 'voice';
+  declare durationSeconds: number | null;
   declare replyToId: string | null;
   declare editedAt: Date | null;
   declare createdAt: CreationOptional<Date>;
@@ -45,6 +47,16 @@ ChatMessage.init(
       type: DataTypes.STRING(500),
       allowNull: true,
       field: 'media_url',
+    },
+    type: {
+      type: DataTypes.ENUM('text', 'image', 'voice'),
+      allowNull: false,
+      defaultValue: 'text',
+    },
+    durationSeconds: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: 'duration_seconds',
     },
     replyToId: {
       type: DataTypes.UUID,

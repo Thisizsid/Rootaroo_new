@@ -261,19 +261,12 @@ export default function ExpenseListScreen({ navigation }) {
 
         {/* ── Widgets ── */}
         <View style={styles.widgetRow}>
-          <View style={styles.widget}>
+          <View style={[styles.widget, styles.widgetNarrow]}>
             <Text style={styles.widgetLabel}>THIS MONTH</Text>
             <Text style={styles.widgetValue}>{formatMoneyCompact(summary?.totalAmount ?? 0)}</Text>
           </View>
-          <View style={styles.widget}>
-            <Text style={styles.widgetLabel}>TOP CATEGORY</Text>
-            <Text style={styles.widgetValue}>{topCategory?.name ?? '—'}</Text>
-            {topCategory ? (
-              <Text style={styles.widgetSub}>{formatMoneyCompact(topCategory.total)}</Text>
-            ) : null}
-          </View>
           <TouchableOpacity
-            style={styles.widget}
+            style={[styles.widget, styles.widgetWide]}
             onPress={() => navigation.navigate('ExpenseSettlements')}
             activeOpacity={0.7}
           >
@@ -302,7 +295,19 @@ export default function ExpenseListScreen({ navigation }) {
           const pos = nb.netBalance > 0;
           const neg = nb.netBalance < 0;
           return (
-            <View key={nb.userId} style={styles.peopleRow}>
+            <TouchableOpacity
+              key={nb.userId}
+              style={styles.peopleRow}
+              activeOpacity={0.7}
+              onPress={() =>
+                navigation.navigate('MemberBalanceDetail', {
+                  userId: nb.userId,
+                  displayName: nb.displayName,
+                  avatarUrl: nb.avatarUrl,
+                  avatarEmoji: nb.avatarEmoji,
+                })
+              }
+            >
               <Avatar
                 url={nb.avatarUrl}
                 emoji={nb.avatarEmoji}
@@ -327,7 +332,7 @@ export default function ExpenseListScreen({ navigation }) {
                   {neg ? 'owes' : pos ? 'gets back' : 'settled'}
                 </Text>
               </View>
-            </View>
+            </TouchableOpacity>
           );
         })}
 
@@ -520,6 +525,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.04,
     shadowRadius: 2,
     elevation: 1,
+  },
+  widgetNarrow: {
+    flex: 1,
+  },
+  widgetWide: {
+    flex: 2,
   },
   widgetLabel: {
     fontSize: 10,
