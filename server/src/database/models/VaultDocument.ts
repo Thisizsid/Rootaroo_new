@@ -10,8 +10,7 @@ class VaultDocument extends Model {
   declare sizeBytes: number;
   declare encryptedKey: string;
   declare iv: string;
-  declare cloudinaryPublicId: string;
-  declare cloudinarySecureUrl: string;
+  declare s3Key: string;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 }
@@ -56,15 +55,10 @@ VaultDocument.init(
       type: DataTypes.STRING(64),
       allowNull: false,
     },
-    cloudinaryPublicId: {
+    s3Key: {
       type: DataTypes.STRING(500),
       allowNull: false,
-      field: 'cloudinary_public_id',
-    },
-    cloudinarySecureUrl: {
-      type: DataTypes.STRING(500),
-      allowNull: false,
-      field: 'cloudinary_secure_url',
+      field: 's3_key',
     },
     createdAt: {
       type: DataTypes.DATE,

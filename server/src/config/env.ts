@@ -38,25 +38,28 @@ export const env = {
     callbackUrl: process.env.GOOGLE_CALLBACK_URL || '',
   },
 
-  auth0: {
-    domain: process.env.AUTH0_DOMAIN || '',
-    smsClientId: process.env.AUTH0_SMS_CLIENT_ID || '',
-    smsClientSecret: process.env.AUTH0_SMS_CLIENT_SECRET || '',
+  apple: {
+    bundleId: process.env.APPLE_BUNDLE_ID || 'com.rootaroo.app',
+  },
+
+  sns: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+    region: process.env.AWS_REGION || 'us-east-1',
   },
 
   s3: {
-    endpoint: process.env.S3_ENDPOINT || 'http://localhost:9000',
+    // No fallback default here — an empty/unset S3_ENDPOINT must mean "use
+    // real AWS S3" (config/s3.ts treats a falsy endpoint as "let the SDK
+    // resolve it"), not silently redirect to a local MinIO instance that
+    // won't exist in production. Local dev sets S3_ENDPOINT explicitly in
+    // its own .env instead of relying on a code-level default.
+    endpoint: process.env.S3_ENDPOINT || '',
     accessKeyId: process.env.S3_ACCESS_KEY_ID || 'minioadmin',
     secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || 'minioadmin',
     bucket: process.env.S3_BUCKET || 'rootaroo-dev',
     region: process.env.S3_REGION || 'us-east-1',
     useSsl: process.env.S3_USE_SSL === 'true',
-  },
-
-  cloudinary: {
-    cloudName: process.env.CLOUDINARY_CLOUD_NAME || '',
-    apiKey: process.env.CLOUDINARY_API_KEY || '',
-    apiSecret: process.env.CLOUDINARY_API_SECRET || '',
   },
 
   smtp: {

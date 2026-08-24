@@ -67,16 +67,18 @@ export default function SignUpScreen({ navigation }) {
     setLoading(true);
     try {
       const emailTrimmed = email.trim();
+      const phoneTrimmed = phone.trim();
       const resp = await authApi.register({
         email: emailTrimmed,
         password,
+        phone: phoneTrimmed || undefined,
         // Provisional — overwritten on Name step
         displayName: emailTrimmed.split('@')[0] || 'Member',
       });
       storePendingAuthResponse(resp);
       // Navigate first so progress store updates cannot interrupt the transition
       navigation.navigate('SignupStepName');
-      await startEmailSignupProgress(emailTrimmed);
+      await startEmailSignupProgress(emailTrimmed, phoneTrimmed);
     } catch (e) {
       const msg = e?.response?.data?.error || e?.message || 'Registration failed.';
       showAlert('Registration Error', msg);

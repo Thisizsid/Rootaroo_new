@@ -31,6 +31,7 @@
       ]
     },
     "plugins": [
+      "expo-apple-authentication",
       "expo-secure-store",
       "expo-image-picker",
       "expo-notifications",
@@ -66,7 +67,13 @@
           }
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.247745926282-52752edgjmo5h2ao9fut4b0ddjr92hdr"
+        }
+      ]
     ]
   }
 }

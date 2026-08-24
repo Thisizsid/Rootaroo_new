@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../../shared/middleware/auth';
 import * as authService from './service';
-import { uploadBuffer } from '../../shared/utils/cloudinary';
+import { uploadBuffer } from '../../shared/utils/s3';
 import type { AuthResponse, AuthTokens } from './types';
 
 export async function register(req: Request, res: Response, next: NextFunction) {
@@ -55,6 +55,13 @@ export async function googleAuth(req: Request, res: Response, next: NextFunction
   } catch (e) { next(e); }
 }
 
+export async function appleAuth(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await authService.appleAuth(req.body);
+    res.status(200).json({ success: true, data: result });
+  } catch (e) { next(e); }
+}
+
 export async function sendVerification(req: Request, res: Response, next: NextFunction) {
   try {
     const auth = req as AuthenticatedRequest;
@@ -82,6 +89,13 @@ export async function resetPassword(req: Request, res: Response, next: NextFunct
   try {
     await authService.resetPassword(req.body);
     res.status(200).json({ success: true, data: { message: 'Password reset successfully' } });
+  } catch (e) { next(e); }
+}
+
+export async function checkResetCode(req: Request, res: Response, next: NextFunction) {
+  try {
+    await authService.checkResetCode(req.body.code);
+    res.status(200).json({ success: true, data: { valid: true } });
   } catch (e) { next(e); }
 }
 
@@ -117,13 +131,9 @@ export async function uploadAvatarCtrl(req: Request, res: Response, next: NextFu
       res.status(400).json({ success: false, error: 'No file uploaded.' });
       return;
     }
-    const result = await uploadBuffer(file.buffer, {
-      folder: 'rootaru/avatars',
-      resource_type: 'image',
-    });
-    const avatarUrl = result.secure_url;
-    const user = await authService.updateProfile(auth.user!.userId, { avatarUrl });
-    res.status(200).json({ success: true, data: { avatarUrl, user } });
+    const result = await uploadBuffer(file.buffer, 'avatars', file.mimetype, file.originalname.split('.').pop());
+    const user = await authService.updateProfile(auth.user!.userId, { avatarUrl: result.key });
+    res.status(200).json({ success: true, data: { avatarUrl: user.avatarUrl, user } });
   } catch (e) { next(e); }
 }
 
@@ -145,8 +155,8 @@ export async function registerPhone(req: Request, res: Response, next: NextFunct
 export async function sendPhoneOtp(req: Request, res: Response, next: NextFunction) {
   try {
     const auth = req as AuthenticatedRequest;
-    await authService.sendPhoneOtp(req.body, auth.user?.userId);
-    res.status(200).json({ success: true, data: { message: 'OTP sent' } });
+    const code = await authService.sendPhoneOtp(req.body, auth.user?.userId);
+    res.status(200).json({ success: true, data: { message: 'OTP sent', code } });
   } catch (e) { next(e); }
 }
 

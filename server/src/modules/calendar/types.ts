@@ -60,7 +60,7 @@ export interface ListEventsQuery {
 
 export interface GoogleCalendarConnectBody {
   code: string;
-  redirectUri: string;
+  redirectUri?: string;
 }
 
 export interface GoogleCalendarStatusResponse {

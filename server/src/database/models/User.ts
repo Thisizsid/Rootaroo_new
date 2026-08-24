@@ -18,6 +18,7 @@ class User extends Model {
   declare role: 'admin' | 'member' | 'child';
   declare isVerified: boolean;
   declare googleId: string | null;
+  declare appleId: string | null;
   declare lastLoginAt: Date | null;
   declare scheduledDeletionAt: Date | null;
   declare createdAt: CreationOptional<Date>;
@@ -106,6 +107,12 @@ User.init(
       allowNull: true,
       unique: true,
       field: 'google_id',
+    },
+    appleId: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      unique: true,
+      field: 'apple_id',
     },
     lastLoginAt: {
       type: DataTypes.DATE,

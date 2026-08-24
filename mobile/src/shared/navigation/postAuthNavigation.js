@@ -65,12 +65,12 @@ export async function resolvePostAuthNavigation(
   return 'wizard';
 }
 
-export async function startEmailSignupProgress(email) {
+export async function startEmailSignupProgress(email, phone) {
   const progress = {
     authMethod: 'email',
     step: 'name',
     email,
-    draft: {},
+    draft: phone ? { phone: phone.replace(/\D/g, '') } : {},
     setupComplete: false,
   };
   await saveSignupProgress(progress);

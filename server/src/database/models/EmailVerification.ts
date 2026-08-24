@@ -25,7 +25,6 @@ EmailVerification.init(
     token: {
       type: DataTypes.STRING(255),
       allowNull: false,
-      unique: true,
     },
     expiresAt: {
       type: DataTypes.DATE,

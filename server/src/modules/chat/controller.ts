@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import * as chatService from './service';
-import { uploadBuffer } from '../../shared/utils/cloudinary';
+import { uploadBuffer } from '../../shared/utils/s3';
 
 function getUserId(req: Request): string {
   return (req as any).user!.userId;
@@ -22,14 +22,14 @@ export async function uploadVoiceCtrl(
       return;
     }
     const durationSeconds = req.body.durationSeconds ? Number(req.body.durationSeconds) : null;
-    const result = await uploadBuffer(file.buffer, {
-      folder: 'rootaru/chat/voice',
-      public_id: file.originalname.replace(/\.[^.]+$/, ''),
-      resource_type: 'video',
-    });
+    const result = await uploadBuffer(file.buffer, 'chat/voice', file.mimetype, file.originalname.split('.').pop());
+    // `url` here is the S3 key, not a real URL — the mobile client sends it
+    // straight back as `mediaUrl` on the message body (no preview render in
+    // between), and the message-list response resolves it to a signed URL
+    // on read via chat/service.ts.
     res.status(201).json({
       success: true,
-      data: { url: result.secure_url, durationSeconds },
+      data: { url: result.key, durationSeconds },
     });
   } catch (err) {
     next(err);

@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { showAlert } from '../shared/services/themedAlert';
 import * as ImagePicker from 'expo-image-picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../shared/store/authStore';
 import { authApi } from '../shared/api/auth';
@@ -40,6 +41,12 @@ function getInitials(name) {
     .toUpperCase()
     .slice(0, 2);
 }
+function formatDateLabel(iso) {
+  if (!iso) return 'Add your birthday';
+  const d = new Date(iso + 'T12:00:00');
+  if (Number.isNaN(d.getTime())) return 'Add your birthday';
+  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+}
 export default function EditProfileScreen({ navigation }) {
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
@@ -48,6 +55,9 @@ export default function EditProfileScreen({ navigation }) {
   const dockHeight = useTabBarDockHeight();
   const [name, setName] = useState(user?.name ?? '');
   const [phone, setPhone] = useState(user?.phone ?? '');
+  const [dateOfBirth, setDateOfBirth] = useState(user?.dateOfBirth ?? null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [homeAddress, setHomeAddress] = useState(user?.homeAddress ?? '');
   const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl ?? null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -187,6 +197,9 @@ export default function EditProfileScreen({ navigation }) {
       const updated = await authApi.updateProfile({
         displayName: name.trim(),
         avatarUrl: avatarUrl ?? undefined,
+        phone: phone.trim() || null,
+        dateOfBirth: dateOfBirth || null,
+        homeAddress: homeAddress.trim() || null,
       });
       if (user) {
         setUser({
@@ -194,16 +207,18 @@ export default function EditProfileScreen({ navigation }) {
           name: updated.displayName,
           avatarEmoji: updated.avatarEmoji,
           avatarUrl: updated.avatarUrl,
-          phone: phone.trim() || null,
+          phone: updated.phone,
+          dateOfBirth: updated.dateOfBirth,
+          homeAddress: updated.homeAddress,
         });
       }
       navigation.goBack();
     } catch (e) {
-      showAlert('Error', e?.message || 'Failed to save profile');
+      showAlert('Error', e?.response?.data?.error || e?.message || 'Failed to save profile');
     } finally {
       setSaving(false);
     }
-  }, [name, phone, avatarUrl, user, setUser, navigation]);
+  }, [name, phone, dateOfBirth, homeAddress, avatarUrl, user, setUser, navigation]);
   const avatarSrc = avatarUrl
     ? {
         uri: avatarUrl.startsWith('http') ? avatarUrl : `${getServerBase()}${avatarUrl}`,
@@ -373,6 +388,29 @@ export default function EditProfileScreen({ navigation }) {
           maxLength={20}
         />
 
+        {/* ── Date of birth ── */}
+        <Text style={styles.fieldLabel}>Date of birth</Text>
+        <TouchableOpacity
+          style={styles.input}
+          onPress={() => setShowDatePicker(true)}
+          activeOpacity={0.7}
+        >
+          <Text style={dateOfBirth ? styles.inputValue : styles.inputPlaceholder}>
+            {formatDateLabel(dateOfBirth)}
+          </Text>
+        </TouchableOpacity>
+
+        {/* ── Home address ── */}
+        <Text style={styles.fieldLabel}>Home address</Text>
+        <TextInput
+          style={styles.input}
+          value={homeAddress}
+          onChangeText={setHomeAddress}
+          placeholder="482 Maple Street, Austin, TX 78701"
+          placeholderTextColor={colors.textMuted}
+          maxLength={500}
+        />
+
         {/* ── Email (read-only) ── */}
         <Text style={styles.fieldLabel}>Email</Text>
         <TextInput
@@ -412,6 +450,18 @@ export default function EditProfileScreen({ navigation }) {
           <Text style={styles.deleteRowText}>Delete account</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {showDatePicker && (
+        <DateTimePicker
+          value={dateOfBirth ? new Date(dateOfBirth + 'T12:00:00') : new Date(1989, 5, 11)}
+          mode="date"
+          maximumDate={new Date()}
+          onChange={(_, newDate) => {
+            setShowDatePicker(false);
+            if (newDate) setDateOfBirth(newDate.toISOString().split('T')[0]);
+          }}
+        />
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -543,6 +593,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceDark,
   },
   inputReadOnlyText: {
+    color: colors.textMuted,
+  },
+  inputValue: {
+    fontSize: 14,
+    fontFamily: fonts.body,
+    color: colors.ink,
+  },
+  inputPlaceholder: {
+    fontSize: 14,
+    fontFamily: fonts.body,
     color: colors.textMuted,
   },
   // My posts (Facebook profile-style feed)

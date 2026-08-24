@@ -67,12 +67,20 @@ export default function ForgotPasswordScreen({ navigation }) {
       }
     }
   };
-  const handleVerifyCode = () => {
+  const handleVerifyCode = async () => {
     if (otp.join('').length !== OTP_LENGTH) {
       showAlert('Error', 'Please enter the full 6-digit code.');
       return;
     }
-    setStep('reset');
+    setLoading(true);
+    try {
+      await authApi.checkResetCode(otp.join(''));
+      setStep('reset');
+    } catch (e) {
+      showAlert('Error', e?.response?.data?.error || e?.message || 'Invalid or expired code.');
+    } finally {
+      setLoading(false);
+    }
   };
   const handleReset = async () => {
     if (password.length < 8) {
@@ -103,7 +111,7 @@ export default function ForgotPasswordScreen({ navigation }) {
   const stepMeta = {
     email: {
       heading: 'Reset your password',
-      subtitle: "We'll email you a link to get back in.",
+      subtitle: "We'll email you a code to get back in.",
     },
     code: {
       heading: 'Check your inbox',
@@ -216,6 +224,21 @@ export default function ForgotPasswordScreen({ navigation }) {
                   </TouchableOpacity>
                 </View>
               </View>
+
+              <TouchableOpacity
+                style={styles.resendBtn}
+                onPress={() => setStep('code')}
+                hitSlop={{
+                  top: 8,
+                  bottom: 8,
+                  left: 8,
+                  right: 8,
+                }}
+              >
+                <Text style={styles.resendText}>
+                  Wrong code? <Text style={styles.resendLink}>Re-enter it</Text>
+                </Text>
+              </TouchableOpacity>
             </View>
           )}
 
@@ -231,7 +254,7 @@ export default function ForgotPasswordScreen({ navigation }) {
                 {loading ? (
                   <ActivityIndicator color={colors.onAccent} />
                 ) : (
-                  <Text style={styles.primaryText}>Send reset link</Text>
+                  <Text style={styles.primaryText}>Send code</Text>
                 )}
               </TouchableOpacity>
             )}
@@ -241,13 +264,17 @@ export default function ForgotPasswordScreen({ navigation }) {
                 <TouchableOpacity
                   style={[
                     styles.primaryBtn,
-                    otp.join('').length < OTP_LENGTH && styles.primaryBtnDisabled,
+                    (otp.join('').length < OTP_LENGTH || loading) && styles.primaryBtnDisabled,
                   ]}
                   onPress={handleVerifyCode}
                   activeOpacity={0.85}
-                  disabled={otp.join('').length < OTP_LENGTH}
+                  disabled={otp.join('').length < OTP_LENGTH || loading}
                 >
-                  <Text style={styles.primaryText}>Verify code</Text>
+                  {loading ? (
+                    <ActivityIndicator color={colors.onAccent} />
+                  ) : (
+                    <Text style={styles.primaryText}>Verify code</Text>
+                  )}
                 </TouchableOpacity>
 
                 <TouchableOpacity

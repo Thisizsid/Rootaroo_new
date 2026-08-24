@@ -1,6 +1,12 @@
-import { googleAuth, sendVerification, verifyEmail, forgotPassword, resetPassword, scheduleDeletion, cancelDeletion, confirmDeletion, registerPhone, sendPhoneOtp, verifyPhoneOtp } from '../service';
+import { register, updateProfile, googleAuth, appleAuth, sendVerification, verifyEmail, forgotPassword, resetPassword, checkResetCode, scheduleDeletion, cancelDeletion, confirmDeletion, registerPhone, sendPhoneOtp, verifyPhoneOtp } from '../service';
+import { env } from '../../../config/env';
 
 jest.mock('nodemailer', () => ({ createTransport: jest.fn() }));
+jest.mock('../../../shared/utils/sns', () => ({ sendSms: jest.fn() }));
+jest.mock('jose', () => ({
+  createRemoteJWKSet: jest.fn(() => ({})),
+  jwtVerify: jest.fn(),
+}));
 
 jest.mock('../../../database/models', () => ({
   User: { findOne: jest.fn(), findByPk: jest.fn(), create: jest.fn(), update: jest.fn() },
@@ -11,12 +17,14 @@ jest.mock('../../../database/models', () => ({
 }));
 
 import * as models from '../../../database/models';
+import { sendSms } from '../../../shared/utils/sns';
+import { jwtVerify } from 'jose';
 
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
 
 const mockIdToken = ['e30', 'e30', 'e30'].join('.');
-const googleBody = { code: 'auth-code-123', redirectUri: 'com.rootaroo://oauth/callback' };
+const googleBody = { idToken: mockIdToken };
 
 function fakeUser(overrides: Record<string, unknown> = {}) {
   return {
@@ -36,15 +44,100 @@ function fakeUser(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function setupGoogleApi() {
-  mockFetch
-    .mockReset()
-    .mockResolvedValueOnce({ ok: true, json: async () => ({ id_token: mockIdToken }) })
-    .mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ sub: 'google123', email: 'test@user.com', name: 'Test User' }),
-    });
+function setupGoogleApi(profileOverrides: Record<string, unknown> = {}) {
+  mockFetch.mockReset().mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({
+      sub: 'google123',
+      email: 'test@user.com',
+      name: 'Test User',
+      aud: env.google.clientId,
+      ...profileOverrides,
+    }),
+  });
 }
+
+describe('Auth Service — Register', () => {
+  beforeEach(() => { jest.clearAllMocks(); });
+
+  it('should store a normalized phone when provided and not already taken', async () => {
+    (models.User.findOne as jest.Mock)
+      .mockResolvedValueOnce(null) // no existing user with this email
+      .mockResolvedValueOnce(null); // no existing user with this phone
+    (models.User.create as jest.Mock).mockResolvedValue(fakeUser({ isVerified: false }));
+    (models.User.findByPk as jest.Mock).mockResolvedValue(fakeUser({ isVerified: false }));
+
+    await register({ email: 'new@user.com', password: 'password123', phone: '(555) 010-0192' });
+
+    expect(models.User.create).toHaveBeenCalledWith(
+      expect.objectContaining({ phone: '5550100192' }),
+    );
+  });
+
+  it('should register successfully with no phone provided', async () => {
+    (models.User.findOne as jest.Mock).mockResolvedValueOnce(null);
+    (models.User.create as jest.Mock).mockResolvedValue(fakeUser({ isVerified: false }));
+    (models.User.findByPk as jest.Mock).mockResolvedValue(fakeUser({ isVerified: false }));
+
+    await register({ email: 'new2@user.com', password: 'password123' });
+
+    expect(models.User.create).toHaveBeenCalledWith(expect.objectContaining({ phone: null }));
+  });
+
+  it('should throw if the phone number already belongs to another account', async () => {
+    (models.User.findOne as jest.Mock)
+      .mockResolvedValueOnce(null) // email is free
+      .mockResolvedValueOnce(fakeUser()); // phone is taken
+
+    await expect(
+      register({ email: 'new3@user.com', password: 'password123', phone: '5550100192' }),
+    ).rejects.toThrow('An account with this phone number already exists');
+    expect(models.User.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('Auth Service — Update Profile', () => {
+  beforeEach(() => { jest.clearAllMocks(); });
+
+  it('should update dateOfBirth, homeAddress and phone together', async () => {
+    const user = fakeUser({ phone: null }) as any;
+    (models.User.findByPk as jest.Mock).mockResolvedValue(user);
+    (models.User.findOne as jest.Mock).mockResolvedValue(null); // phone free
+
+    await updateProfile(user.id, {
+      dateOfBirth: '1990-05-11',
+      homeAddress: '482 Maple Street, Austin, TX 78701',
+      phone: '(555) 010-0192',
+    });
+
+    expect(user.dateOfBirth).toBe('1990-05-11');
+    expect(user.homeAddress).toBe('482 Maple Street, Austin, TX 78701');
+    expect(user.phone).toBe('5550100192');
+    expect(user.save).toHaveBeenCalled();
+  });
+
+  it('should throw if the new phone number already belongs to another account', async () => {
+    const user = fakeUser({ id: 'user-a', phone: null });
+    const otherUser = fakeUser({ id: 'user-b', phone: '5550100192' });
+    (models.User.findByPk as jest.Mock).mockResolvedValue(user);
+    (models.User.findOne as jest.Mock).mockResolvedValue(otherUser);
+
+    await expect(updateProfile(user.id, { phone: '5550100192' })).rejects.toThrow(
+      'An account with this phone number already exists',
+    );
+    expect(user.save).not.toHaveBeenCalled();
+  });
+
+  it('should allow re-saving the same phone number already on the account', async () => {
+    const user = fakeUser({ phone: '5550100192' });
+    (models.User.findByPk as jest.Mock).mockResolvedValue(user);
+
+    await updateProfile(user.id, { phone: '(555) 010-0192' });
+
+    expect(models.User.findOne).not.toHaveBeenCalled();
+    expect(user.save).toHaveBeenCalled();
+  });
+});
 
 describe('Auth Service — Google OAuth', () => {
   beforeEach(() => { jest.clearAllMocks(); mockFetch.mockReset(); });
@@ -77,21 +170,87 @@ describe('Auth Service — Google OAuth', () => {
     expect(user.save).toHaveBeenCalled();
   });
 
-  it('should throw if token exchange fails', async () => {
-    mockFetch.mockResolvedValueOnce({ ok: false, text: async () => 'invalid_grant' });
-    await expect(googleAuth(googleBody)).rejects.toThrow('Google token exchange failed');
+  it('should throw if ID token verification fails', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 400 });
+    await expect(googleAuth(googleBody)).rejects.toThrow('Google ID token verification failed');
   });
 
-  it('should throw if no ID token in response', async () => {
-    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ access_token: 'abc', expires_in: 3600 }) });
-    await expect(googleAuth(googleBody)).rejects.toThrow('No ID token returned from Google');
+  it('should throw if the token audience does not match our client id', async () => {
+    setupGoogleApi({ aud: 'someone-elses-client-id.apps.googleusercontent.com' });
+    await expect(googleAuth(googleBody)).rejects.toThrow('was not issued for this app');
+  });
+});
+
+describe('Auth Service — Apple OAuth', () => {
+  beforeEach(() => { jest.clearAllMocks(); });
+
+  const appleBody = { idToken: 'fake-apple-jwt', displayName: 'Apple User' };
+
+  function setupAppleJwt(payloadOverrides: Record<string, unknown> = {}) {
+    (jwtVerify as jest.Mock).mockResolvedValue({
+      payload: { sub: 'apple123', email: 'test@user.com', ...payloadOverrides },
+    });
+  }
+
+  it('should create a new user from Apple profile and return tokens', async () => {
+    setupAppleJwt();
+    (models.User.findOne as jest.Mock).mockResolvedValue(null);
+    (models.User.create as jest.Mock).mockResolvedValue(fakeUser({ appleId: 'apple123' }));
+
+    const result = await appleAuth(appleBody);
+
+    expect(result.user.email).toBe('test@user.com');
+    expect(result.tokens.accessToken).toBeTruthy();
+    expect(result.tokens.refreshToken).toBeTruthy();
+    expect(models.User.create).toHaveBeenCalledWith(
+      expect.objectContaining({ email: 'test@user.com', displayName: 'Apple User', appleId: 'apple123' }),
+    );
+  });
+
+  it('should fall back to deriving a name from the email when no displayName is provided (repeat sign-in)', async () => {
+    setupAppleJwt();
+    (models.User.findOne as jest.Mock).mockResolvedValue(null);
+    (models.User.create as jest.Mock).mockResolvedValue(fakeUser({ appleId: 'apple123' }));
+
+    await appleAuth({ idToken: 'fake-apple-jwt' });
+
+    expect(models.User.create).toHaveBeenCalledWith(
+      expect.objectContaining({ displayName: 'test' }),
+    );
+  });
+
+  it('should link appleId to existing user found by email', async () => {
+    setupAppleJwt();
+    const user = fakeUser({ appleId: null, save: jest.fn().mockResolvedValue(undefined) }) as any;
+    (models.User.findOne as jest.Mock).mockResolvedValue(user);
+
+    const result = await appleAuth(appleBody);
+
+    expect(result.tokens.accessToken).toBeTruthy();
+    expect(user.appleId).toBe('apple123');
+    expect(user.save).toHaveBeenCalled();
+  });
+
+  it('should authenticate an existing appleId user', async () => {
+    setupAppleJwt();
+    const user = fakeUser({ appleId: 'apple123', save: jest.fn().mockResolvedValue(undefined) });
+    (models.User.findOne as jest.Mock).mockResolvedValue(user);
+
+    await appleAuth(appleBody);
+
+    expect(user.save).toHaveBeenCalled();
   });
 
   it('should throw if ID token verification fails', async () => {
-    mockFetch
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ id_token: mockIdToken }) })
-      .mockResolvedValueOnce({ ok: false, status: 400 });
-    await expect(googleAuth(googleBody)).rejects.toThrow('Google ID token verification failed');
+    (jwtVerify as jest.Mock).mockRejectedValue(new Error('bad signature'));
+
+    await expect(appleAuth(appleBody)).rejects.toThrow('Apple ID token verification failed');
+  });
+
+  it('should throw if Apple did not provide an email', async () => {
+    setupAppleJwt({ email: undefined });
+
+    await expect(appleAuth(appleBody)).rejects.toThrow('did not provide an email');
   });
 });
 
@@ -167,7 +326,7 @@ describe('Auth Service — Password Reset', () => {
   });
 
   describe('resetPassword', () => {
-    it('should hash new password, update user, and mark code used', async () => {
+    it('should hash new password, update user, mark code used, and revoke existing sessions', async () => {
       const record = { userId: 'u1', update: jest.fn().mockResolvedValue(undefined) };
       (models.PasswordReset.findOne as jest.Mock).mockResolvedValue(record);
       await resetPassword({ code: '123456', password: 'newpass123' });
@@ -176,12 +335,27 @@ describe('Auth Service — Password Reset', () => {
         { where: { id: 'u1' } },
       );
       expect(record.update).toHaveBeenCalledWith({ usedAt: expect.any(Date) });
+      expect(models.RefreshToken.destroy).toHaveBeenCalledWith({ where: { userId: 'u1' } });
     });
 
     it('should throw for invalid or expired code', async () => {
       (models.PasswordReset.findOne as jest.Mock).mockResolvedValue(null);
       await expect(resetPassword({ code: 'wrong', password: 'newpass123' }))
         .rejects.toThrow('Invalid or expired reset code');
+      expect(models.RefreshToken.destroy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('checkResetCode', () => {
+    it('should resolve without throwing for a valid, unexpired, unused code', async () => {
+      (models.PasswordReset.findOne as jest.Mock).mockResolvedValue({ userId: 'u1' });
+      await expect(checkResetCode('123456')).resolves.toBeUndefined();
+    });
+
+    it('should throw for invalid or expired code without consuming anything', async () => {
+      (models.PasswordReset.findOne as jest.Mock).mockResolvedValue(null);
+      await expect(checkResetCode('000000')).rejects.toThrow('Invalid or expired reset code');
+      expect(models.User.update).not.toHaveBeenCalled();
     });
   });
 });
@@ -229,19 +403,43 @@ describe('Auth Service — Account Deletion', () => {
     const hash = '$2b$04$bUCIhz76H.vDDixGSaXRt.vmZy8izCpNSiK4ZVGtmhtY1twdLD31W';
 
     it('should revoke tokens and soft-delete user', async () => {
-      const user = { id: 'u1', passwordHash: hash, destroy: jest.fn().mockResolvedValue(undefined) };
+      const user = {
+        id: 'u1',
+        passwordHash: hash,
+        update: jest.fn().mockResolvedValue(undefined),
+        destroy: jest.fn().mockResolvedValue(undefined),
+      };
       (models.User.findByPk as jest.Mock).mockResolvedValue(user);
       await confirmDeletion('u1', { password: 'password123' });
       expect(models.RefreshToken.destroy).toHaveBeenCalledWith({ where: { userId: 'u1' } });
       expect(user.destroy).toHaveBeenCalled();
     });
+
+    it('should free up email/phone/googleId before soft-deleting, so they can be reused', async () => {
+      const user = {
+        id: 'u1',
+        passwordHash: hash,
+        update: jest.fn().mockResolvedValue(undefined),
+        destroy: jest.fn().mockResolvedValue(undefined),
+      };
+      (models.User.findByPk as jest.Mock).mockResolvedValue(user);
+      await confirmDeletion('u1', { password: 'password123' });
+      expect(user.update).toHaveBeenCalledWith({
+        email: 'deleted-u1@deleted.rootaroo.local',
+        phone: null,
+        googleId: null,
+      });
+      // Freeing the identifiers must happen before the soft-delete, not after.
+      const updateOrder = (user.update as jest.Mock).mock.invocationCallOrder[0];
+      const destroyOrder = (user.destroy as jest.Mock).mock.invocationCallOrder[0];
+      expect(updateOrder).toBeLessThan(destroyOrder);
+    });
   });
 });
 
-describe('Auth Service — Phone OTP (Auth0 Passwordless SMS)', () => {
+describe('Auth Service — Phone OTP (app-owned code, delivered via AWS SNS)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockFetch.mockReset();
     (models.PhoneVerification.update as jest.Mock).mockResolvedValue([0]);
     (models.PhoneVerification.create as jest.Mock).mockResolvedValue({ id: 'pv1' });
   });
@@ -258,9 +456,8 @@ describe('Auth Service — Phone OTP (Auth0 Passwordless SMS)', () => {
     };
   }
 
-  describe('registerPhone / sendPhoneOtp — /passwordless/start', () => {
-    it('should send OTP successfully when Auth0 accepts the request', async () => {
-      mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({}) });
+  describe('registerPhone', () => {
+    it('should create the user and issue tokens without sending an OTP', async () => {
       (models.User.findOne as jest.Mock).mockResolvedValue(null);
       (models.User.create as jest.Mock).mockResolvedValue(fakePhoneUser());
 
@@ -268,25 +465,52 @@ describe('Auth Service — Phone OTP (Auth0 Passwordless SMS)', () => {
 
       expect(result.tokens.accessToken).toBeTruthy();
       expect(result.tokens.refreshToken).toBeTruthy();
-      expect(result.verificationCode).toBeUndefined();
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/passwordless/start'),
-        expect.objectContaining({ method: 'POST' }),
-      );
-    });
-
-    it('should throw if Auth0 rejects the send request', async () => {
-      mockFetch.mockResolvedValueOnce({ ok: false, status: 429 });
-      (models.User.findByPk as jest.Mock).mockResolvedValue(fakePhoneUser());
-
-      await expect(sendPhoneOtp({ phone: '+15551234567' }, 'u1'))
-        .rejects.toThrow('Failed to send verification code');
+      expect(sendSms).not.toHaveBeenCalled();
+      expect(models.PhoneVerification.create).not.toHaveBeenCalled();
     });
   });
 
-  describe('verifyPhoneOtp — /oauth/token', () => {
-    it('should mark the user verified and issue tokens when Auth0 confirms the code', async () => {
-      mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ access_token: 'auth0-token' }) });
+  describe('sendPhoneOtp', () => {
+    it('should send an OTP for an existing user', async () => {
+      (models.User.findByPk as jest.Mock).mockResolvedValue(fakePhoneUser());
+
+      await sendPhoneOtp({ phone: '+15551234567' }, 'u1');
+
+      expect(sendSms).toHaveBeenCalledWith(
+        '+15551234567',
+        expect.stringContaining('Rootaroo verification code'),
+      );
+      expect(models.PhoneVerification.create).toHaveBeenCalledWith(
+        expect.objectContaining({ phone: '+15551234567', userId: 'u1', token: expect.any(String) }),
+      );
+    });
+
+    it('should create a placeholder user for an unauthenticated, unregistered number instead of sending an unresolvable OTP', async () => {
+      (models.User.findOne as jest.Mock)
+        .mockResolvedValueOnce(null) // no existing user for this phone
+        .mockResolvedValueOnce(null); // no existing placeholder by synthetic email either
+      (models.User.create as jest.Mock).mockResolvedValue(fakePhoneUser({ id: 'new-u1' }));
+
+      await sendPhoneOtp({ phone: '+15559998888' });
+
+      expect(models.User.create).toHaveBeenCalledWith(
+        expect.objectContaining({ phone: '+15559998888', displayName: 'Member', isPhoneVerified: false }),
+      );
+      expect(models.PhoneVerification.create).toHaveBeenCalledWith(
+        expect.objectContaining({ phone: '+15559998888', userId: 'new-u1' }),
+      );
+    });
+
+    it('should throw if the phone does not match the authenticated user\'s account', async () => {
+      (models.User.findByPk as jest.Mock).mockResolvedValue(fakePhoneUser({ phone: '+15551111111' }));
+
+      await expect(sendPhoneOtp({ phone: '+15552222222' }, 'u1'))
+        .rejects.toThrow('Phone does not match your account');
+    });
+  });
+
+  describe('verifyPhoneOtp', () => {
+    it('should mark the user verified and issue tokens for a valid code', async () => {
       const record = { userId: 'u1', verifiedAt: null, save: jest.fn().mockResolvedValue(undefined) };
       (models.PhoneVerification.findOne as jest.Mock).mockResolvedValue(record);
       const user = fakePhoneUser();
@@ -294,21 +518,22 @@ describe('Auth Service — Phone OTP (Auth0 Passwordless SMS)', () => {
 
       const result = await verifyPhoneOtp({ phone: '+15551234567', code: '123456' }, 'u1');
 
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/oauth/token'),
-        expect.objectContaining({ method: 'POST' }),
+      expect(models.PhoneVerification.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ phone: '+15551234567', token: '123456', verifiedAt: null }),
+        }),
       );
       expect(record.verifiedAt).toBeInstanceOf(Date);
       expect(user.isPhoneVerified).toBe(true);
       expect(result.tokens.accessToken).toBeTruthy();
     });
 
-    it('should throw and leave the user unverified when Auth0 rejects the code', async () => {
-      mockFetch.mockResolvedValueOnce({ ok: false, status: 403 });
+    it('should throw for an invalid or expired code without consuming anything', async () => {
+      (models.PhoneVerification.findOne as jest.Mock).mockResolvedValue(null);
 
       await expect(verifyPhoneOtp({ phone: '+15551234567', code: '000000' }, 'u1'))
         .rejects.toThrow('Invalid or expired verification code');
-      expect(models.PhoneVerification.findOne).not.toHaveBeenCalled();
+      expect(models.User.findByPk).not.toHaveBeenCalled();
     });
   });
 });

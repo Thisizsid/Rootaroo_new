@@ -76,6 +76,17 @@ function attachListeners() {
     useEngagementStore.getState().bump();
   });
 
+  // Live location ticks + early-stop during an active timed share — same
+  // shape as ping:response (full PingRequestResponse), so the same
+  // upsertOutgoing keeps the requester's copy of the request current.
+  socket.on('ping:location-update', (request) => {
+    usePingStore.getState().upsertOutgoing(request);
+  });
+
+  socket.on('ping:share-ended', (request) => {
+    usePingStore.getState().upsertOutgoing(request);
+  });
+
   // Streak/activity/leaderboard-relevant completions — no per-event UI to
   // update yet, just bump so the Dashboard knows to refetch.
   socket.on('task:completed', () => useEngagementStore.getState().bump());

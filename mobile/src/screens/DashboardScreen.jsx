@@ -464,13 +464,19 @@ export default function DashboardScreen() {
   const streakDetailMeta = selDay?.isToday ? 'TODAY' : selDay?.label || '';
   const bestStreak = data?.streak?.longest ?? data?.streak?.best ?? null;
 
-  /* ── Harmony score ── */
+  /* ── Harmony score ──
+     One formula, no artificial floor: 0 completed activities this week
+     means the score and the progress bar both genuinely read 0, not a
+     hardcoded "everyone starts at 40" baseline. 5 points per completed
+     task/todo/grocery-bought item, capped at 100 (reached at 20 items/week).
+     The displayed number and the bar's fill % are now always the same
+     value, instead of two different formulas over the same input. */
   const weekTotal = activity.reduce(
     (a, d) => a + (d.tasksCompleted || 0) + (d.todosCompleted || 0) + (d.groceriesBought || 0),
     0,
   );
-  const harmonyScore = Math.min(100, 40 + weekTotal * 3);
-  const weeklyPct = Math.min(100, Math.round(weekTotal * 4));
+  const weeklyPct = Math.min(100, Math.round(weekTotal * 5));
+  const harmonyScore = weeklyPct;
   const activitiesThisWeek = weekTotal;
 
   /* ── Leaderboard (server-computed, real) ── */
@@ -505,10 +511,12 @@ export default function DashboardScreen() {
     },
   ];
   const NUDGE_PRESETS = [
-    'Just a reminder 👀',
-    "Don't forget!",
-    'Please check this',
-    'Can you take care of this?',
+    { icon: 'eye-outline', caption: 'Reminder', message: 'Just a reminder 👀' },
+    { icon: 'alarm-outline', caption: "Don't forget", message: "Don't forget!" },
+    { icon: 'checkmark-circle-outline', caption: 'Check it', message: 'Please check this' },
+    { icon: 'hand-left-outline', caption: 'Your turn', message: 'Can you take care of this?' },
+    { icon: 'flash-outline', caption: 'Hurry', message: 'Hurry up, please!' },
+    { icon: 'call-outline', caption: 'Call me', message: 'Can you call me back?' },
   ];
   const handleQuickNotify = (action) => {
     const q = QUICK_ACTIONS.find((x) => x.label === action);
@@ -1343,29 +1351,46 @@ export default function DashboardScreen() {
             ]}
           >
             <View style={mo.handle} />
-            <Text style={mo.title}>Send a Nudge</Text>
+            <Text style={mo.title}>{pendingAction === 'Nudge' ? 'Send a Nudge' : 'Quick Notify'}</Text>
 
             <ScrollView
               style={mo.body}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
-              {/* Quick messages */}
-              <Text style={mo.nudgeSectionLabel}>QUICK MESSAGES</Text>
-              <View style={mo.chipRow}>
-                {NUDGE_PRESETS.map((preset) => (
-                  <TouchableOpacity
-                    key={preset}
-                    style={[mo.chip, customMsg === preset && mo.chipActive]}
-                    onPress={() => setCustomMsg(preset)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[mo.chipText, customMsg === preset && mo.chipTextActive]}>
-                      {preset}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              {/* Quick messages — Nudge flow only */}
+              {pendingAction === 'Nudge' && (
+                <>
+                  <Text style={mo.nudgeSectionLabel}>QUICK MESSAGES</Text>
+                  <View style={mo.presetGrid}>
+                    {NUDGE_PRESETS.map((preset) => {
+                      const active = customMsg === preset.message;
+                      return (
+                        <TouchableOpacity
+                          key={preset.message}
+                          style={mo.presetItem}
+                          onPress={() => setCustomMsg(preset.message)}
+                          activeOpacity={0.7}
+                        >
+                          <View style={[mo.presetGlyph, active && mo.presetGlyphActive]}>
+                            <Ionicons
+                              name={preset.icon}
+                              size={22}
+                              color={active ? colors.navyDeep : GOLD}
+                            />
+                          </View>
+                          <Text
+                            style={[mo.presetLabel, active && mo.presetLabelActive]}
+                            numberOfLines={1}
+                          >
+                            {preset.caption}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </>
+              )}
 
               {/* Custom message */}
               <TextInput
@@ -2248,33 +2273,41 @@ const mo = StyleSheet.create({
   body: {
     flexGrow: 0,
   },
-  // Preset action chips
-  chipRow: {
+  // Preset nudge message icons
+  presetGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.sm,
+    gap: spacing.md,
     marginBottom: spacing.lg,
   },
-  chip: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.pill,
-    backgroundColor: withAlpha(colors.white, 0.06),
-    borderWidth: 1,
-    borderColor: GLASS_BORDER,
+  presetItem: {
+    width: '30%',
+    alignItems: 'center',
+    gap: 6,
   },
-  chipActive: {
+  presetGlyph: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: withAlpha(GOLD, 0.16),
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  presetGlyphActive: {
     backgroundColor: colors.goldGlow,
     borderColor: colors.goldGlow,
   },
-  chipText: {
-    fontSize: 13,
+  presetLabel: {
+    fontSize: 10.5,
     fontWeight: '600',
     fontFamily: fonts.bodySemiBold,
-    color: colors.textOnDarkBody,
+    color: colors.textOnDarkMuted,
+    textAlign: 'center',
   },
-  chipTextActive: {
-    color: colors.navyDeep,
+  presetLabelActive: {
+    color: GOLD,
   },
   // Custom message input
   input: {

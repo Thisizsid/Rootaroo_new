@@ -13,7 +13,8 @@ import { showAlert } from '../shared/services/themedAlert';
 import Svg, { Path } from 'react-native-svg';
 import { authApi } from '../shared/api/auth';
 import { useAuthStore } from '../shared/store/authStore';
-import { updateSignupProgress } from '../shared/store/signupProgress';
+import { loadSignupProgress } from '../shared/store/signupProgress';
+import { resolvePostAuthNavigation } from '../shared/navigation/postAuthNavigation';
 import { colors, fonts, radius } from '../shared/theme';
 import { KeyboardAwareScrollView } from '../shared/components/KeyboardAware';
 const OTP_LENGTH = 6;
@@ -47,17 +48,19 @@ export default function PhoneVerificationScreen({ navigation, route }) {
     if (code.length !== OTP_LENGTH) return;
     setVerifying(true);
     try {
-      await authApi.verifyPhoneOtp({
+      const resp = await authApi.verifyPhoneOtp({
         phone,
         code,
       });
-      // Phone flow: verification done → straight into the app, confetti on Home
-      await updateSignupProgress({
-        step: 'done',
-        setupComplete: true,
-      });
-      useAuthStore.getState().triggerCelebration();
-      useAuthStore.getState().completeSetup();
+      // Wizard-completion case (household already exists by now) routes
+      // straight home with a celebration; a genuinely new number reaching
+      // this screen via Sign In's phone entry (no household yet) instead
+      // routes into the signup wizard to finish onboarding.
+      const progress = await loadSignupProgress();
+      const result = await resolvePostAuthNavigation(resp, 'phone', navigation, progress);
+      if (result === 'home') {
+        useAuthStore.getState().triggerCelebration();
+      }
     } catch (e) {
       setInvalid(true); // mockup screen10c: red boxes + inline error
       showAlert('Error', e?.response?.data?.error || e?.message || 'Invalid code');

@@ -107,9 +107,9 @@ describe('Dashboard Service', () => {
       // One completion day → streak >= 1.
       expect(result.streak.current).toBeGreaterThanOrEqual(1);
       expect(result.streak.best).toBeGreaterThanOrEqual(1);
-      // Alice: 2 (task points) + 1 (grocery) = 3; Bob: 1 (todo).
-      expect(result.leaderboard[0]).toMatchObject({ userId, points: 3 });
-      expect(result.leaderboard[1]).toMatchObject({ userId: otherUserId, points: 1 });
+      // Alice: 2 (task's own custom points) + 5 (grocery, flat) = 7; Bob: 5 (todo, flat).
+      expect(result.leaderboard[0]).toMatchObject({ userId, points: 7 });
+      expect(result.leaderboard[1]).toMatchObject({ userId: otherUserId, points: 5 });
 
       // Recent activity is real per-member events with names.
       expect(result.recentActivity).toHaveLength(3);

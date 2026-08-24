@@ -10,6 +10,12 @@ jest.mock('../../../database/models', () => {
     HouseholdMember: { create: jest.fn(), findOne: jest.fn(), findAll: jest.fn(), count: jest.fn(), destroy: jest.fn() },
     Invitation: { create: jest.fn(), findOne: jest.fn(), count: jest.fn() },
     User: { update: jest.fn(), findByPk: jest.fn() },
+    // Conversation sync is a no-op in these tests (no household-conversation
+    // exists yet) — addToHouseholdConversation/removeFromHouseholdConversation
+    // just `return` when Conversation.findOne resolves falsy, so a bare mock
+    // (undefined by default) is enough to exercise that early-return path.
+    Conversation: { findOne: jest.fn() },
+    ConversationParticipant: { findOne: jest.fn(), create: jest.fn(), destroy: jest.fn() },
   };
 });
 

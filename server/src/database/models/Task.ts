@@ -62,7 +62,7 @@ Task.init(
     points: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      defaultValue: 1,
+      defaultValue: 5,
     },
     pointsReduced: {
       type: DataTypes.BOOLEAN,

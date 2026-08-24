@@ -19,4 +19,14 @@ export const pingApi = {
     apiClient
       .get('/pings', { params })
       .then((r) => r.data.data),
+
+  updateLocation: (id, { latitude, longitude }) =>
+    apiClient
+      .post(`/pings/${id}/location`, { latitude, longitude })
+      .then((r) => r.data.data),
+
+  stopShare: (id) =>
+    apiClient
+      .post(`/pings/${id}/stop-share`)
+      .then((r) => r.data.data),
 };

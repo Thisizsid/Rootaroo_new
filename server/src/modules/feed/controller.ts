@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../../shared/middleware/auth';
 import * as feedService from './service';
-import { uploadBuffer } from '../../shared/utils/cloudinary';
+import { uploadBuffer, getSignedUrl } from '../../shared/utils/s3';
 
 function getUserId(req: Request): string {
   return (req as AuthenticatedRequest).user!.userId;
@@ -95,15 +95,19 @@ export async function uploadMedia(req: Request, res: Response, next: NextFunctio
     const results = await Promise.all(
       files.map(async (f) => {
         const isVideo = f.mimetype.startsWith('video/');
-        const result = await uploadBuffer(f.buffer, {
-          folder: isVideo ? 'rootaru/feed/videos' : 'rootaru/feed/images',
-          public_id: f.originalname.replace(/\.[^.]+$/, ''),
-          resource_type: isVideo ? 'video' : 'image',
-        });
+        const result = await uploadBuffer(
+          f.buffer,
+          isVideo ? 'feed/videos' : 'feed/images',
+          f.mimetype,
+          f.originalname.split('.').pop(),
+        );
+        // `fileName` is the S3 key — persist this as `mediaUrl` when creating
+        // the post. `url` is a signed URL for immediate preview only; it
+        // expires and must never be stored.
         return {
-          fileName: result.public_id,
-          url: result.secure_url,
-          size: result.bytes,
+          fileName: result.key,
+          url: await getSignedUrl(result.key),
+          size: f.size,
           mimetype: f.mimetype,
         };
       }),

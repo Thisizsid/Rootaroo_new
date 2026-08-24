@@ -211,9 +211,9 @@ async function loadCompletions(householdId: string, timeZone: string): Promise<E
     }
   };
 
-  for (const t of tasks) bump(t.completedAt, t.completedBy, t.points || 1, 'tasksCompleted', 'task');
-  for (const t of todos) bump(t.completedAt, t.assignedTo, 1, 'todosCompleted', 'todo');
-  for (const g of groceries) bump(g.boughtAt, g.boughtBy, 1, 'groceriesBought', 'grocery');
+  for (const t of tasks) bump(t.completedAt, t.completedBy, t.points || 5, 'tasksCompleted', 'task');
+  for (const t of todos) bump(t.completedAt, t.assignedTo, 5, 'todosCompleted', 'todo');
+  for (const g of groceries) bump(g.boughtAt, g.boughtBy, 5, 'groceriesBought', 'grocery');
 
   return { daily, weekByUser, recent };
 }
