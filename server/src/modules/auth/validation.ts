@@ -13,6 +13,10 @@ export const registerSchema: ValidationSchemas = {
       (v) => (v === '' || v === null || v === undefined ? undefined : v),
       z.string().min(1).max(100).optional(),
     ),
+    phone: z.preprocess(
+      (v) => (v === '' || v === null || v === undefined ? undefined : v),
+      z.string().min(7).max(32).optional(),
+    ),
   }),
 };
 
@@ -45,8 +49,14 @@ export const updateProfileSchema: ValidationSchemas = {
 
 export const googleAuthSchema: ValidationSchemas = {
   body: z.object({
-    code: z.string().min(1, 'Authorization code is required'),
-    redirectUri: z.string().url('Invalid redirect URI'),
+    idToken: z.string().min(1, 'ID token is required'),
+  }),
+};
+
+export const appleAuthSchema: ValidationSchemas = {
+  body: z.object({
+    idToken: z.string().min(1, 'ID token is required'),
+    displayName: z.string().min(1).max(100).optional(),
   }),
 };
 
@@ -66,6 +76,12 @@ export const resetPasswordSchema: ValidationSchemas = {
   body: z.object({
     code: z.string().length(6, 'Reset code must be 6 characters'),
     password: z.string().min(8, 'Password must be at least 8 characters').max(128, 'Password too long'),
+  }),
+};
+
+export const checkResetCodeSchema: ValidationSchemas = {
+  body: z.object({
+    code: z.string().length(6, 'Code must be 6 characters'),
   }),
 };
 

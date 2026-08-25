@@ -4,8 +4,6 @@ export interface CreateVaultDocumentBody {
   sizeBytes: number;
   encryptedKey: string;
   iv: string;
-  cloudinaryPublicId: string;
-  cloudinarySecureUrl: string;
 }
 
 export interface UpdateVaultDocumentBody {

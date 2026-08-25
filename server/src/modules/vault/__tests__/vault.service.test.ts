@@ -45,13 +45,14 @@ jest.mock('../../../database/models', () => {
   };
 });
 
-jest.mock('../../../shared/utils/cloudinary', () => ({
+jest.mock('../../../shared/utils/s3', () => ({
   uploadBuffer: jest.fn(),
-  deleteResource: jest.fn(),
+  deleteObject: jest.fn(),
+  getSignedUrl: jest.fn((key: string | null) => Promise.resolve(key ? `https://signed.example.com/${key}` : null)),
 }));
 
 import { VaultDocument, VaultDocumentKey, VaultKey, HouseholdMember } from '../../../database/models';
-import { uploadBuffer, deleteResource } from '../../../shared/utils/cloudinary';
+import { uploadBuffer, deleteObject } from '../../../shared/utils/s3';
 
 const mockDoc = (overrides: any = {}) => ({
   id: documentId,
@@ -61,8 +62,7 @@ const mockDoc = (overrides: any = {}) => ({
   sizeBytes: 1024,
   encryptedKey: 'enc-key-123',
   iv: 'iv-123',
-  cloudinaryPublicId: 'vault/test-public-id',
-  cloudinarySecureUrl: 'https://cloudinary.com/test.jpg',
+  s3Key: 'vault/test-s3-key',
   uploadedBy: userId,
   createdAt: new Date('2026-07-12T10:00:00Z'),
   updatedAt: new Date('2026-07-12T10:00:00Z'),
@@ -104,16 +104,11 @@ describe('Vault Service', () => {
       sizeBytes: 1024,
       encryptedKey: 'enc-key-123',
       iv: 'iv-123',
-      cloudinaryPublicId: 'vault/test',
-      cloudinarySecureUrl: 'https://cloudinary.com/test.jpg',
     };
 
     it('should upload a document and return response', async () => {
       const fileBuffer = Buffer.from('test');
-      (uploadBuffer as jest.Mock).mockResolvedValue({
-        public_id: 'vault/test-public-id',
-        secure_url: 'https://cloudinary.com/test.jpg',
-      });
+      (uploadBuffer as jest.Mock).mockResolvedValue({ key: 'vault/test-s3-key' });
       const createdDoc = mockDoc();
       (VaultDocument.create as jest.Mock).mockResolvedValue(createdDoc);
       (VaultDocumentKey.create as jest.Mock).mockResolvedValue({ documentId, userId, wrappedKey: 'enc-key-123' });
@@ -135,10 +130,7 @@ describe('Vault Service', () => {
     });
 
     it('should reject uploads exceeding household quota', async () => {
-      (uploadBuffer as jest.Mock).mockResolvedValue({
-        public_id: 'vault/test',
-        secure_url: 'https://cloudinary.com/test.jpg',
-      });
+      (uploadBuffer as jest.Mock).mockResolvedValue({ key: 'vault/test-s3-key' });
       (VaultDocument.sum as jest.Mock).mockResolvedValue(2 * 1024 * 1024 * 1024); // already at 2GB
 
       await expect(
@@ -227,7 +219,7 @@ describe('Vault Service', () => {
 
       await deleteDocument(documentId, userId, 'member');
 
-      expect(deleteResource).toHaveBeenCalledWith(doc.cloudinaryPublicId);
+      expect(deleteObject).toHaveBeenCalledWith(doc.s3Key);
       expect(doc.destroy).toHaveBeenCalledWith({ force: true, transaction: expect.anything() });
       expect(VaultDocumentKey.destroy).toHaveBeenCalledWith({ where: { documentId }, transaction: expect.anything() });
     });
@@ -241,7 +233,7 @@ describe('Vault Service', () => {
 
       await deleteDocument(documentId, adminUserId, 'admin');
 
-      expect(deleteResource).toHaveBeenCalled();
+      expect(deleteObject).toHaveBeenCalled();
       expect(doc.destroy).toHaveBeenCalled();
     });
 
@@ -266,7 +258,7 @@ describe('Vault Service', () => {
 
       await hardDeleteDocument(documentId, adminUserId, 'admin');
 
-      expect(deleteResource).toHaveBeenCalled();
+      expect(deleteObject).toHaveBeenCalled();
       expect(doc.destroy).toHaveBeenCalledWith({ force: true, transaction: expect.anything() });
     });
 

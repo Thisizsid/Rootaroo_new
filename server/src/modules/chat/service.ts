@@ -11,6 +11,7 @@ import {
   User,
 } from '../../database/models';
 import { NotFoundError, ForbiddenError, ValidationError } from '../../shared/utils/errors';
+import { getSignedUrl } from '../../shared/utils/s3';
 import { getIO } from '../../shared/utils/socket';
 import type {
   ChatReactionType,
@@ -27,7 +28,7 @@ const ALLOWED_REACTIONS: ChatReactionType[] = ['👍', '❤️', '😂', '😲',
 
 // ── Conversation Helpers ──
 
-function toConversationResponse(conv: Conversation): ConversationResponse {
+async function toConversationResponse(conv: Conversation): Promise<ConversationResponse> {
   const participants = (conv.get('participants') as User[]) || [];
   const lastMsg = (conv.get('messages') as ChatMessage[])?.[0] || null;
   return {
@@ -36,11 +37,11 @@ function toConversationResponse(conv: Conversation): ConversationResponse {
     type: conv.type,
     name: conv.name,
     createdBy: conv.createdBy,
-    participants: participants.map((u: User) => ({
+    participants: await Promise.all(participants.map(async (u: User) => ({
       id: u.id,
       displayName: u.displayName,
-      avatarUrl: u.avatarUrl,
-    })),
+      avatarUrl: await getSignedUrl(u.avatarUrl),
+    }))),
     lastMessage: lastMsg
       ? {
           content: lastMsg.content,
@@ -80,7 +81,7 @@ export async function createConversation(
               { model: ChatMessage, as: 'messages', limit: 1, order: [['createdAt', 'DESC']], include: [{ model: User, as: 'sender' }] },
             ],
           });
-          if (full) return toConversationResponse(full);
+          if (full) return await toConversationResponse(full);
         }
       }
     }
@@ -99,7 +100,7 @@ export async function createConversation(
           { model: ChatMessage, as: 'messages', limit: 1, order: [['createdAt', 'DESC']], include: [{ model: User, as: 'sender' }] },
         ],
       });
-      if (full) return toConversationResponse(full);
+      if (full) return await toConversationResponse(full);
     }
   }
 
@@ -138,7 +139,7 @@ export async function createConversation(
   // Join socket room for all participants
   await joinSocketsToRoom(conv.id, allParticipantIds);
 
-  return toConversationResponse(full);
+  return await toConversationResponse(full);
 }
 
 /** Join any currently-connected sockets for the given users to a socket room. */
@@ -218,7 +219,7 @@ export async function getUserConversations(userId: string): Promise<Conversation
     order: [['createdAt', 'DESC']],
   });
 
-  return convs.map(toConversationResponse);
+  return Promise.all(convs.map(toConversationResponse));
 }
 
 // ── Helpers ──
@@ -250,14 +251,14 @@ async function assertCanManageParticipants(
   return conv;
 }
 
-function toSenderResponse(
+async function toSenderResponse(
   user: User | null,
-): { id: string; displayName: string; avatarUrl: string | null; avatarEmoji: string | null } | null {
+): Promise<{ id: string; displayName: string; avatarUrl: string | null; avatarEmoji: string | null } | null> {
   if (!user) return null;
   return {
     id: user.get('id') as string,
     displayName: (user.get('displayName') as string) || 'Unknown',
-    avatarUrl: user.get('avatarUrl') as string | null,
+    avatarUrl: await getSignedUrl(user.get('avatarUrl') as string | null),
     avatarEmoji: user.get('avatarEmoji') as string | null,
   };
 }
@@ -296,9 +297,9 @@ async function toMessageResponse(msg: ChatMessage): Promise<MessageResponse> {
     id: msg.get('id') as string,
     householdId: msg.get('householdId') as string,
     senderId: msg.get('senderId') as string,
-    sender: toSenderResponse(sender) || { id: '', displayName: 'Deleted', avatarUrl: null, avatarEmoji: null },
+    sender: (await toSenderResponse(sender)) || { id: '', displayName: 'Deleted', avatarUrl: null, avatarEmoji: null },
     content: msg.get('content') as string | null,
-    mediaUrl: msg.get('mediaUrl') as string | null,
+    mediaUrl: await getSignedUrl(msg.get('mediaUrl') as string | null),
     type: msg.get('type') as 'text' | 'image' | 'voice',
     durationSeconds: msg.get('durationSeconds') as number | null,
     replyToId,
@@ -340,7 +341,7 @@ export async function sendMessage(
       where: { id: { [Op.in]: body.mediaIds }, householdId },
     });
     if (medias.length > 0) {
-      mediaUrl = medias[0].get('secureUrl') as string;
+      mediaUrl = medias[0].get('mediaUrl') as string;
       type = 'image';
     }
   } else if (body.mediaUrl) {

@@ -19,6 +19,7 @@ import { useAuthStore } from '../shared/store/authStore';
 import { authApi, storePendingAuthResponse } from '../shared/api/auth';
 import { loadMyHousehold } from '../shared/api/household';
 import { useGoogleSignIn } from '../shared/hooks/useGoogleSignIn';
+import { useAppleSignIn } from '../shared/hooks/useAppleSignIn';
 import { resolvePostAuthNavigation } from '../shared/navigation/postAuthNavigation';
 import { loadSignupProgress } from '../shared/store/signupProgress';
 import { colors, fonts, radius, withAlpha } from '../shared/theme';
@@ -40,6 +41,10 @@ export default function SignInScreen({ navigation }) {
   const { signIn: googleSignIn, isLoading: googleLoading } = useGoogleSignIn(async (resp) => {
     const progress = await loadSignupProgress();
     await resolvePostAuthNavigation(resp, 'google', navigation, progress);
+  });
+  const { signIn: appleSignIn, isLoading: appleLoading } = useAppleSignIn(async (resp) => {
+    const progress = await loadSignupProgress();
+    await resolvePostAuthNavigation(resp, 'apple', navigation, progress);
   });
   const handleSignIn = async () => {
     if (!email.trim()) {
@@ -114,17 +119,26 @@ export default function SignInScreen({ navigation }) {
             )}
           </TouchableOpacity>
 
-          {/* Continue with Apple — full pill */}
-          <TouchableOpacity
-            style={[styles.socialBtn, styles.socialBtnApple]}
-            activeOpacity={0.75}
-            onPress={() => showAlert('Apple Sign In', 'Apple sign-in is coming soon.')}
-          >
-            <SvgApple />
-            <Text style={[styles.socialBtnText, styles.socialBtnTextApple]}>
-              Continue with Apple
-            </Text>
-          </TouchableOpacity>
+          {/* Continue with Apple — full pill, iOS only */}
+          {Platform.OS === 'ios' && (
+            <TouchableOpacity
+              style={[styles.socialBtn, styles.socialBtnApple]}
+              activeOpacity={0.75}
+              onPress={appleSignIn}
+              disabled={appleLoading}
+            >
+              {appleLoading ? (
+                <ActivityIndicator color={colors.onAccent} size="small" />
+              ) : (
+                <>
+                  <SvgApple />
+                  <Text style={[styles.socialBtnText, styles.socialBtnTextApple]}>
+                    Continue with Apple
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
 
           {/* Continue with phone number — full pill */}
           <TouchableOpacity

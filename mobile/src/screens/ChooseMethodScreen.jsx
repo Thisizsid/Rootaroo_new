@@ -1,10 +1,14 @@
 import React from 'react';
-import { View, Text, StyleSheet, StatusBar, TouchableOpacity, Image } from 'react-native';
-import { showAlert } from '../shared/services/themedAlert';
+import { View, Text, StyleSheet, StatusBar, TouchableOpacity, Image, Platform } from 'react-native';
 import Svg, { Path, Rect } from 'react-native-svg';
 import { colors, fonts, radius } from '../shared/theme';
-import { startPhoneSignupProgress } from '../shared/navigation/postAuthNavigation';
+import {
+  startPhoneSignupProgress,
+  resolvePostAuthNavigation,
+} from '../shared/navigation/postAuthNavigation';
+import { loadSignupProgress } from '../shared/store/signupProgress';
 import { useGoogleSignIn } from '../shared/hooks/useGoogleSignIn';
+import { useAppleSignIn } from '../shared/hooks/useAppleSignIn';
 /* Small inline icons (stroke = ink, like the mockup) */
 function PhoneIcon() {
   return (
@@ -41,20 +45,15 @@ function GoogleChip() {
     />
   );
 }
-const appleActive = 0;
 export default function ChooseMethodScreen({ navigation }) {
   const { signIn: googleSignIn, isLoading: googleLoading } = useGoogleSignIn(async (resp) => {
-    // Home handled inside resolve via completeSetup
-    void resp;
+    const progress = await loadSignupProgress();
+    await resolvePostAuthNavigation(resp, 'google', navigation, progress);
   });
-  const handleApple = () => {
-    if (appleActive === 0) {
-      showAlert(
-        'Apple sign-in',
-        'Apple sign-in is coming soon. Use Google, Phone, or Email for now.',
-      );
-    }
-  };
+  const { signIn: appleSignIn, isLoading: appleLoading } = useAppleSignIn(async (resp) => {
+    const progress = await loadSignupProgress();
+    await resolvePostAuthNavigation(resp, 'apple', navigation, progress);
+  });
   const handlePhone = async () => {
     try {
       await startPhoneSignupProgress();
@@ -109,14 +108,17 @@ export default function ChooseMethodScreen({ navigation }) {
             <Text style={styles.methodTextLight}>Continue with Google</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.methodBtn, styles.methodBtnDark]}
-            activeOpacity={0.85}
-            onPress={handleApple}
-          >
-            <AppleIcon />
-            <Text style={styles.methodTextDark}>Continue with Apple</Text>
-          </TouchableOpacity>
+          {Platform.OS === 'ios' && (
+            <TouchableOpacity
+              style={[styles.methodBtn, styles.methodBtnDark]}
+              activeOpacity={0.85}
+              onPress={() => appleSignIn()}
+              disabled={appleLoading}
+            >
+              <AppleIcon />
+              <Text style={styles.methodTextDark}>Continue with Apple</Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity
             style={[styles.methodBtn, styles.methodBtnLight]}

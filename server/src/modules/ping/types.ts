@@ -10,6 +10,12 @@ export interface RespondPingRequestBody {
   latitude?: number | null;
   longitude?: number | null;
   address?: string | null;
+  durationMinutes?: number;
+}
+
+export interface UpdateShareLocationBody {
+  latitude: number;
+  longitude: number;
 }
 
 interface PingUserSummary {
@@ -27,6 +33,11 @@ export interface PingRequestResponse {
   note: string | null;
   checkInId: string | null;
   respondedAt: string | null;
+  shareDurationMinutes: number | null;
+  shareExpiresAt: string | null;
+  liveLatitude: number | null;
+  liveLongitude: number | null;
+  liveUpdatedAt: string | null;
   createdAt: string;
 }
 

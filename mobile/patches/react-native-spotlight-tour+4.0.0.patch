@@ -1,0 +1,217 @@
+diff --git a/node_modules/react-native-spotlight-tour/README.md b/node_modules/react-native-spotlight-tour/README.md
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/dist/helpers/common.d.ts b/node_modules/react-native-spotlight-tour/dist/helpers/common.d.ts
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/dist/helpers/common.js b/node_modules/react-native-spotlight-tour/dist/helpers/common.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/dist/helpers/common.js.map b/node_modules/react-native-spotlight-tour/dist/helpers/common.js.map
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/dist/helpers/responsive.d.ts b/node_modules/react-native-spotlight-tour/dist/helpers/responsive.d.ts
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/dist/helpers/responsive.js b/node_modules/react-native-spotlight-tour/dist/helpers/responsive.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/dist/helpers/responsive.js.map b/node_modules/react-native-spotlight-tour/dist/helpers/responsive.js.map
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/dist/helpers/shape.d.ts b/node_modules/react-native-spotlight-tour/dist/helpers/shape.d.ts
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/dist/helpers/shape.js b/node_modules/react-native-spotlight-tour/dist/helpers/shape.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/dist/helpers/shape.js.map b/node_modules/react-native-spotlight-tour/dist/helpers/shape.js.map
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/dist/lib/SpotlightTour.context.d.ts b/node_modules/react-native-spotlight-tour/dist/lib/SpotlightTour.context.d.ts
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/dist/lib/SpotlightTour.context.js b/node_modules/react-native-spotlight-tour/dist/lib/SpotlightTour.context.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/dist/lib/SpotlightTour.context.js.map b/node_modules/react-native-spotlight-tour/dist/lib/SpotlightTour.context.js.map
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/dist/lib/SpotlightTour.provider.d.ts b/node_modules/react-native-spotlight-tour/dist/lib/SpotlightTour.provider.d.ts
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/dist/lib/SpotlightTour.provider.js b/node_modules/react-native-spotlight-tour/dist/lib/SpotlightTour.provider.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/dist/lib/SpotlightTour.provider.js.map b/node_modules/react-native-spotlight-tour/dist/lib/SpotlightTour.provider.js.map
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/dist/lib/components/attach-step/AttachStep.component.d.ts b/node_modules/react-native-spotlight-tour/dist/lib/components/attach-step/AttachStep.component.d.ts
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/dist/lib/components/attach-step/AttachStep.component.js b/node_modules/react-native-spotlight-tour/dist/lib/components/attach-step/AttachStep.component.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/dist/lib/components/attach-step/AttachStep.component.js.map b/node_modules/react-native-spotlight-tour/dist/lib/components/attach-step/AttachStep.component.js.map
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/dist/lib/components/tour-box/TourBox.component.d.ts b/node_modules/react-native-spotlight-tour/dist/lib/components/tour-box/TourBox.component.d.ts
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/dist/lib/components/tour-box/TourBox.component.js b/node_modules/react-native-spotlight-tour/dist/lib/components/tour-box/TourBox.component.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/dist/lib/components/tour-box/TourBox.component.js.map b/node_modules/react-native-spotlight-tour/dist/lib/components/tour-box/TourBox.component.js.map
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/dist/lib/components/tour-box/TourBox.styles.d.ts b/node_modules/react-native-spotlight-tour/dist/lib/components/tour-box/TourBox.styles.d.ts
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/dist/lib/components/tour-box/TourBox.styles.js b/node_modules/react-native-spotlight-tour/dist/lib/components/tour-box/TourBox.styles.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/dist/lib/components/tour-box/TourBox.styles.js.map b/node_modules/react-native-spotlight-tour/dist/lib/components/tour-box/TourBox.styles.js.map
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/dist/lib/components/tour-overlay/TourOverlay.component.d.ts b/node_modules/react-native-spotlight-tour/dist/lib/components/tour-overlay/TourOverlay.component.d.ts
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/dist/lib/components/tour-overlay/TourOverlay.component.js b/node_modules/react-native-spotlight-tour/dist/lib/components/tour-overlay/TourOverlay.component.js
+old mode 100644
+new mode 100755
+index 0fbbd87..2e1f9cd
+--- a/node_modules/react-native-spotlight-tour/dist/lib/components/tour-overlay/TourOverlay.component.js
++++ b/node_modules/react-native-spotlight-tour/dist/lib/components/tour-overlay/TourOverlay.component.js
+@@ -68,8 +68,8 @@ export const TourOverlay = forwardRef((props, ref) => {
+         const { height, width } = spot;
+         if ([height, width].every(value => value > 0)) {
+             Animated.timing(tooltipOpacity.current, {
+-                delay: 400,
+-                duration: 400,
++                delay: 0,
++                duration: 250,
+                 toValue: 1,
+                 useNativeDriver,
+             })
+@@ -81,7 +81,7 @@ export const TourOverlay = forwardRef((props, ref) => {
+             return new Promise(resolve => {
+                 if (current !== undefined) {
+                     Animated.timing(tooltipOpacity.current, {
+-                        duration: 400,
++                        duration: 150,
+                         toValue: 0,
+                         useNativeDriver,
+                     })
+diff --git a/node_modules/react-native-spotlight-tour/dist/lib/components/tour-overlay/TourOverlay.component.js.map b/node_modules/react-native-spotlight-tour/dist/lib/components/tour-overlay/TourOverlay.component.js.map
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/dist/lib/components/tour-overlay/TourOverlay.styles.d.ts b/node_modules/react-native-spotlight-tour/dist/lib/components/tour-overlay/TourOverlay.styles.d.ts
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/dist/lib/components/tour-overlay/TourOverlay.styles.js b/node_modules/react-native-spotlight-tour/dist/lib/components/tour-overlay/TourOverlay.styles.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/dist/lib/components/tour-overlay/TourOverlay.styles.js.map b/node_modules/react-native-spotlight-tour/dist/lib/components/tour-overlay/TourOverlay.styles.js.map
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/dist/lib/components/tour-overlay/shapes/CircleShape.component.d.ts b/node_modules/react-native-spotlight-tour/dist/lib/components/tour-overlay/shapes/CircleShape.component.d.ts
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/dist/lib/components/tour-overlay/shapes/CircleShape.component.js b/node_modules/react-native-spotlight-tour/dist/lib/components/tour-overlay/shapes/CircleShape.component.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/dist/lib/components/tour-overlay/shapes/CircleShape.component.js.map b/node_modules/react-native-spotlight-tour/dist/lib/components/tour-overlay/shapes/CircleShape.component.js.map
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/dist/lib/components/tour-overlay/shapes/RectShape.component.d.ts b/node_modules/react-native-spotlight-tour/dist/lib/components/tour-overlay/shapes/RectShape.component.d.ts
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/dist/lib/components/tour-overlay/shapes/RectShape.component.js b/node_modules/react-native-spotlight-tour/dist/lib/components/tour-overlay/shapes/RectShape.component.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/dist/lib/components/tour-overlay/shapes/RectShape.component.js.map b/node_modules/react-native-spotlight-tour/dist/lib/components/tour-overlay/shapes/RectShape.component.js.map
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/dist/main.d.ts b/node_modules/react-native-spotlight-tour/dist/main.d.ts
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/dist/main.js b/node_modules/react-native-spotlight-tour/dist/main.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/dist/main.js.map b/node_modules/react-native-spotlight-tour/dist/main.js.map
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/src/helpers/common.ts b/node_modules/react-native-spotlight-tour/src/helpers/common.ts
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/src/helpers/responsive.ts b/node_modules/react-native-spotlight-tour/src/helpers/responsive.ts
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/src/helpers/shape.ts b/node_modules/react-native-spotlight-tour/src/helpers/shape.ts
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/src/lib/SpotlightTour.context.ts b/node_modules/react-native-spotlight-tour/src/lib/SpotlightTour.context.ts
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/src/lib/SpotlightTour.provider.tsx b/node_modules/react-native-spotlight-tour/src/lib/SpotlightTour.provider.tsx
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/src/lib/components/attach-step/AttachStep.component.tsx b/node_modules/react-native-spotlight-tour/src/lib/components/attach-step/AttachStep.component.tsx
+old mode 100644
+new mode 100755
+index 8b47644..4dfc795
+--- a/node_modules/react-native-spotlight-tour/src/lib/components/attach-step/AttachStep.component.tsx
++++ b/node_modules/react-native-spotlight-tour/src/lib/components/attach-step/AttachStep.component.tsx
+@@ -77,7 +77,7 @@ export function AttachStep({ children, fill = false, index, style }: AttachStepP
+ 
+     if (current !== undefined && indexes.includes(current)) {
+       ref.current?.measureInWindow((x, y, width, height) => {
+-        changeSpot({ height, width, x, y });
++        changeSpot({ height, width, x, y:y+35 });
+       });
+     }
+   }, [changeSpot, current, JSON.stringify(index)]);
+diff --git a/node_modules/react-native-spotlight-tour/src/lib/components/tour-box/TourBox.component.tsx b/node_modules/react-native-spotlight-tour/src/lib/components/tour-box/TourBox.component.tsx
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/src/lib/components/tour-box/TourBox.styles.ts b/node_modules/react-native-spotlight-tour/src/lib/components/tour-box/TourBox.styles.ts
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/src/lib/components/tour-overlay/TourOverlay.component.tsx b/node_modules/react-native-spotlight-tour/src/lib/components/tour-overlay/TourOverlay.component.tsx
+old mode 100644
+new mode 100755
+index 127c1d6..facdff7
+--- a/node_modules/react-native-spotlight-tour/src/lib/components/tour-overlay/TourOverlay.component.tsx
++++ b/node_modules/react-native-spotlight-tour/src/lib/components/tour-overlay/TourOverlay.component.tsx
+@@ -154,8 +154,8 @@ export const TourOverlay = forwardRef<TourOverlayRef, TourOverlayProps>((props,
+ 
+     if ([height, width].every(value => value > 0)) {
+       Animated.timing(tooltipOpacity.current, {
+-        delay: 400,
+-        duration: 400,
++        delay: 0,
++        duration: 250,
+         toValue: 1,
+         useNativeDriver,
+       })
+@@ -168,7 +168,7 @@ export const TourOverlay = forwardRef<TourOverlayRef, TourOverlayProps>((props,
+       return new Promise(resolve => {
+         if (current !== undefined) {
+           Animated.timing(tooltipOpacity.current, {
+-            duration: 400,
++            duration: 150,
+             toValue: 0,
+             useNativeDriver,
+           })
+diff --git a/node_modules/react-native-spotlight-tour/src/lib/components/tour-overlay/TourOverlay.styles.ts b/node_modules/react-native-spotlight-tour/src/lib/components/tour-overlay/TourOverlay.styles.ts
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/src/lib/components/tour-overlay/shapes/CircleShape.component.tsx b/node_modules/react-native-spotlight-tour/src/lib/components/tour-overlay/shapes/CircleShape.component.tsx
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/src/lib/components/tour-overlay/shapes/RectShape.component.tsx b/node_modules/react-native-spotlight-tour/src/lib/components/tour-overlay/shapes/RectShape.component.tsx
+old mode 100644
+new mode 100755
+diff --git a/node_modules/react-native-spotlight-tour/src/main.ts b/node_modules/react-native-spotlight-tour/src/main.ts
+old mode 100644
+new mode 100755

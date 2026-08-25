@@ -44,6 +44,6 @@ export const listEventsQuerySchema: ValidationSchemas = {
 export const connectGoogleCalendarSchema: ValidationSchemas = {
   body: z.object({
     code: z.string().min(1, 'Authorization code is required'),
-    redirectUri: z.string().min(1, 'Redirect URI is required'),
+    redirectUri: z.string().min(1).optional(),
   }),
 };

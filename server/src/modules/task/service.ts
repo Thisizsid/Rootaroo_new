@@ -108,7 +108,7 @@ function toTaskResponse(task: Task): TaskResponse {
     dueDate: toISODateString(task.dueDate),
     recurrence: task.recurrence,
     recurrenceEndDate: toISODateString(task.recurrenceEndDate),
-    points: task.points ?? 1,
+    points: task.points ?? 5,
     assignees: ((task.get('assignees') as User[]) || []).map(toAssigneeResponse),
     createdBy: toAuthorResponse(task.get('creator') as unknown as User),
     completedBy: task.get('completer')
@@ -142,7 +142,7 @@ export async function createTask(
     status: 'pending',
     recurrence: body.recurrence || 'none',
     recurrenceEndDate: body.recurrenceEndDate || null,
-    points: isSelfOnly ? 1 : (body.points ?? 1),
+    points: isSelfOnly ? 5 : (body.points ?? 5),
   });
 
   if (body.assigneeIds && body.assigneeIds.length > 0) {
@@ -284,7 +284,7 @@ export async function updateTask(
     // is determined from the task's existing assignees, not the request body.
     const currentAssignees = (task.get('assignees') as User[]) || [];
     const isSelfOnly = currentAssignees.length === 1 && currentAssignees[0].id === userId;
-    task.points = isSelfOnly ? 1 : body.points;
+    task.points = isSelfOnly ? 5 : body.points;
   }
 
   await task.save();

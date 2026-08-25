@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Op } from 'sequelize';
 import { JournalEntry, JournalMedia, HouseholdMember } from '../../database/models';
 import { NotFoundError, ForbiddenError } from '../../shared/utils/errors';
+import { getSignedUrl } from '../../shared/utils/s3';
 import type {
   CreateEntryBody,
   UpdateEntryBody,
@@ -23,22 +24,22 @@ async function getUserHousehold(userId: string): Promise<string> {
   return membership.householdId;
 }
 
-function toMediaResponse(items: JournalMedia[]): JournalMediaResponse[] {
-  return items.map((m) => ({
+async function toMediaResponse(items: JournalMedia[]): Promise<JournalMediaResponse[]> {
+  return Promise.all(items.map(async (m) => ({
     id: m.id,
-    mediaUrl: m.mediaUrl,
+    mediaUrl: (await getSignedUrl(m.mediaUrl))!,
     mediaType: m.mediaType,
-    thumbnailUrl: m.thumbnailUrl,
+    thumbnailUrl: await getSignedUrl(m.thumbnailUrl),
     fileSizeBytes: m.fileSizeBytes,
-  }));
+  })));
 }
 
-function toEntryResponse(entry: JournalEntry): JournalEntryResponse {
+async function toEntryResponse(entry: JournalEntry): Promise<JournalEntryResponse> {
   const media = (entry.get('media') as JournalMedia[]) || [];
   return {
     id: entry.id,
     content: entry.content,
-    media: toMediaResponse(media),
+    media: await toMediaResponse(media),
     createdAt: entry.createdAt.toISOString(),
     updatedAt: entry.updatedAt.toISOString(),
   };
@@ -83,7 +84,7 @@ export async function createEntry(
   });
   if (!fullEntry) throw new Error('Failed to load created journal entry');
 
-  return toEntryResponse(fullEntry);
+  return await toEntryResponse(fullEntry);
 }
 
 export async function listEntries(
@@ -116,7 +117,7 @@ export async function listEntries(
   const pageEntries = entries.slice(0, limit);
 
   return {
-    entries: pageEntries.map(toEntryResponse),
+    entries: await Promise.all(pageEntries.map(toEntryResponse)),
     nextCursor: hasMore ? pageEntries[pageEntries.length - 1].id : null,
     hasMore,
   };
@@ -134,7 +135,7 @@ export async function getEntryById(
   });
   if (!entry) throw new NotFoundError('Journal entry');
 
-  return toEntryResponse(entry);
+  return await toEntryResponse(entry);
 }
 
 export async function updateEntry(
@@ -156,7 +157,7 @@ export async function updateEntry(
   });
   if (!fullEntry) throw new Error('Failed to load updated journal entry');
 
-  return toEntryResponse(fullEntry);
+  return await toEntryResponse(fullEntry);
 }
 
 export async function deleteEntry(userId: string, entryId: string): Promise<void> {

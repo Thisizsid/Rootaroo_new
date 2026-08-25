@@ -329,7 +329,9 @@ export default function CreatePostScreen({ navigation, route }) {
       };
       if (readyMedia.length > 0) {
         body.media = readyMedia.map((m) => ({
-          mediaUrl: m.uploaded.url,
+          // `fileName` is the S3 key — must be sent, not `url` (a signed
+          // preview URL that expires and would go stale if persisted).
+          mediaUrl: m.uploaded.fileName,
           mediaType: m.kind,
           fileSizeBytes: m.uploaded.size,
         }));

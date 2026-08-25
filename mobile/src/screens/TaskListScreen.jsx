@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,8 @@ import { taskApi } from '../shared/api/task';
 import { useAuthStore } from '../shared/store/authStore';
 import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
 import { colors, spacing, fonts } from '../shared/theme';
+import { SpotlightTourProvider, AttachStep } from 'react-native-spotlight-tour';
+import TourTooltip from '../shared/components/TourTooltip';
 import EmptyState from '../components/EmptyState';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import Avatar from '../components/Avatar';
@@ -91,6 +93,58 @@ export default function TaskListScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const dockHeight = useTabBarDockHeight();
   const canCreateTask = user?.role === 'admin' || user?.role === 'member';
+  const showTasksTour = useAuthStore((s) => s.showTasksTour);
+  const dismissTasksTour = useAuthStore((s) => s.dismissTasksTour);
+  const triggerMoreTour = useAuthStore((s) => s.triggerMoreTour);
+  const addTaskRef = useRef(null);
+  const filterRowRef = useRef(null);
+  const tourRef = useRef(null);
+  const tourSteps = useMemo(() => {
+    const meta = [
+      ...(canCreateTask
+        ? [{ ref: addTaskRef, title: 'Add a task', body: 'Tap here to assign a new to-do to your household.' }]
+        : []),
+      { ref: filterRowRef, title: 'Tasks & points', body: 'Completing a task, todo, or grocery run earns your household points — see who\'s leading on Home.' },
+    ];
+    return meta.map(({ ref, title, body }, i) => ({
+      before: () => {},
+      render: (props) => {
+        const isChainLast = i === meta.length - 1;
+        return (
+          <TourTooltip
+            {...props}
+            title={title}
+            body={body}
+            total={meta.length}
+            continueLabel={isChainLast ? 'Continue to More' : undefined}
+            onContinue={isChainLast ? () => {
+              props.stop();
+              navigation.navigate('MoreStack', { screen: 'MoreIndex' });
+              triggerMoreTour();
+            } : undefined}
+          />
+        );
+      },
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canCreateTask]);
+  useEffect(() => {
+    if (!showTasksTour) return;
+    let cancelled = false;
+    const tryStart = () => {
+      if (cancelled) return;
+      if (tourRef.current) {
+        tourRef.current.start();
+        dismissTasksTour();
+      } else {
+        requestAnimationFrame(tryStart);
+      }
+    };
+    tryStart();
+    return () => {
+      cancelled = true;
+    };
+  }, [showTasksTour, dismissTasksTour]);
   const loadTasks = useCallback(async () => {
     try {
       const data = await taskApi.list({
@@ -227,6 +281,14 @@ export default function TaskListScreen({ navigation }) {
     return <LoadingSkeleton variant="list" />;
   }
   return (
+    <SpotlightTourProvider
+      ref={tourRef}
+      steps={tourSteps}
+      shape="rectangle"
+      motion="slide"
+      overlayColor={colors.shadow}
+      overlayOpacity={0.82}
+    >
     <View
       style={[
         styles.container,
@@ -241,18 +303,22 @@ export default function TaskListScreen({ navigation }) {
       <View style={styles.header}>
         <Text style={styles.screenTitle}>Tasks</Text>
         {canCreateTask && (
-          <TouchableOpacity
-            onPress={() => navigation.navigate('CreateTask')}
-            hitSlop={8}
-            activeOpacity={0.6}
-          >
-            <Text style={styles.addTaskLink}>Add task</Text>
-          </TouchableOpacity>
+          <AttachStep index={0} style={{ alignSelf: 'center' }}>
+            <TouchableOpacity
+              ref={addTaskRef}
+              onPress={() => navigation.navigate('CreateTask')}
+              hitSlop={8}
+              activeOpacity={0.6}
+            >
+              <Text style={styles.addTaskLink}>Add task</Text>
+            </TouchableOpacity>
+          </AttachStep>
         )}
       </View>
 
       {/* ── Filter tabs: text row (SCREEN 16) ── */}
-      <View style={styles.filterRow}>
+      <AttachStep index={canCreateTask ? 1 : 0} fill>
+      <View style={styles.filterRow} ref={filterRowRef}>
         {FILTER_TABS.map((tab) => {
           const active = filter === tab.key;
           return (
@@ -262,6 +328,7 @@ export default function TaskListScreen({ navigation }) {
           );
         })}
       </View>
+      </AttachStep>
 
       {/* Offline banner */}
       <View style={styles.bannerWrap}>
@@ -300,6 +367,7 @@ export default function TaskListScreen({ navigation }) {
         showsVerticalScrollIndicator={false}
       />
     </View>
+    </SpotlightTourProvider>
   );
 }
 const styles = StyleSheet.create({

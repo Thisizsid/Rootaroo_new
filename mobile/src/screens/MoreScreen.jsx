@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,19 @@ import { useAuthStore } from '../shared/store/authStore';
 import apiClient from '../shared/api/client';
 import { colors, fonts } from '../shared/theme';
 import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
+import { SpotlightTourProvider, AttachStep } from 'react-native-spotlight-tour';
+import TourTooltip from '../shared/components/TourTooltip';
+import { scrollToStep } from '../shared/utils/scrollToStep';
+
+// Order here is the tour's step order — index into this array is the
+// AttachStep index for that row, matched by its menu label.
+const TOUR_ROWS = [
+  { label: 'Document vault', title: 'Document Vault', body: 'Store family documents and photos, encrypted and private.' },
+  { label: 'Ping', title: 'Ping', body: 'Check in or ask where everyone is with one tap.' },
+  { label: 'Grocery List', title: 'Grocery List', body: 'Keep a shared shopping list the whole household can add to.' },
+  { label: 'Bills & Splits', title: 'Bills & Splits', body: 'Track shared expenses and split costs fairly.' },
+  { label: 'Calendar', title: 'Calendar', body: 'See upcoming family events in one place.' },
+];
 function getInitials(name) {
   return name
     .split(' ')
@@ -30,6 +43,40 @@ export default function MoreScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const dockHeight = useTabBarDockHeight();
   const user = useAuthStore((s) => s.user);
+  const showMoreTour = useAuthStore((s) => s.showMoreTour);
+  const dismissMoreTour = useAuthStore((s) => s.dismissMoreTour);
+  const scrollRef = useRef(null);
+  const scrollOffsetY = useRef(0);
+  const tourRef = useRef(null);
+  const rowRefs = useRef({});
+  const getRowRef = (label) => {
+    if (!rowRefs.current[label]) rowRefs.current[label] = React.createRef();
+    return rowRefs.current[label];
+  };
+  const tourSteps = useMemo(() => {
+    return TOUR_ROWS.map(({ label, title, body }) => ({
+      before: () => scrollToStep(scrollRef, scrollOffsetY, getRowRef(label)),
+      render: (props) => <TourTooltip {...props} title={title} body={body} total={TOUR_ROWS.length} />,
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (!showMoreTour) return;
+    let cancelled = false;
+    const tryStart = () => {
+      if (cancelled) return;
+      if (tourRef.current) {
+        tourRef.current.start();
+        dismissMoreTour();
+      } else {
+        requestAnimationFrame(tryStart);
+      }
+    };
+    tryStart();
+    return () => {
+      cancelled = true;
+    };
+  }, [showMoreTour, dismissMoreTour]);
   const displayName = user?.name || user?.email || 'You';
   const initials = getInitials(displayName);
   const email = user?.email || '';
@@ -108,6 +155,14 @@ export default function MoreScreen({ navigation }) {
     },
   ];
   return (
+    <SpotlightTourProvider
+      ref={tourRef}
+      steps={tourSteps}
+      shape="rectangle"
+      motion="slide"
+      overlayColor={colors.shadow}
+      overlayOpacity={0.82}
+    >
     <View
       style={[
         styles.root,
@@ -119,6 +174,9 @@ export default function MoreScreen({ navigation }) {
       <StatusBar barStyle="light-content" backgroundColor={colors.canvas} />
 
       <ScrollView
+        ref={scrollRef}
+        onScroll={(e) => { scrollOffsetY.current = e.nativeEvent.contentOffset.y; }}
+        scrollEventThrottle={16}
         style={styles.scroll}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
@@ -160,17 +218,35 @@ export default function MoreScreen({ navigation }) {
             <Text style={[styles.sectionLabel, si > 0 && styles.sectionLabelSpaced]}>
               {section.title}
             </Text>
-            {section.rows.map((row) => (
-              <TouchableOpacity
-                key={row.label}
-                style={styles.menuRow}
-                onPress={row.onPress}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.menuRowLabel}>{row.label}</Text>
-                <Text style={styles.menuRowChevron}>›</Text>
-              </TouchableOpacity>
-            ))}
+            {section.rows.map((row) => {
+              const tourIndex = TOUR_ROWS.findIndex((t) => t.label === row.label);
+              if (tourIndex === -1) {
+                return (
+                  <TouchableOpacity
+                    key={row.label}
+                    style={styles.menuRow}
+                    onPress={row.onPress}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.menuRowLabel}>{row.label}</Text>
+                    <Text style={styles.menuRowChevron}>›</Text>
+                  </TouchableOpacity>
+                );
+              }
+              return (
+                <AttachStep key={row.label} index={tourIndex} fill>
+                  <TouchableOpacity
+                    ref={getRowRef(row.label)}
+                    style={styles.menuRow}
+                    onPress={row.onPress}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.menuRowLabel}>{row.label}</Text>
+                    <Text style={styles.menuRowChevron}>›</Text>
+                  </TouchableOpacity>
+                </AttachStep>
+              );
+            })}
           </View>
         ))}
 
@@ -183,6 +259,7 @@ export default function MoreScreen({ navigation }) {
       {/* ── Version footer (SCREEN 39) ── */}
       <Text style={[styles.versionText, { paddingBottom: dockHeight }]}>Rootaroo 2.4.1</Text>
     </View>
+    </SpotlightTourProvider>
   );
 }
 const styles = StyleSheet.create({

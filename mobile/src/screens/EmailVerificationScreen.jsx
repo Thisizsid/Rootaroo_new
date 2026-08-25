@@ -12,6 +12,7 @@ import Svg, { Path } from 'react-native-svg';
 import SignupWizardShell from '../shared/components/SignupWizardShell';
 import { authApi } from '../shared/api/auth';
 import { updateSignupProgress } from '../shared/store/signupProgress';
+import { useAuthStore } from '../shared/store/authStore';
 import { colors, fonts } from '../shared/theme';
 const OTP_LENGTH = 6;
 const RESEND_COOLDOWN = 30;
@@ -74,6 +75,8 @@ export default function EmailVerificationScreen({ navigation, route }) {
     setVerifying(true);
     try {
       await authApi.verifyEmail(fullCode);
+      const current = useAuthStore.getState().user;
+      useAuthStore.getState().setUser({ ...current, isVerified: true });
       await updateSignupProgress({
         step: 'invite',
       });
@@ -178,25 +181,6 @@ export default function EmailVerificationScreen({ navigation, route }) {
           </TouchableOpacity>
         )}
       </View>
-
-      {/* Verify later */}
-      <TouchableOpacity
-        style={styles.skipBtn}
-        onPress={async () => {
-          await updateSignupProgress({
-            step: 'invite',
-          });
-          navigation.navigate('InviteMembers');
-        }}
-        hitSlop={{
-          top: 8,
-          bottom: 8,
-          left: 8,
-          right: 8,
-        }}
-      >
-        <Text style={styles.skipText}>Verify later</Text>
-      </TouchableOpacity>
     </SignupWizardShell>
   );
 }
@@ -265,14 +249,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.goldWarmDark,
-  },
-  skipBtn: {
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  skipText: {
-    fontSize: 13,
-    color: colors.textSecondaryWarm,
-    fontWeight: '500',
   },
 });

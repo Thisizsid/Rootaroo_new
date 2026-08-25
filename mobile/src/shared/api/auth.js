@@ -32,6 +32,9 @@ export const authApi = {
   resetPassword: (data) =>
     apiClient.post('/auth/reset-password', data),
 
+  checkResetCode: (code) =>
+    apiClient.post('/auth/check-reset-code', { code }),
+
   updateProfile: (data) =>
     apiClient.patch('/auth/profile', data).then((r) => r.data.data),
 
@@ -40,6 +43,9 @@ export const authApi = {
 
   googleAuth: (data) =>
     apiClient.post('/auth/google', data).then((r) => r.data.data),
+
+  appleAuth: (data) =>
+    apiClient.post('/auth/apple', data).then((r) => r.data.data),
 
   verifyEmail: (code) =>
     apiClient.post('/auth/verify-email', { code }),

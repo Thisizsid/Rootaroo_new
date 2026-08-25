@@ -25,18 +25,29 @@ export interface GoogleTokens {
   expiresAt: Date;
 }
 
-/** Exchange an authorization code (obtained via the mobile client's incremental-scope consent flow) for tokens. */
-export async function exchangeCodeForTokens(code: string, redirectUri: string): Promise<GoogleTokens> {
+/**
+ * Exchange an authorization code for tokens.
+ *
+ * `redirectUri` is optional: a `serverAuthCode` obtained from the native
+ * Google Sign-In SDK (`GoogleSignin.signIn()` with `offlineAccess: true`)
+ * isn't tied to a redirect URI the way a browser-based authorization-code
+ * flow is — sending one that doesn't match what Google expects for that
+ * code type can itself break the exchange, so it's only included when the
+ * caller actually has one.
+ */
+export async function exchangeCodeForTokens(code: string, redirectUri?: string): Promise<GoogleTokens> {
+  const params: Record<string, string> = {
+    code,
+    client_id: env.google.clientId,
+    client_secret: env.google.clientSecret,
+    grant_type: 'authorization_code',
+  };
+  if (redirectUri) params.redirect_uri = redirectUri;
+
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      code,
-      client_id: env.google.clientId,
-      client_secret: env.google.clientSecret,
-      redirect_uri: redirectUri,
-      grant_type: 'authorization_code',
-    }),
+    body: new URLSearchParams(params),
   });
 
   if (!res.ok) {

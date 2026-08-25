@@ -8,7 +8,7 @@ import {
   HouseholdMember,
 } from '../../database/models';
 import { NotFoundError, ForbiddenError } from '../../shared/utils/errors';
-import { uploadBuffer, deleteResource } from '../../shared/utils/cloudinary';
+import { uploadBuffer, deleteObject, getSignedUrl } from '../../shared/utils/s3';
 import type {
   CreateVaultDocumentBody,
   UpdateVaultDocumentBody,
@@ -30,7 +30,7 @@ export async function getUserHousehold(userId: string): Promise<string> {
   return membership.householdId;
 }
 
-function toDocumentResponse(doc: VaultDocument): VaultDocumentResponse {
+async function toDocumentResponse(doc: VaultDocument): Promise<VaultDocumentResponse> {
   return {
     id: doc.id,
     householdId: doc.householdId,
@@ -40,11 +40,11 @@ function toDocumentResponse(doc: VaultDocument): VaultDocumentResponse {
     uploadedBy: {
       id: (doc.get('uploader') as User).id,
       displayName: (doc.get('uploader') as User).displayName,
-      avatarUrl: (doc.get('uploader') as User).avatarUrl,
+      avatarUrl: await getSignedUrl((doc.get('uploader') as User).avatarUrl),
       avatarEmoji: (doc.get('uploader') as User).avatarEmoji,
     },
     uploadedAt: doc.createdAt.toISOString(),
-    downloadUrl: doc.cloudinarySecureUrl,
+    downloadUrl: (await getSignedUrl(doc.s3Key))!,
     iv: doc.iv,
   };
 }
@@ -87,12 +87,7 @@ export async function uploadDocument(
   // Check storage quota
   await checkStorageQuota(userId, body.sizeBytes);
 
-  // Upload to Cloudinary
-  const uploadResult = await uploadBuffer(fileBuffer, {
-    folder: `rootaru/vault/${householdId}`,
-    resource_type: 'raw',
-    public_id: `vault-${Date.now()}-${Math.random().toString(36).substring(7)}`,
-  });
+  const uploadResult = await uploadBuffer(fileBuffer, `vault/${householdId}`, body.mimeType);
 
   // Create document + per-user wrapped key in a transaction
   const document = await sequelize.transaction(async (transaction) => {
@@ -103,8 +98,7 @@ export async function uploadDocument(
       sizeBytes: body.sizeBytes,
       encryptedKey: body.encryptedKey,
       iv: body.iv,
-      cloudinaryPublicId: uploadResult.public_id,
-      cloudinarySecureUrl: uploadResult.secure_url,
+      s3Key: uploadResult.key,
       uploadedBy: userId,
     }, { transaction });
 
@@ -127,7 +121,7 @@ export async function uploadDocument(
     throw new Error('Failed to load created document');
   }
 
-  return toDocumentResponse(fullDoc);
+  return await toDocumentResponse(fullDoc);
 }
 
 // ─── List Documents ───
@@ -158,7 +152,7 @@ export async function listDocuments(
     : null;
 
   return {
-    documents: page.map(toDocumentResponse),
+    documents: await Promise.all(page.map(toDocumentResponse)),
     nextCursor,
     hasMore,
   };
@@ -181,7 +175,7 @@ export async function getDocumentById(
     throw new NotFoundError('Document');
   }
 
-  return toDocumentResponse(document);
+  return await toDocumentResponse(document);
 }
 
 // ─── Get User's Wrapped Key for a Document ───
@@ -258,7 +252,7 @@ export async function updateDocument(
     throw new Error('Failed to load updated document');
   }
 
-  return toDocumentResponse(updated);
+  return await toDocumentResponse(updated);
 }
 
 // ─── Delete Document ───
@@ -283,8 +277,8 @@ export async function deleteDocument(
     throw new ForbiddenError('Only the uploader or an admin can delete this document');
   }
 
-  // Delete from Cloudinary
-  await deleteResource(document.cloudinaryPublicId);
+  // Delete from S3
+  await deleteObject(document.s3Key);
 
   // Hard delete document + all per-user keys in a transaction
   await sequelize.transaction(async (transaction) => {
@@ -334,8 +328,8 @@ export async function hardDeleteDocument(
     throw new NotFoundError('Document');
   }
 
-  // Delete from Cloudinary
-  await deleteResource(document.cloudinaryPublicId);
+  // Delete from S3
+  await deleteObject(document.s3Key);
 
   // Permanently purge document + per-user keys
   await sequelize.transaction(async (transaction) => {

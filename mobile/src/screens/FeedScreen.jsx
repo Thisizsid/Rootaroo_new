@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -23,6 +23,8 @@ import { householdApi } from '../shared/api/household';
 import { useFeedStore } from '../shared/store/feedStore';
 import { useAuthStore } from '../shared/store/authStore';
 import { loadSignupProgress } from '../shared/store/signupProgress';
+import { SpotlightTourProvider, AttachStep } from 'react-native-spotlight-tour';
+import TourTooltip from '../shared/components/TourTooltip';
 import apiClient from '../shared/api/client';
 import EmptyState from '../components/EmptyState';
 import ErrorState from '../components/ErrorState';
@@ -96,6 +98,56 @@ export default function FeedScreen() {
   } = useFeedStore();
   const currentUserId = useAuthStore((s) => s.user?.id);
   const householdId = useAuthStore((s) => s.householdId);
+  const showFeedTour = useAuthStore((s) => s.showFeedTour);
+  const dismissFeedTour = useAuthStore((s) => s.dismissFeedTour);
+  const triggerChatTour = useAuthStore((s) => s.triggerChatTour);
+  const fabRef = useRef(null);
+  const titleBarRef = useRef(null);
+  const tourRef = useRef(null);
+  const tourSteps = useMemo(() => {
+    const meta = [
+      { ref: fabRef, title: 'Share something', body: 'Tap here to post a photo or update with your household.' },
+      { ref: titleBarRef, title: 'Your Feed', body: 'Photos and updates your household shares show up here, all in one place.' },
+    ];
+    return meta.map(({ ref, title, body }, i) => ({
+      before: () => {},
+      render: (props) => {
+        const isChainLast = i === meta.length - 1;
+        return (
+          <TourTooltip
+            {...props}
+            title={title}
+            body={body}
+            total={meta.length}
+            continueLabel={isChainLast ? 'Continue to Chat' : undefined}
+            onContinue={isChainLast ? () => {
+              props.stop();
+              navigation.navigate('ChatStack');
+              triggerChatTour();
+            } : undefined}
+          />
+        );
+      },
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (!showFeedTour) return;
+    let cancelled = false;
+    const tryStart = () => {
+      if (cancelled) return;
+      if (tourRef.current) {
+        tourRef.current.start();
+        dismissFeedTour();
+      } else {
+        requestAnimationFrame(tryStart);
+      }
+    };
+    tryStart();
+    return () => {
+      cancelled = true;
+    };
+  }, [showFeedTour, dismissFeedTour]);
   const [activeMediaIndex, setActiveMediaIndex] = useState({});
   const [menuPost, setMenuPost] = useState(null);
   const [menuAnchor, setMenuAnchor] = useState(null);
@@ -431,6 +483,14 @@ export default function FeedScreen() {
     );
   };
   return (
+    <SpotlightTourProvider
+      ref={tourRef}
+      steps={tourSteps}
+      shape="rectangle"
+      motion="slide"
+      overlayColor={colors.shadow}
+      overlayOpacity={0.82}
+    >
     <View
       style={[
         styles.container,
@@ -441,9 +501,11 @@ export default function FeedScreen() {
     >
       <StatusBar style="light" />
       {/* Title bar: Feed — post creation lives in the "+" FAB below, no need to duplicate it here */}
-      <View style={styles.titleBar}>
-        <Text style={styles.title}>Feed</Text>
-      </View>
+      <AttachStep index={1} fill>
+        <View style={styles.titleBar} ref={titleBarRef}>
+          <Text style={styles.title}>Feed</Text>
+        </View>
+      </AttachStep>
 
       {loading && posts.length === 0 ? (
         <LoadingSkeleton variant="feed" />
@@ -493,14 +555,23 @@ export default function FeedScreen() {
         </KeyboardAvoider>
       )}
 
-      {/* Floating Action Button */}
-      <TouchableOpacity
-        style={[styles.fab, { bottom: dockHeight + 12 }]}
-        activeOpacity={0.8}
-        onPress={() => navigation.navigate('CreatePost')}
-      >
-        <Text style={styles.fabIcon}>+</Text>
-      </TouchableOpacity>
+      {/* Floating Action Button.
+          AttachStep's own wrapper isn't positioned, so the FAB's
+          position:absolute/right/bottom move onto AttachStep's `style`
+          instead of the button's own style — otherwise the button would be
+          absolutely positioned relative to its (tiny, content-sized)
+          AttachStep wrapper instead of the screen, and lose its floating
+          placement entirely. */}
+      <AttachStep index={0} style={{ position: 'absolute', right: 24, bottom: dockHeight + 12 }}>
+        <TouchableOpacity
+          ref={fabRef}
+          style={styles.fabButton}
+          activeOpacity={0.8}
+          onPress={() => navigation.navigate('CreatePost')}
+        >
+          <Text style={styles.fabIcon}>+</Text>
+        </TouchableOpacity>
+      </AttachStep>
 
       {/* 3-dot anchored dropdown menu — appears right under the button */}
       <Modal visible={!!menuPost} transparent animationType="fade" onRequestClose={closePostMenu}>
@@ -561,6 +632,7 @@ export default function FeedScreen() {
         onCancel={() => setConfirmDeleteId(null)}
       />
     </View>
+    </SpotlightTourProvider>
   );
 }
 
@@ -1020,10 +1092,7 @@ const styles = StyleSheet.create({
     color: colors.onAccent,
     fontFamily: 'PlusJakartaSans_600SemiBold',
   },
-  fab: {
-    position: 'absolute',
-    right: 24,
-    bottom: 40,
+  fabButton: {
     width: 56,
     height: 56,
     borderRadius: 28,

@@ -277,6 +277,14 @@ export default function ChatScreen({ route }) {
     },
     [replyTo, sendMessage, conversationId],
   );
+  const handleSendImage = useCallback(
+    async (mediaUrl) => {
+      const body = { mediaUrl, type: 'image' };
+      if (replyTo) body.replyToId = replyTo.messageId;
+      await sendMessage(conversationId, body);
+    },
+    [replyTo, sendMessage, conversationId],
+  );
   const handleDelete = useCallback(
     async (messageId) => {
       try {
@@ -761,6 +769,7 @@ export default function ChatScreen({ route }) {
         <ChatInputBar
           onSend={handleSend}
           onSendVoice={handleSendVoice}
+          onSendImage={handleSendImage}
           replyTo={replyTo}
           onDismissReply={() => setReplyTo(null)}
         />

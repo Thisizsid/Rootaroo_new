@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import bcrypt from 'bcrypt';
 import { Household, HouseholdMember, Invitation, User, Conversation, ConversationParticipant } from '../../database/models';
 import { ConflictError, NotFoundError, ForbiddenError, AppError } from '../../shared/utils/errors';
+import { getSignedUrl } from '../../shared/utils/s3';
 import * as notificationService from '../../shared/services/notifications';
 import type {
   CreateHouseholdBody, HouseholdResponse, InvitationResponse, JoinHouseholdBody,
@@ -32,14 +33,14 @@ async function removeFromHouseholdConversation(householdId: string, userId: stri
   await ConversationParticipant.destroy({ where: { conversationId: conv.id, userId } });
 }
 
-function toHouseholdResponse(household: Household, role: string, memberCount: number): HouseholdResponse {
+async function toHouseholdResponse(household: Household, role: string, memberCount: number): Promise<HouseholdResponse> {
   return {
     id: household.id,
     name: household.name,
     inviteCode: household.inviteCode,
     memberCount,
     role,
-    coverPhotoUrl: household.coverPhotoUrl,
+    coverPhotoUrl: await getSignedUrl(household.coverPhotoUrl),
     createdAt: household.createdAt.toISOString(),
     scheduledDeletionAt: household.scheduledDeletionAt ? household.scheduledDeletionAt.toISOString() : null,
   };
@@ -65,7 +66,7 @@ export async function createHousehold(
 
   await User.update({ role: 'admin' }, { where: { id: userId } });
 
-  return toHouseholdResponse(household, 'admin', 1);
+  return await toHouseholdResponse(household, 'admin', 1);
 }
 
 export async function getHousehold(householdId: string, userId: string): Promise<HouseholdResponse> {
@@ -77,7 +78,7 @@ export async function getHousehold(householdId: string, userId: string): Promise
 
   const memberCount = await HouseholdMember.count({ where: { householdId } });
 
-  return toHouseholdResponse(household, membership.role, memberCount);
+  return await toHouseholdResponse(household, membership.role, memberCount);
 }
 
 export async function listUserHouseholds(userId: string): Promise<HouseholdResponse[]> {
@@ -89,7 +90,7 @@ export async function listUserHouseholds(userId: string): Promise<HouseholdRespo
   return Promise.all(
     memberships.map(async (m) => {
       const count = await HouseholdMember.count({ where: { householdId: m.householdId } });
-      return toHouseholdResponse(m.household!, m.role, count);
+      return await toHouseholdResponse(m.household!, m.role, count);
     }),
   );
 }
@@ -195,7 +196,7 @@ export async function joinViaCode(userId: string, body: JoinHouseholdBody): Prom
     where: { householdId: household.id },
   });
 
-  return toHouseholdResponse(household, 'member', memberCount);
+  return await toHouseholdResponse(household, 'member', memberCount);
 }
 
 export async function updateCoverPhoto(
@@ -215,7 +216,7 @@ export async function updateCoverPhoto(
   await household.save();
 
   const memberCount = await HouseholdMember.count({ where: { householdId } });
-  return toHouseholdResponse(household, membership.role, memberCount);
+  return await toHouseholdResponse(household, membership.role, memberCount);
 }
 
 export async function removeCoverPhoto(userId: string, householdId: string): Promise<HouseholdResponse> {
@@ -290,7 +291,7 @@ export async function transferAdmin(
   const memberCount = await HouseholdMember.count({ where: { householdId } });
   const household = await Household.findByPk(householdId);
   if (!household) throw new AppError(500, 'Household no longer exists');
-  return toHouseholdResponse(household, 'member', memberCount);
+  return await toHouseholdResponse(household, 'member', memberCount);
 }
 
 export async function changeMemberRole(
@@ -321,7 +322,7 @@ export async function changeMemberRole(
     userId: target.userId,
     displayName: target.user.displayName,
     email: target.user.email,
-    avatarUrl: target.user.avatarUrl,
+    avatarUrl: await getSignedUrl(target.user.avatarUrl),
     avatarEmoji: target.user.avatarEmoji,
     dateOfBirth: target.user.dateOfBirth,
     role: body.role,
@@ -341,16 +342,16 @@ export async function listMembers(
     order: [['joinedAt', 'ASC']],
   });
 
-  return members.map((m) => ({
+  return Promise.all(members.map(async (m) => ({
     userId: m.userId,
     displayName: m.user!.displayName,
     email: m.user!.email,
-    avatarUrl: m.user!.avatarUrl,
+    avatarUrl: await getSignedUrl(m.user!.avatarUrl),
     avatarEmoji: m.user!.avatarEmoji,
     dateOfBirth: m.user!.dateOfBirth,
     role: m.role,
     joinedAt: m.joinedAt.toISOString(),
-  }));
+  })));
 }
 
 // ── Household Deletion (admin-only, password-confirmed, 30-day grace) ──

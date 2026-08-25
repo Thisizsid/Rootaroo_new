@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../../shared/middleware/auth';
-import { uploadBuffer } from '../../shared/utils/cloudinary';
+import { uploadBuffer } from '../../shared/utils/s3';
 import * as householdService from './service';
 
 function getUserId(req: Request): string {
@@ -77,18 +77,8 @@ export async function uploadCoverPhoto(req: Request, res: Response, next: NextFu
       res.status(400).json({ success: false, error: 'No file uploaded.' });
       return;
     }
-    const result = await uploadBuffer(file.buffer, {
-      folder: 'rootaru/household-covers',
-      resource_type: 'image',
-      // Cap the stored asset's size so the banner loads quickly on Home and
-      // Edit Profile — this is a wide 4:3 crop from a phone camera, which can
-      // otherwise be several MB at full resolution.
-      transformation: [
-        { width: 1200, crop: 'limit' },
-        { quality: 'auto', fetch_format: 'auto' },
-      ],
-    });
-    const household = await householdService.updateCoverPhoto(getUserId(req), req.params.id, result.secure_url);
+    const result = await uploadBuffer(file.buffer, 'household-covers', file.mimetype, file.originalname.split('.').pop());
+    const household = await householdService.updateCoverPhoto(getUserId(req), req.params.id, result.key);
     res.status(200).json({ success: true, data: household });
   } catch (e) { next(e); }
 }

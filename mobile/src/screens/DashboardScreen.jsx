@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -40,6 +40,10 @@ import { colors, fonts, spacing, radius, withAlpha } from '../shared/theme';
 import Avatar from '../components/Avatar';
 import { KeyboardAvoider } from '../shared/components/KeyboardAware';
 import GlassCard, { GlassSheen } from '../shared/components/GlassCard';
+import { SpotlightTourProvider, AttachStep } from 'react-native-spotlight-tour';
+import TourTooltip from '../shared/components/TourTooltip';
+import { scrollToStep } from '../shared/utils/scrollToStep';
+import ContributorsStrip from '../shared/components/ContributorsStrip';
 import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
 
 /* ═══════════════════════════════════════════════
@@ -196,6 +200,74 @@ export default function DashboardScreen() {
   const householdId = useAuthStore((s) => s.householdId);
   const celebrate = useAuthStore((s) => s.celebrate);
   const clearCelebration = useAuthStore((s) => s.clearCelebration);
+  const showTour = useAuthStore((s) => s.showTour);
+  const dismissTour = useAuthStore((s) => s.dismissTour);
+  const triggerFeedTour = useAuthStore((s) => s.triggerFeedTour);
+  const scrollRef = useRef(null);
+  const scrollOffsetY = useRef(0);
+  const bellRef = useRef(null);
+  const streakRef = useRef(null);
+  const calendarRef = useRef(null);
+  const tasksRef = useRef(null);
+  const quickActionsRef = useRef(null);
+  const vaultRef = useRef(null);
+  const tourRef = useRef(null);
+  // Stable reference across re-renders — an inline array literal here would
+  // recreate on every Dashboard render (data refresh, focus effects, etc.)
+  // and restart the tour's in-flight scroll sequence each time.
+  const tourSteps = useMemo(() => {
+    const meta = [
+      { ref: bellRef, title: 'Notifications', body: 'Tap here to see updates from your household.' },
+      { ref: streakRef, title: 'Family Streak', body: "Keep your family's daily streak going by staying active together." },
+      { ref: calendarRef, title: 'Calendar', body: "See upcoming events and tap any day to check what's planned." },
+      { ref: tasksRef, title: 'Tasks', body: "Track shared to-dos and see what's pending." },
+      { ref: quickActionsRef, title: 'Quick Actions', body: 'Send an instant status update — Home, On My Way, Safe, or Groceries.' },
+      { ref: vaultRef, title: 'Vault', body: 'Store family documents and photos, encrypted and private.' },
+    ];
+    return meta.map(({ ref, title, body }, i) => ({
+      before: () => scrollToStep(scrollRef, scrollOffsetY, ref),
+      render: (props) => {
+        const isChainLast = i === meta.length - 1;
+        return (
+          <TourTooltip
+            {...props}
+            title={title}
+            body={body}
+            total={meta.length}
+            continueLabel={isChainLast ? 'Continue to Feed' : undefined}
+            onContinue={isChainLast ? () => {
+              props.stop();
+              nav.navigate('FeedStack');
+              triggerFeedTour();
+            } : undefined}
+          />
+        );
+      },
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // SpotlightTourProvider's ref (set via useImperativeHandle, a layout effect)
+  // isn't guaranteed attached by the time this passive effect first runs under
+  // this app's bridgeless/Fabric setup, and how long it takes varies with
+  // device load — poll every frame, uncapped, until unmount rather than
+  // assume it's ready on the first pass or give up after a fixed count.
+  useEffect(() => {
+    if (!showTour) return;
+    let cancelled = false;
+    const tryStart = () => {
+      if (cancelled) return;
+      if (tourRef.current) {
+        tourRef.current.start();
+        dismissTour();
+      } else {
+        requestAnimationFrame(tryStart);
+      }
+    };
+    tryStart();
+    return () => {
+      cancelled = true;
+    };
+  }, [showTour, dismissTour]);
   const engagementEventAt = useEngagementStore((s) => s.lastEventAt);
   const [showConfetti, setShowConfetti] = useState(false);
   useEffect(() => {
@@ -464,13 +536,19 @@ export default function DashboardScreen() {
   const streakDetailMeta = selDay?.isToday ? 'TODAY' : selDay?.label || '';
   const bestStreak = data?.streak?.longest ?? data?.streak?.best ?? null;
 
-  /* ── Harmony score ── */
+  /* ── Harmony score ──
+     One formula, no artificial floor: 0 completed activities this week
+     means the score and the progress bar both genuinely read 0, not a
+     hardcoded "everyone starts at 40" baseline. 5 points per completed
+     task/todo/grocery-bought item, capped at 100 (reached at 20 items/week).
+     The displayed number and the bar's fill % are now always the same
+     value, instead of two different formulas over the same input. */
   const weekTotal = activity.reduce(
     (a, d) => a + (d.tasksCompleted || 0) + (d.todosCompleted || 0) + (d.groceriesBought || 0),
     0,
   );
-  const harmonyScore = Math.min(100, 40 + weekTotal * 3);
-  const weeklyPct = Math.min(100, Math.round(weekTotal * 4));
+  const weeklyPct = Math.min(100, Math.round(weekTotal * 5));
+  const harmonyScore = weeklyPct;
   const activitiesThisWeek = weekTotal;
 
   /* ── Leaderboard (server-computed, real) ── */
@@ -505,10 +583,12 @@ export default function DashboardScreen() {
     },
   ];
   const NUDGE_PRESETS = [
-    'Just a reminder 👀',
-    "Don't forget!",
-    'Please check this',
-    'Can you take care of this?',
+    { icon: 'eye-outline', caption: 'Reminder', message: 'Just a reminder 👀' },
+    { icon: 'alarm-outline', caption: "Don't forget", message: "Don't forget!" },
+    { icon: 'checkmark-circle-outline', caption: 'Check it', message: 'Please check this' },
+    { icon: 'hand-left-outline', caption: 'Your turn', message: 'Can you take care of this?' },
+    { icon: 'flash-outline', caption: 'Hurry', message: 'Hurry up, please!' },
+    { icon: 'call-outline', caption: 'Call me', message: 'Can you call me back?' },
   ];
   const handleQuickNotify = (action) => {
     const q = QUICK_ACTIONS.find((x) => x.label === action);
@@ -588,6 +668,14 @@ export default function DashboardScreen() {
     .filter((e) => sameDay(new Date(e.startsAt), selectedDate))
     .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
   return (
+    <SpotlightTourProvider
+      ref={tourRef}
+      steps={tourSteps}
+      shape="rectangle"
+      motion="slide"
+      overlayColor={colors.shadow}
+      overlayOpacity={0.82}
+    >
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
@@ -595,8 +683,11 @@ export default function DashboardScreen() {
       <SvgXml xml={AMBIENT_SVG} width="100%" height="100%" style={styles.ambient} />
 
       <ScrollView
+        ref={scrollRef}
         style={styles.scroll}
         showsVerticalScrollIndicator={false}
+        onScroll={(e) => { scrollOffsetY.current = e.nativeEvent.contentOffset.y; }}
+        scrollEventThrottle={16}
         contentContainerStyle={{
           paddingBottom: dockHeight + 16,
         }}
@@ -644,26 +735,29 @@ export default function DashboardScreen() {
             />
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.notifBtn}
-            onPress={() => nav.navigate('Notifications')}
-            activeOpacity={0.8}
-            hitSlop={{
-              top: 8,
-              bottom: 8,
-              left: 8,
-              right: 8,
-            }}
-          >
-            <SvgXml xml={BELL_SVG} width={22} height={22} />
-            {unreadCount > 0 && (
-              <View style={styles.notifBadge}>
-                <Text style={styles.notifBadgeText}>
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
+          <AttachStep index={0} style={{ alignSelf: 'center' }}>
+            <TouchableOpacity
+              ref={bellRef}
+              style={styles.notifBtn}
+              onPress={() => nav.navigate('Notifications')}
+              activeOpacity={0.8}
+              hitSlop={{
+                top: 8,
+                bottom: 8,
+                left: 8,
+                right: 8,
+              }}
+            >
+              <SvgXml xml={BELL_SVG} width={22} height={22} />
+              {unreadCount > 0 && (
+                <View style={styles.notifBadge}>
+                  <Text style={styles.notifBadgeText}>
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </AttachStep>
         </View>
 
         {/* ═══════ GREETING (sits directly on the field) ═══════ */}
@@ -758,7 +852,8 @@ export default function DashboardScreen() {
           {!fetchError && data && (
             <>
               {/* ── Family Streak (hero) ── */}
-              <BlurView intensity={22} tint="dark" style={styles.streakCard}>
+              <AttachStep index={1} fill>
+              <BlurView ref={streakRef} intensity={22} tint="dark" style={styles.streakCard}>
                 <CardSheen radius={26} tone="blue" />
                 <View style={styles.rowBetween}>
                   <WidgetLabel>FAMILY STREAK</WidgetLabel>
@@ -832,7 +927,10 @@ export default function DashboardScreen() {
                     <Text style={styles.streakDetailMeta}>{streakDetailMeta}</Text>
                   )}
                 </View>
+
+                <ContributorsStrip activity={recentActivity} />
               </BlurView>
+              </AttachStep>
 
               {/* ── Family Harmony Score ── */}
               <TouchableOpacity
@@ -912,7 +1010,9 @@ export default function DashboardScreen() {
               </Card>*/}
 
               {/* ── Calendar ── */}
+              <AttachStep index={2} fill>
               <TouchableOpacity
+                ref={calendarRef}
                 style={[
                   styles.card,
                   {
@@ -1030,10 +1130,13 @@ export default function DashboardScreen() {
                   ))
                 )}
               </TouchableOpacity>
+              </AttachStep>
 
               {/* ── Tasks + Balance two-up ── */}
               <View style={styles.twoUp}>
+                <AttachStep index={3} fill style={{ flex: 1 }}>
                 <TouchableOpacity
+                  ref={tasksRef}
                   style={styles.halfCard}
                   onPress={() => nav.navigate('TasksStack')}
                   activeOpacity={0.7}
@@ -1052,6 +1155,7 @@ export default function DashboardScreen() {
                     {data.tasks.overdue > 0 ? ` · ${data.tasks.overdue} overdue` : ''}
                   </Text>
                 </TouchableOpacity>
+                </AttachStep>
                 <TouchableOpacity
                   style={styles.halfCard}
                   onPress={() =>
@@ -1180,6 +1284,8 @@ export default function DashboardScreen() {
               </View>
 
               {/* ── Quick Actions ── */}
+              <AttachStep index={4} fill>
+              <View ref={quickActionsRef} collapsable={false}>
               <Card
                 radius={20}
                 style={{
@@ -1214,9 +1320,11 @@ export default function DashboardScreen() {
                   ))}
                 </View>
               </Card>
+              </View>
+              </AttachStep>
 
               {/* ── Family Activity ── */}
-              <TouchableOpacity
+              {/* <TouchableOpacity
                 style={[
                   styles.card,
                   {
@@ -1246,7 +1354,15 @@ export default function DashboardScreen() {
                         ? 'bought groceries'
                         : a.kind === 'todo'
                           ? 'finished a todo'
-                          : 'completed a task';
+                          : a.kind === 'ping'
+                            ? 'pinged the household'
+                            : a.kind === 'checkin'
+                              ? 'checked in'
+                              : a.kind === 'calendar'
+                                ? 'added an event'
+                                : a.kind === 'feed'
+                                  ? 'shared a post'
+                                  : 'completed a task';
                     const date = new Date(a.date);
                     return (
                       <View key={i} style={styles.actRow}>
@@ -1276,10 +1392,12 @@ export default function DashboardScreen() {
                     );
                   })
                 )}
-              </TouchableOpacity>
+              </TouchableOpacity> */}
 
               {/* ── Vault · LOCKED ── */}
+              <AttachStep index={5} fill>
               <TouchableOpacity
+                ref={vaultRef}
                 style={styles.vaultCard}
                 onPress={() =>
                   nav.navigate('MoreStack', {
@@ -1301,6 +1419,7 @@ export default function DashboardScreen() {
                 </View>
                 <Text style={styles.vaultTime}>{latestDocTime || ''}</Text>
               </TouchableOpacity>
+              </AttachStep>
 
               {/* ── This Week ── */}
               <Card radius={20} style={{ padding: 20, marginBottom: 20 }}>
@@ -1343,29 +1462,46 @@ export default function DashboardScreen() {
             ]}
           >
             <View style={mo.handle} />
-            <Text style={mo.title}>Send a Nudge</Text>
+            <Text style={mo.title}>{pendingAction === 'Nudge' ? 'Send a Nudge' : 'Quick Notify'}</Text>
 
             <ScrollView
               style={mo.body}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
-              {/* Quick messages */}
-              <Text style={mo.nudgeSectionLabel}>QUICK MESSAGES</Text>
-              <View style={mo.chipRow}>
-                {NUDGE_PRESETS.map((preset) => (
-                  <TouchableOpacity
-                    key={preset}
-                    style={[mo.chip, customMsg === preset && mo.chipActive]}
-                    onPress={() => setCustomMsg(preset)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[mo.chipText, customMsg === preset && mo.chipTextActive]}>
-                      {preset}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              {/* Quick messages — Nudge flow only */}
+              {pendingAction === 'Nudge' && (
+                <>
+                  <Text style={mo.nudgeSectionLabel}>QUICK MESSAGES</Text>
+                  <View style={mo.presetGrid}>
+                    {NUDGE_PRESETS.map((preset) => {
+                      const active = customMsg === preset.message;
+                      return (
+                        <TouchableOpacity
+                          key={preset.message}
+                          style={mo.presetItem}
+                          onPress={() => setCustomMsg(preset.message)}
+                          activeOpacity={0.7}
+                        >
+                          <View style={[mo.presetGlyph, active && mo.presetGlyphActive]}>
+                            <Ionicons
+                              name={preset.icon}
+                              size={22}
+                              color={active ? colors.navyDeep : GOLD}
+                            />
+                          </View>
+                          <Text
+                            style={[mo.presetLabel, active && mo.presetLabelActive]}
+                            numberOfLines={1}
+                          >
+                            {preset.caption}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </>
+              )}
 
               {/* Custom message */}
               <TextInput
@@ -1477,6 +1613,7 @@ export default function DashboardScreen() {
         />
       )}
     </View>
+    </SpotlightTourProvider>
   );
 }
 function CheckIcon({ size = 10, color = colors.navyDeep }) {
@@ -2248,33 +2385,41 @@ const mo = StyleSheet.create({
   body: {
     flexGrow: 0,
   },
-  // Preset action chips
-  chipRow: {
+  // Preset nudge message icons
+  presetGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.sm,
+    gap: spacing.md,
     marginBottom: spacing.lg,
   },
-  chip: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.pill,
-    backgroundColor: withAlpha(colors.white, 0.06),
-    borderWidth: 1,
-    borderColor: GLASS_BORDER,
+  presetItem: {
+    width: '30%',
+    alignItems: 'center',
+    gap: 6,
   },
-  chipActive: {
+  presetGlyph: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: withAlpha(GOLD, 0.16),
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  presetGlyphActive: {
     backgroundColor: colors.goldGlow,
     borderColor: colors.goldGlow,
   },
-  chipText: {
-    fontSize: 13,
+  presetLabel: {
+    fontSize: 10.5,
     fontWeight: '600',
     fontFamily: fonts.bodySemiBold,
-    color: colors.textOnDarkBody,
+    color: colors.textOnDarkMuted,
+    textAlign: 'center',
   },
-  chipTextActive: {
-    color: colors.navyDeep,
+  presetLabelActive: {
+    color: GOLD,
   },
   // Custom message input
   input: {

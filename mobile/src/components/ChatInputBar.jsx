@@ -22,7 +22,7 @@ function formatTimer(seconds) {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-export default function ChatInputBar({ onSend, onSendVoice, replyTo, onDismissReply }) {
+export default function ChatInputBar({ onSend, onSendVoice, onSendImage, replyTo, onDismissReply }) {
   const insets = useSafeAreaInsets();
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -105,17 +105,17 @@ export default function ChatInputBar({ onSend, onSendVoice, replyTo, onDismissRe
     setSending(true);
 
     try {
-      const uploaded = await chatApi.uploadMedia({
+      const uploaded = await chatApi.uploadImage({
         uri: asset.uri,
         name: asset.fileName || `image_${Date.now()}.jpg`,
         type: asset.mimeType || 'image/jpeg',
       });
 
-      if (uploaded?.id) {
-        await onSend(undefined, [uploaded.id]);
+      if (uploaded?.url) {
+        await onSendImage(uploaded.url);
       }
     } catch {
-      // silently fail
+      showAlert('Image failed to send', 'Could not upload the image.');
     } finally {
       setSending(false);
     }

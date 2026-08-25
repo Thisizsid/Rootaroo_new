@@ -6,21 +6,25 @@ import { Op } from 'sequelize';
 import { env } from '../../config/env';
 import { User, RefreshToken, EmailVerification, PasswordReset, PhoneVerification } from '../../database/models';
 import { getMailer } from '../../shared/utils/mailer';
+import { getSignedUrl } from '../../shared/utils/s3';
+import { sendSms } from '../../shared/utils/sns';
+import { jwtVerify, createRemoteJWKSet } from 'jose';
 import { UnauthorizedError, ConflictError, NotFoundError, AppError } from '../../shared/utils/errors';
 import type {
   RegisterBody, LoginBody, AuthResponse, AuthTokens, UserResponse, UpdateProfileBody, GoogleAuthBody,
+  AppleAuthBody,
   VerifyEmailBody, ForgotPasswordBody, ResetPasswordBody, ScheduleDeletionBody,
   SendPhoneOtpBody, VerifyPhoneOtpBody, RegisterPhoneBody,
 } from './types';
 
 // ── Helpers ──
 
-function toUserResponse(user: User): UserResponse {
+async function toUserResponse(user: User): Promise<UserResponse> {
   return {
     id: user.id,
     email: user.email,
     displayName: user.displayName,
-    avatarUrl: user.avatarUrl,
+    avatarUrl: await getSignedUrl(user.avatarUrl),
     avatarEmoji: user.avatarEmoji,
     avatarPresetId: user.avatarPresetId,
     dateOfBirth: user.dateOfBirth,
@@ -102,12 +106,22 @@ export async function register(body: RegisterBody): Promise<AuthResponse> {
     throw new ConflictError('An account with this email already exists');
   }
 
+  let phone: string | undefined;
+  if (body.phone) {
+    phone = normalizePhone(body.phone);
+    const existingPhone = await User.findOne({ where: { phone } });
+    if (existingPhone) {
+      throw new ConflictError('An account with this phone number already exists');
+    }
+  }
+
   const passwordHash = await bcrypt.hash(password, 12);
   const user = await User.create({
     id: uuidv4(),
     email: email.toLowerCase(),
     passwordHash,
     displayName,
+    phone: phone || null,
     role: 'member',
     isVerified: false,
   });
@@ -118,7 +132,7 @@ export async function register(body: RegisterBody): Promise<AuthResponse> {
   // Auto-send verification code for new registrations
   const code = await sendVerification(user.id);
 
-  return { user: toUserResponse(user), tokens: { accessToken, refreshToken }, verificationCode: code };
+  return { user: await toUserResponse(user), tokens: { accessToken, refreshToken }, verificationCode: code };
 }
 
 export async function login(body: LoginBody): Promise<AuthResponse> {
@@ -141,7 +155,7 @@ export async function login(body: LoginBody): Promise<AuthResponse> {
   const accessToken = generateAccessToken(user);
   const refreshToken = await generateRefreshToken(user.id);
 
-  return { user: toUserResponse(user), tokens: { accessToken, refreshToken } };
+  return { user: await toUserResponse(user), tokens: { accessToken, refreshToken } };
 }
 
 export async function refresh(refreshToken: string): Promise<AuthTokens> {
@@ -155,7 +169,7 @@ export async function logout(refreshToken: string): Promise<void> {
 export async function getProfile(userId: string): Promise<UserResponse> {
   const user = await User.findByPk(userId);
   if (!user) throw new NotFoundError('User');
-  return toUserResponse(user);
+  return await toUserResponse(user);
 }
 
 export async function updateProfile(
@@ -171,45 +185,36 @@ export async function updateProfile(
   if (body.avatarPresetId !== undefined) user.avatarPresetId = body.avatarPresetId;
   if (body.dateOfBirth !== undefined) user.dateOfBirth = body.dateOfBirth;
   if (body.homeAddress !== undefined) user.homeAddress = body.homeAddress;
-  if (body.phone !== undefined) user.phone = body.phone;
+  if (body.phone !== undefined) {
+    const normalized = body.phone ? normalizePhone(body.phone) : null;
+    if (normalized && normalized !== user.phone) {
+      const existingPhone = await User.findOne({ where: { phone: normalized } });
+      if (existingPhone && existingPhone.id !== user.id) {
+        throw new ConflictError('An account with this phone number already exists');
+      }
+    }
+    user.phone = normalized;
+  }
   if (body.addToCalendar !== undefined) user.addToCalendar = body.addToCalendar;
   if (body.notifyHousehold !== undefined) user.notifyHousehold = body.notifyHousehold;
 
   await user.save();
-  return toUserResponse(user);
+  return await toUserResponse(user);
 }
 
 // ── Google OAuth ──
 
 export async function googleAuth(body: GoogleAuthBody): Promise<AuthResponse> {
-  const { code, redirectUri } = body;
+  const { idToken } = body;
 
-  // Exchange auth code for Google tokens
-  const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      code,
-      client_id: env.google.clientId,
-      client_secret: env.google.clientSecret,
-      redirect_uri: redirectUri,
-      grant_type: 'authorization_code',
-    }),
-  });
-
-  if (!tokenResponse.ok) {
-    const errorBody = await tokenResponse.text();
-    throw new AppError(401, `Google token exchange failed: ${errorBody}`);
-  }
-
-  const tokenData = await tokenResponse.json() as { id_token: string };
-  const idToken = tokenData.id_token;
-
-  if (!idToken) {
-    throw new AppError(401, 'No ID token returned from Google');
-  }
-
-  // Verify ID token via Google's tokeninfo endpoint (POST — body, not query)
+  // The mobile client obtains this ID token directly from Google's native
+  // Sign-In SDK (@react-native-google-signin/google-signin), configured
+  // with our Web Client ID as the audience — there's no server-side code
+  // exchange anymore. Verify it via Google's tokeninfo endpoint exactly as
+  // before, but since we no longer control which client requested the
+  // token ourselves, we MUST check the `aud` claim matches our own client —
+  // otherwise anyone could hand us a valid Google ID token issued to a
+  // completely different app and log in as that Google user.
   const verifyResponse = await fetch('https://www.googleapis.com/oauth2/v3/tokeninfo', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -221,8 +226,12 @@ export async function googleAuth(body: GoogleAuthBody): Promise<AuthResponse> {
   }
 
   const profile = await verifyResponse.json() as {
-    sub: string; email: string; name?: string; picture?: string;
+    sub: string; email: string; name?: string; picture?: string; aud?: string;
   };
+
+  if (profile.aud !== env.google.clientId) {
+    throw new AppError(401, 'Google ID token was not issued for this app');
+  }
 
   const googleId = profile.sub;
   const email = profile.email.toLowerCase();
@@ -258,7 +267,68 @@ export async function googleAuth(body: GoogleAuthBody): Promise<AuthResponse> {
   const accessToken = generateAccessToken(user);
   const refreshToken = await generateRefreshToken(user.id);
 
-  return { user: toUserResponse(user), tokens: { accessToken, refreshToken } };
+  return { user: await toUserResponse(user), tokens: { accessToken, refreshToken } };
+}
+
+// ── Apple OAuth ──
+
+const APPLE_JWKS = createRemoteJWKSet(new URL('https://appleid.apple.com/auth/keys'));
+
+export async function appleAuth(body: AppleAuthBody): Promise<AuthResponse> {
+  const { idToken, displayName: providedName } = body;
+
+  // The mobile client obtains this identity token directly from Apple's
+  // native Sign In SDK — unlike Google there's no tokeninfo REST endpoint,
+  // so verification means checking the JWT's signature against Apple's own
+  // public keys (JWKS) plus its issuer/audience claims ourselves.
+  let payload;
+  try {
+    const result = await jwtVerify(idToken, APPLE_JWKS, {
+      issuer: 'https://appleid.apple.com',
+      audience: env.apple.bundleId,
+    });
+    payload = result.payload;
+  } catch {
+    throw new AppError(401, 'Apple ID token verification failed');
+  }
+
+  const appleId = payload.sub as string;
+  const email = (payload.email as string | undefined)?.toLowerCase();
+  if (!email) {
+    throw new AppError(400, 'Apple did not provide an email for this account');
+  }
+
+  // Find existing user by appleId or email
+  let user = await User.findOne({
+    where: { [Op.or]: [{ appleId }, { email }] },
+  });
+
+  if (user) {
+    // Link appleId if user exists with this email but no appleId
+    if (!user.appleId) {
+      user.appleId = appleId;
+    }
+    user.lastLoginAt = new Date();
+    await user.save();
+  } else {
+    // Apple only returns a display name on the user's very first sign-in
+    // for this app (via the native SDK response, not the JWT) — fall back
+    // to deriving one from the email on every later sign-in.
+    user = await User.create({
+      id: uuidv4(),
+      email,
+      passwordHash: '',
+      displayName: providedName || email.split('@')[0],
+      role: 'member',
+      isVerified: true,
+      appleId,
+    });
+  }
+
+  const accessToken = generateAccessToken(user);
+  const refreshToken = await generateRefreshToken(user.id);
+
+  return { user: await toUserResponse(user), tokens: { accessToken, refreshToken } };
 }
 
 // ── Email Verification ──
@@ -362,14 +432,25 @@ export async function forgotPassword(body: ForgotPasswordBody): Promise<void> {
   });
 }
 
-export async function resetPassword(body: ResetPasswordBody): Promise<void> {
-  const record = await PasswordReset.findOne({
+async function findActivePasswordReset(code: string) {
+  return PasswordReset.findOne({
     where: {
-      token: body.code,
+      token: code,
       usedAt: null,
       expiresAt: { [Op.gt]: new Date() },
     },
   });
+}
+
+export async function checkResetCode(code: string): Promise<void> {
+  const record = await findActivePasswordReset(code);
+  if (!record) {
+    throw new AppError(400, 'Invalid or expired reset code');
+  }
+}
+
+export async function resetPassword(body: ResetPasswordBody): Promise<void> {
+  const record = await findActivePasswordReset(body.code);
 
   if (!record) {
     throw new AppError(400, 'Invalid or expired reset code');
@@ -378,6 +459,10 @@ export async function resetPassword(body: ResetPasswordBody): Promise<void> {
   const passwordHash = await bcrypt.hash(body.password, 12);
   await User.update({ passwordHash }, { where: { id: record.userId } });
   await record.update({ usedAt: new Date() });
+
+  // Kill any existing sessions — a reset is often prompted by suspected
+  // account compromise, so a stale refresh token must not survive it.
+  await RefreshToken.destroy({ where: { userId: record.userId } });
 }
 
 // ── Account Deletion ──
@@ -416,6 +501,17 @@ export async function confirmDeletion(userId: string, body: ScheduleDeletionBody
   // Revoke all refresh tokens
   await RefreshToken.destroy({ where: { userId } });
 
+  // Free up the unique identifiers (email/phone/googleId) before soft-deleting —
+  // paranoid deletes leave the row physically in the table, so without this a
+  // later signup or Google/phone login reusing the same email, phone, or
+  // Google account hits a unique-constraint violation instead of just working,
+  // since the lookup (paranoid-aware) can't see the deleted row to reuse it.
+  await user.update({
+    email: `deleted-${user.id}@deleted.rootaroo.local`,
+    phone: null,
+    googleId: null,
+  });
+
   // Soft-delete the user (paranoid)
   await user.destroy();
 }
@@ -438,71 +534,52 @@ export async function cancelPendingRegistration(userId: string): Promise<void> {
   await user.destroy({ force: true });
 }
 
-// ── Phone OTP (delivered and verified via Auth0 Passwordless SMS) ──
+// ── Phone OTP (generated, stored, and verified in-app; delivered via AWS SNS) ──
 
 function normalizePhone(phone: string): string {
   return phone.replace(/[^\d+]/g, '');
 }
 
-async function sendPhoneOtpViaAuth0(phone: string): Promise<void> {
-  const response = await fetch(`https://${env.auth0.domain}/passwordless/start`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      client_id: env.auth0.smsClientId,
-      client_secret: env.auth0.smsClientSecret,
-      connection: 'sms',
-      phone_number: phone,
-      send: 'code',
-    }),
-  });
-
-  if (!response.ok) {
-    throw new AppError(400, 'Failed to send verification code');
-  }
-}
-
-async function verifyPhoneOtpViaAuth0(phone: string, code: string): Promise<void> {
-  const response = await fetch(`https://${env.auth0.domain}/oauth/token`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      grant_type: 'http://auth0.com/oauth/grant-type/passwordless/otp',
-      client_id: env.auth0.smsClientId,
-      client_secret: env.auth0.smsClientSecret,
-      username: phone,
-      otp: code,
-      realm: 'sms',
-    }),
-  });
-
-  if (!response.ok) {
-    throw new AppError(400, 'Invalid or expired verification code');
-  }
-}
-
-async function issuePhoneOtp(phone: string, userId: string | null): Promise<void> {
+/**
+ * Generates and stores a 6-digit code (same pattern as sendVerification's
+ * email code), then sends it via SNS — or, if SNS isn't configured, logs it
+ * and returns it for a dev-mode passthrough, matching sendVerification's
+ * SMTP fallback.
+ */
+async function issuePhoneOtp(phone: string, userId: string | null): Promise<string | undefined> {
   const normalized = normalizePhone(phone);
 
+  // Invalidate any existing unverified codes for this phone
   await PhoneVerification.update(
     { verifiedAt: new Date() },
     { where: { phone: normalized, verifiedAt: null } },
   );
 
-  await sendPhoneOtpViaAuth0(normalized);
-
-  // Placeholder record — Auth0 owns the code itself; this row just tracks
-  // the pending attempt so verifyPhoneOtp() can resolve phone -> userId.
+  const code = randomInt(100000, 1000000).toString();
   await PhoneVerification.create({
     id: uuidv4(),
     phone: normalized,
     userId,
-    token: 'auth0',
+    token: code,
     expiresAt: new Date(Date.now() + 15 * 60 * 1000),
   });
+
+  if (!env.sns.accessKeyId) {
+    console.warn(`[DEV] Phone OTP for ${normalized}: ${code}`);
+    return code;
+  }
+
+  await sendSms(normalized, `Your Rootaroo verification code is: ${code}. It expires in 15 minutes.`);
+  return undefined;
 }
 
-/** Create/login phone user with profile draft, send OTP, return pending tokens. */
+/**
+ * Create/login phone user with profile draft, return pending tokens. Does
+ * NOT send an OTP itself — the wizard sends one explicitly, right before
+ * showing the verify screen, via sendPhoneOtp(). Sending one here too would
+ * be wasted (no verify screen is shown at this point) and would invalidate
+ * itself the moment the real send happens later.
+ */
 export async function registerPhone(body: RegisterPhoneBody): Promise<AuthResponse> {
   const phone = normalizePhone(body.phone);
   if (phone.length < 8) throw new AppError(400, 'Invalid phone number');
@@ -548,19 +625,18 @@ export async function registerPhone(body: RegisterPhoneBody): Promise<AuthRespon
     await user.save();
   }
 
-  await issuePhoneOtp(phone, user.id);
   const accessToken = generateAccessToken(user);
   const refreshToken = await generateRefreshToken(user.id);
 
   return {
-    user: toUserResponse(user),
+    user: await toUserResponse(user),
     tokens: { accessToken, refreshToken },
   };
 }
 
-export async function sendPhoneOtp(body: SendPhoneOtpBody, userId?: string): Promise<void> {
+export async function sendPhoneOtp(body: SendPhoneOtpBody, userId?: string): Promise<string | undefined> {
   const phone = normalizePhone(body.phone);
-  const user = userId
+  let user = userId
     ? await User.findByPk(userId)
     : await User.findOne({ where: { phone } });
 
@@ -568,27 +644,53 @@ export async function sendPhoneOtp(body: SendPhoneOtpBody, userId?: string): Pro
     throw new AppError(400, 'Phone does not match your account');
   }
 
-  await issuePhoneOtp(phone, user?.id || null);
+  // Unauthenticated call with no existing account for this phone — the
+  // "Continue with phone number" entry on Sign In is shared by new and
+  // returning users with no way to tell them apart up front, so create a
+  // minimal placeholder account here (find-or-create) rather than sending a
+  // code that verifyPhoneOtp() could never resolve to a user afterward.
+  if (!userId && !user) {
+    const email = `phone_${phone.replace(/\D/g, '')}@phone.rootaroo.local`;
+    user = await User.findOne({ where: { email } });
+    if (!user) {
+      user = await User.create({
+        id: uuidv4(),
+        email,
+        passwordHash: '',
+        displayName: 'Member',
+        phone,
+        isPhoneVerified: false,
+        isVerified: false,
+        role: 'member',
+      });
+    }
+  }
+
+  return issuePhoneOtp(phone, user?.id || null);
 }
 
 export async function verifyPhoneOtp(body: VerifyPhoneOtpBody, userId?: string): Promise<AuthResponse> {
   const phone = normalizePhone(body.phone);
 
-  await verifyPhoneOtpViaAuth0(phone, body.code);
-
   const record = await PhoneVerification.findOne({
-    where: { phone, verifiedAt: null },
+    where: {
+      phone,
+      token: body.code,
+      verifiedAt: null,
+      expiresAt: { [Op.gt]: new Date() },
+    },
     order: [['createdAt', 'DESC']],
   });
-  if (record) {
-    record.verifiedAt = new Date();
-    await record.save();
+  if (!record) {
+    throw new AppError(400, 'Invalid or expired verification code');
   }
+  record.verifiedAt = new Date();
+  await record.save();
 
   let user: User | null = null;
   if (userId) {
     user = await User.findByPk(userId);
-  } else if (record?.userId) {
+  } else if (record.userId) {
     user = await User.findByPk(record.userId);
   } else {
     user = await User.findOne({ where: { phone } });
@@ -604,5 +706,5 @@ export async function verifyPhoneOtp(body: VerifyPhoneOtpBody, userId?: string):
   const accessToken = generateAccessToken(user);
   const refreshToken = await generateRefreshToken(user.id);
 
-  return { user: toUserResponse(user), tokens: { accessToken, refreshToken } };
+  return { user: await toUserResponse(user), tokens: { accessToken, refreshToken } };
 }

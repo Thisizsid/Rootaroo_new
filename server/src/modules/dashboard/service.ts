@@ -7,7 +7,6 @@ import {
   Task,
   TodoItem,
   GroceryItem,
-  ChatMessage,
   PingRequest,
   CheckIn,
   FeedPost,
@@ -50,7 +49,18 @@ interface EngagementData {
   daily: Record<string, ActivityTotals>;
   weekByUser: Record<string, number>;
   recent: RecentRaw[];
+  engagedDays: Set<string>;
 }
+
+/** Points awarded per activity kind (all kinds except `task`, which uses its own custom `Task.points`). */
+const POINTS_BY_KIND: Record<Exclude<RecentActivityKind, 'task'>, number> = {
+  ping: 1,
+  feed: 2,
+  checkin: 2,
+  calendar: 3,
+  todo: 3,
+  grocery: 4,
+};
 
 async function getUserHousehold(userId: string): Promise<string> {
   const membership = await HouseholdMember.findOne({ where: { userId } });
@@ -167,12 +177,22 @@ function daysAgo(n: number, timeZone: string): Date {
   return fromZonedTime(`${targetKey} 00:00:00`, timeZone);
 }
 
-/** Load completed tasks/todos/bought groceries over the streak window. */
-async function loadCompletions(householdId: string, timeZone: string): Promise<EngagementData> {
+/**
+ * Load every household activity over the streak window: chore completions
+ * (tasks/todos/groceries — the only things that feed the 7-day chores
+ * chart) plus engagement actions (pings, check-ins, calendar events, feed
+ * posts — these don't touch the chores chart, but do earn points and show
+ * up in the leaderboard/recent-activity list, same as chores, and keep the
+ * streak alive on days with no chores at all). Chat messages deliberately
+ * don't count anywhere — too easy to keep a streak/leaderboard position
+ * alive with idle chatter alone.
+ */
+async function loadActivity(householdId: string, timeZone: string): Promise<EngagementData> {
   const windowStart = daysAgo(STREAK_WINDOW_DAYS - 1, timeZone);
   const weekStart = daysAgo(ACTIVITY_DAYS - 1, timeZone);
+  const where = { householdId, createdAt: { [Op.gte]: windowStart } };
 
-  const [tasks, todos, groceries] = await Promise.all([
+  const [tasks, todos, groceries, pings, checkIns, posts, events] = await Promise.all([
     Task.findAll({
       where: { householdId, status: 'completed', completedAt: { [Op.gte]: windowStart } },
       attributes: ['completedAt', 'completedBy', 'points'],
@@ -185,13 +205,22 @@ async function loadCompletions(householdId: string, timeZone: string): Promise<E
       where: { householdId, isBought: true, boughtAt: { [Op.gte]: windowStart } },
       attributes: ['boughtAt', 'boughtBy'],
     }),
+    PingRequest.findAll({ where, attributes: ['createdAt', 'requesterId'] }),
+    CheckIn.findAll({
+      where: { householdId, checkedInAt: { [Op.gte]: windowStart } },
+      attributes: ['checkedInAt', 'userId'],
+    }),
+    FeedPost.findAll({ where, attributes: ['createdAt', 'userId'] }),
+    CalendarEvent.findAll({ where, attributes: ['createdAt', 'createdBy'] }),
   ]);
 
   const daily: Record<string, ActivityTotals> = {};
   const weekByUser: Record<string, number> = {};
   const recent: RecentRaw[] = [];
+  const engagedDays = new Set<string>();
 
-  const bump = (
+  // Chores — feed the daily chart, the leaderboard, and recent activity.
+  const bumpChore = (
     when: Date | null,
     byUser: string | null,
     points: number,
@@ -203,51 +232,42 @@ async function loadCompletions(householdId: string, timeZone: string): Promise<E
     const k = dateKey(t, timeZone);
     const d = daily[k] || (daily[k] = { tasksCompleted: 0, todosCompleted: 0, groceriesBought: 0 });
     d[key]++;
+    engagedDays.add(k);
     if (!byUser) return;
-    // Leaderboard + recent activity are scoped to the current week.
     if (t >= weekStart) {
       weekByUser[byUser] = (weekByUser[byUser] || 0) + points;
       recent.push({ when: t, userId: byUser, points, kind });
     }
   };
 
-  for (const t of tasks) bump(t.completedAt, t.completedBy, t.points || 1, 'tasksCompleted', 'task');
-  for (const t of todos) bump(t.completedAt, t.assignedTo, 1, 'todosCompleted', 'todo');
-  for (const g of groceries) bump(g.boughtAt, g.boughtBy, 1, 'groceriesBought', 'grocery');
+  // Engagement actions — feed the leaderboard and recent activity too, but
+  // never the chores chart (that stays chore-specific).
+  const bumpEngagement = (when: Date | null, byUser: string | null, kind: RecentActivityKind) => {
+    if (!when) return;
+    const t = new Date(when);
+    const k = dateKey(t, timeZone);
+    engagedDays.add(k);
+    if (!byUser) return;
+    if (t >= weekStart) {
+      const points = POINTS_BY_KIND[kind as Exclude<RecentActivityKind, 'task'>];
+      weekByUser[byUser] = (weekByUser[byUser] || 0) + points;
+      recent.push({ when: t, userId: byUser, points, kind });
+    }
+  };
 
-  return { daily, weekByUser, recent };
-}
+  for (const t of tasks) bumpChore(t.completedAt, t.completedBy, t.points || 5, 'tasksCompleted', 'task');
+  for (const t of todos) bumpChore(t.completedAt, t.assignedTo, POINTS_BY_KIND.todo, 'todosCompleted', 'todo');
+  for (const g of groceries) bumpChore(g.boughtAt, g.boughtBy, POINTS_BY_KIND.grocery, 'groceriesBought', 'grocery');
 
-/**
- * Days the household stayed *connected* even without finishing a chore —
- * a chat message, a location ping/check-in, a feed post, or a new calendar
- * event. These don't feed the chores chart or the leaderboard (that stays
- * completion-only), but they're enough to keep the streak alive: the streak
- * is meant to reward the family staying in touch, not just doing housework.
- */
-async function loadEngagementDays(householdId: string, timeZone: string): Promise<Set<string>> {
-  const windowStart = daysAgo(STREAK_WINDOW_DAYS - 1, timeZone);
-  const where = { householdId, createdAt: { [Op.gte]: windowStart } };
+  // Ping responses are already captured as a CheckIn row (PingRequest links
+  // to one via checkInId once responded), so only the requester is credited
+  // here — crediting the responder too would double-count the same action.
+  for (const p of pings) bumpEngagement(p.createdAt, p.requesterId, 'ping');
+  for (const c of checkIns) bumpEngagement(c.checkedInAt, c.userId, 'checkin');
+  for (const f of posts) bumpEngagement(f.createdAt, f.userId, 'feed');
+  for (const e of events) bumpEngagement(e.createdAt, e.createdBy, 'calendar');
 
-  const [messages, pings, checkIns, posts, events] = await Promise.all([
-    ChatMessage.findAll({ where, attributes: ['createdAt'] }),
-    PingRequest.findAll({ where, attributes: ['createdAt', 'respondedAt'] }),
-    CheckIn.findAll({ where, attributes: ['checkedInAt'] }),
-    FeedPost.findAll({ where, attributes: ['createdAt'] }),
-    CalendarEvent.findAll({ where, attributes: ['createdAt'] }),
-  ]);
-
-  const days = new Set<string>();
-  for (const m of messages) days.add(dateKey(m.createdAt, timeZone));
-  for (const p of pings) {
-    days.add(dateKey(p.createdAt, timeZone));
-    if (p.respondedAt) days.add(dateKey(p.respondedAt, timeZone));
-  }
-  for (const c of checkIns) days.add(dateKey(c.checkedInAt, timeZone));
-  for (const f of posts) days.add(dateKey(f.createdAt, timeZone));
-  for (const e of events) days.add(dateKey(e.createdAt, timeZone));
-
-  return days;
+  return { daily, weekByUser, recent, engagedDays };
 }
 
 /** Last 7 days of household-wide completion totals (oldest → newest). */
@@ -338,10 +358,7 @@ async function computeEngagement(
   leaderboard: LeaderboardEntry[];
   recentActivity: RecentActivityItem[];
 }> {
-  const [{ daily, weekByUser, recent }, engagedDays] = await Promise.all([
-    loadCompletions(householdId, timeZone),
-    loadEngagementDays(householdId, timeZone),
-  ]);
+  const { daily, weekByUser, recent, engagedDays } = await loadActivity(householdId, timeZone);
 
   const byId = new Map(members.map((m) => [m.userId, (m as unknown as { user?: User }).user]));
   const recentActivity: RecentActivityItem[] = recent

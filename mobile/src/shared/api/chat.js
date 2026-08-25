@@ -76,6 +76,15 @@ export const chatApi = {
     return res.data.data;
   },
 
+  uploadImage: async ({ uri, name, type }) => {
+    const formData = new FormData();
+    formData.append('file', { uri, name: name || `image_${Date.now()}.jpg`, type: type || 'image/jpeg' });
+    const res = await apiClient.post('/chat/media/image', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data.data;
+  },
+
   uploadVoice: async ({ uri, name, type, durationSeconds }) => {
     const formData = new FormData();
     formData.append('file', { uri, name: name || `voice_${Date.now()}.m4a`, type: type || 'audio/m4a' });

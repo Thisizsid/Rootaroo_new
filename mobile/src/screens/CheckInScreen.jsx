@@ -13,6 +13,7 @@ import {
   Animated,
   Dimensions,
   Linking,
+  AppState,
 } from 'react-native';
 import { PanGestureHandler, State } from 'react-native-gesture-handler';
 import { showAlert } from '../shared/services/themedAlert';
@@ -36,6 +37,7 @@ import { haversineDistanceKm, formatDistance } from '../shared/utils/geo';
 import Avatar from '../components/Avatar';
 import { KeyboardAvoider } from '../shared/components/KeyboardAware';
 import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
+import { DARK_MAP_STYLE } from '../shared/constants/darkMapStyle';
 const PLACE_ICON_EMOJI = {
   home: '⌂',
   office: '💼',
@@ -43,21 +45,36 @@ const PLACE_ICON_EMOJI = {
   custom: '★',
 };
 const PLACE_ICON_OPTIONS = ['home', 'office', 'school', 'custom'];
+// How long the responder shares their location before accepting — always
+// foreground-only (no background tracking), auto-stops on duration elapse
+// or the app being backgrounded.
+const SHARE_DURATION_OPTIONS = [
+  { minutes: 15, label: '15 min' },
+  { minutes: 30, label: '30 min' },
+  { minutes: 60, label: '1 hour' },
+  { minutes: 120, label: '2 hours' },
+];
+const SHARE_TICK_MS = 45_000; // how often a location update is pushed while sharing
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 const TRAY_COLLAPSED_HEIGHT = 300;
 const TRAY_EXPANDED_HEIGHT = Math.round(SCREEN_HEIGHT * 0.9);
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
+function formatCountdown(msRemaining) {
+  const totalSeconds = Math.max(0, Math.floor(msRemaining / 1000));
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${m}:${s.toString().padStart(2, '0')} left`;
+}
 
 /**
  * Free, no-API-key, no-billing map: MapLibre GL Native (a real native
- * MapView, not a WebView) styled with OpenFreeMap's "Liberty" vector tiles.
+ * MapView, not a WebView) styled with OpenFreeMap's "dark" vector tiles.
  * Pins (self/ping-everyone drop pin, saved places, last-known member
  * positions, and the "focus" pin for a tapped Recent entry) are plain RN
  * views rendered as native map markers via <Marker>.
  */
-const MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
 
 /**
  * CheckInScreen ("Ping") — map-first redesign (concept approved by user).
@@ -84,12 +101,22 @@ export default function CheckInScreen({ navigation }) {
 
   // ── Ping: request a member's location ──
   const incoming = usePingStore((s) => s.incoming);
+  const outgoing = usePingStore((s) => s.outgoing);
   const setIncoming = usePingStore((s) => s.setIncoming);
   const removeIncoming = usePingStore((s) => s.removeIncoming);
   const [members, setMembers] = useState([]);
   const [showMemberPicker, setShowMemberPicker] = useState(false);
   const [requestingPingId, setRequestingPingId] = useState(null);
   const [respondingPingId, setRespondingPingId] = useState(null);
+  // Incoming request awaiting a duration choice before it's accepted.
+  const [durationRequest, setDurationRequest] = useState(null);
+  // The live share this device is currently broadcasting (if any):
+  // { pingRequestId, requesterName, expiresAt }.
+  const [activeShare, setActiveShare] = useState(null);
+  const [shareNow, setShareNow] = useState(() => Date.now()); // ticks every second while activeShare is set, to drive the countdown
+  const shareIntervalRef = useRef(null);
+  const shareAppStateSubRef = useRef(null);
+  const shareCountdownRef = useRef(null);
 
   // ── Saved places ──
   const [places, setPlaces] = useState([]);
@@ -199,6 +226,7 @@ export default function CheckInScreen({ navigation }) {
         longitude: item.longitude,
         label: `${name} · ${timeLabel(item.checkedInAt)}`,
         name,
+        checkInId: item.id,
       });
       collapseTray();
       try {
@@ -231,6 +259,23 @@ export default function CheckInScreen({ navigation }) {
       showAlert('Error', 'Could not open Maps.');
     });
   }, [focusPin]);
+
+  // While viewing someone's shared location, follow their live position for
+  // as long as they're actively sharing (matched via the CheckIn id the
+  // accept flow created, since that's what both the Recent-list pin and the
+  // PingRequest.checkInId already share).
+  useEffect(() => {
+    if (!focusPin?.checkInId || outgoing.length === 0) return;
+    const live = outgoing.find(
+      (r) => r.checkInId === focusPin.checkInId && r.liveLatitude != null && r.liveLongitude != null,
+    );
+    if (!live) return;
+    setFocusPin((prev) =>
+      prev && prev.checkInId === focusPin.checkInId
+        ? { ...prev, latitude: live.liveLatitude, longitude: live.liveLongitude, label: `${prev.name} · Live` }
+        : prev,
+    );
+  }, [outgoing, focusPin?.checkInId]);
 
   // Reverse-geocode a coordinate into "City, Region, Country" (or a fallback).
   const geocode = useCallback(async (lat, lng) => {
@@ -343,8 +388,74 @@ export default function CheckInScreen({ navigation }) {
       setRequestingPingId(null);
     }
   }, []);
+  // Ends the current live-share loop. `notifyServer` is false when the
+  // share already ended server-side (duration elapsed) — no need to tell it
+  // again — and true for the app-backgrounded / manual-stop / unmount cases.
+  const stopShareLoop = useCallback((notifyServer = true) => {
+    if (shareIntervalRef.current) {
+      clearInterval(shareIntervalRef.current);
+      shareIntervalRef.current = null;
+    }
+    if (shareCountdownRef.current) {
+      clearInterval(shareCountdownRef.current);
+      shareCountdownRef.current = null;
+    }
+    if (shareAppStateSubRef.current) {
+      shareAppStateSubRef.current.remove();
+      shareAppStateSubRef.current = null;
+    }
+    setActiveShare((prev) => {
+      if (prev && notifyServer) {
+        pingApi.stopShare(prev.pingRequestId).catch(() => {});
+      }
+      return null;
+    });
+  }, []);
+
+  // Foreground-only: pushes a location update every SHARE_TICK_MS until the
+  // duration elapses or the app is backgrounded (matches the app's existing
+  // "no background location tracking" policy — this loop simply doesn't run
+  // while backgrounded, it isn't paused-and-resumed).
+  const startShareLoop = useCallback(
+    (pingRequestId, expiresAt, requesterName) => {
+      setActiveShare({ pingRequestId, expiresAt, requesterName });
+      setShareNow(Date.now());
+
+      const pushTick = async () => {
+        if (Date.now() >= new Date(expiresAt).getTime()) {
+          stopShareLoop(false);
+          return;
+        }
+        try {
+          const { status } = await Location.requestForegroundPermissionsAsync();
+          if (status !== 'granted') return;
+          const pos = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          await pingApi.updateLocation(pingRequestId, {
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+          });
+        } catch {
+          // a single missed tick isn't fatal — the next one retries
+        }
+      };
+
+      shareIntervalRef.current = setInterval(pushTick, SHARE_TICK_MS);
+      shareCountdownRef.current = setInterval(() => setShareNow(Date.now()), 1000);
+      shareAppStateSubRef.current = AppState.addEventListener('change', (nextState) => {
+        if (nextState !== 'active') {
+          stopShareLoop(true);
+        }
+      });
+    },
+    [stopShareLoop],
+  );
+
+  useEffect(() => () => stopShareLoop(true), [stopShareLoop]);
+
   const handleRespondPing = useCallback(
-    async (request, action) => {
+    async (request, action, durationMinutes) => {
       setRespondingPingId(request.id);
       try {
         if (action === 'decline') {
@@ -366,13 +477,17 @@ export default function CheckInScreen({ navigation }) {
           lng = pos.coords.longitude;
           place = await geocode(lat, lng);
         }
-        await pingApi.respond(request.id, {
+        const response = await pingApi.respond(request.id, {
           action: 'accept',
           latitude: lat,
           longitude: lng,
           address: place,
+          durationMinutes,
         });
         removeIncoming(request.id);
+        if (response?.shareExpiresAt) {
+          startShareLoop(request.id, response.shareExpiresAt, request.requester?.displayName);
+        }
         await load();
       } catch (e) {
         const msg = e?.response?.data?.error || 'Could not respond. Please try again.';
@@ -381,7 +496,7 @@ export default function CheckInScreen({ navigation }) {
         setRespondingPingId(null);
       }
     },
-    [geocode, removeIncoming, load],
+    [geocode, removeIncoming, load, startShareLoop],
   );
   const handlePingEveryone = useCallback(async () => {
     if (checkingIn) return;
@@ -650,7 +765,7 @@ export default function CheckInScreen({ navigation }) {
       <View style={styles.map}>
         <MapLibreMap
           style={StyleSheet.absoluteFill}
-          mapStyle={MAP_STYLE_URL}
+          mapStyle={DARK_MAP_STYLE}
           compass={false}
           logo={false}
           attribution
@@ -759,7 +874,7 @@ export default function CheckInScreen({ navigation }) {
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.pingAcceptBtn}
-                    onPress={() => handleRespondPing(request, 'accept')}
+                    onPress={() => setDurationRequest(request)}
                     disabled={respondingPingId === request.id}
                     activeOpacity={0.8}
                   >
@@ -772,6 +887,23 @@ export default function CheckInScreen({ navigation }) {
                 </View>
               </View>
             ))}
+          </View>
+        )}
+
+        {/* Live share indicator — this device is currently broadcasting */}
+        {activeShare && (
+          <View style={styles.shareStatusCard} pointerEvents="box-none">
+            <Text style={styles.shareStatusText} numberOfLines={1}>
+              Sharing with {activeShare.requesterName || 'them'} ·{' '}
+              {formatCountdown(new Date(activeShare.expiresAt).getTime() - shareNow)}
+            </Text>
+            <TouchableOpacity
+              onPress={() => stopShareLoop(true)}
+              activeOpacity={0.8}
+              hitSlop={8}
+            >
+              <Text style={styles.shareStatusStop}>Stop</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -1063,6 +1195,68 @@ export default function CheckInScreen({ navigation }) {
         </View>
       </Modal>
 
+      {/* Duration picker — how long to share location before accepting */}
+      <Modal
+        visible={!!durationRequest}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setDurationRequest(null)}
+      >
+        <TouchableOpacity
+          style={styles.sheetOverlay}
+          activeOpacity={1}
+          onPress={() => setDurationRequest(null)}
+        />
+        <View
+          style={[
+            styles.sheetBox,
+            {
+              paddingBottom: insets.bottom + 12,
+            },
+          ]}
+        >
+          <View style={styles.pickHandleGrabArea}>
+            <View style={styles.handle} />
+          </View>
+          <View style={styles.pickHeader}>
+            <View style={styles.pickHeaderIcon}>
+              <Text style={styles.pickHeaderIconText}>⏱</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.sheetTitle}>Share for how long?</Text>
+              <Text style={styles.pickHeaderSub}>
+                {durationRequest?.requester?.displayName || 'They'} will see your location update
+                live until this time runs out.
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => setDurationRequest(null)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={styles.pickCloseBtn}
+            >
+              <Text style={styles.pickCloseIcon}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.durationOptionsRow}>
+            {SHARE_DURATION_OPTIONS.map((opt) => (
+              <TouchableOpacity
+                key={opt.minutes}
+                style={styles.durationOption}
+                activeOpacity={0.8}
+                disabled={respondingPingId === durationRequest?.id}
+                onPress={() => {
+                  const request = durationRequest;
+                  setDurationRequest(null);
+                  handleRespondPing(request, 'accept', opt.minutes);
+                }}
+              >
+                <Text style={styles.durationOptionText}>{opt.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      </Modal>
+
       {/* Saved places — add / edit / manage */}
       <Modal
         visible={showPlaceSheet}
@@ -1106,7 +1300,7 @@ export default function CheckInScreen({ navigation }) {
               {placeCoords ? (
                 <MapLibreMap
                   style={StyleSheet.absoluteFill}
-                  mapStyle={MAP_STYLE_URL}
+                  mapStyle={DARK_MAP_STYLE}
                   compass={false}
                   logo={false}
                   attribution={false}
@@ -1551,6 +1745,60 @@ const styles = StyleSheet.create({
   pingAcceptText: {
     fontFamily: fonts.bodySemiBold,
     fontSize: 13,
+    color: colors.onAccent,
+  },
+  // Live-share status — this device is currently broadcasting its location
+  shareStatusCard: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    top: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.canvasSoft,
+    borderRadius: radius.card,
+    borderWidth: 1.5,
+    borderColor: colors.gold,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  shareStatusText: {
+    flex: 1,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 13,
+    color: colors.ink,
+    marginRight: 10,
+  },
+  shareStatusStop: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 13,
+    color: colors.dangerOnDark,
+  },
+  // Duration picker — options row inside the sheet
+  durationOptionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  durationOption: {
+    flexGrow: 1,
+    minWidth: '45%',
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: colors.gold,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.gold,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+  },
+  durationOptionText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 14,
     color: colors.onAccent,
   },
   // Route-to-shared-location card — distance + "Open in Maps"

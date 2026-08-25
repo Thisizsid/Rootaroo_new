@@ -1,72 +1,63 @@
-import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
-import { useMemo, useEffect, useState } from 'react';
-import { Platform } from 'react-native';
+import { useState } from 'react';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { showAlert } from '../services/themedAlert';
 import { authApi } from '../api/auth';
 
-WebBrowser.maybeCompleteAuthSession();
-
-const ANDROID_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || '';
-const IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '';
+// The Web Client ID is what matters here even on native platforms: it's the
+// audience the ID token is issued for, which is what the backend verifies
+// against (see server's googleAuth()). iosClientId is only needed so the
+// native iOS picker knows which client to use for the on-device prompt.
 const WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '';
+const IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '';
 
 export function useGoogleSignIn(onSuccess) {
   const [busy, setBusy] = useState(false);
 
-  const config = useMemo(() => {
-    if (Platform.OS === 'android' && ANDROID_CLIENT_ID) {
-      return { androidClientId: ANDROID_CLIENT_ID };
-    }
-    if (Platform.OS === 'ios' && IOS_CLIENT_ID) {
-      return { iosClientId: IOS_CLIENT_ID };
-    }
-    if (WEB_CLIENT_ID) {
-      return { webClientId: WEB_CLIENT_ID };
-    }
-    return null;
-  }, []);
-
-  const fallbackConfig = useMemo(() => {
-    if (config) return config;
-    if (Platform.OS === 'android') return { androidClientId: '' };
-    if (Platform.OS === 'ios') return { iosClientId: '' };
-    return {};
-  }, [config]);
-
-  const [request, response, promptAsync] = Google.useAuthRequest(fallbackConfig);
-
-  useEffect(() => {
-    if (response?.type === 'success') {
-      const { code } = response.params;
-      const redirectUri = request?.redirectUri;
-      if (code && redirectUri) {
-        setBusy(true);
-        authApi
-          .googleAuth({ code, redirectUri })
-          .then(async (resp) => {
-            await onSuccess(resp);
-          })
-          .catch((e) => {
-            const msg = e?.response?.data?.error || 'Google sign-in failed.';
-            showAlert('Error', msg);
-          })
-          .finally(() => setBusy(false));
-      }
-    }
-  }, [response]);
-
   const signIn = async () => {
-    const hasClientId = config && Object.values(config).some((v) => typeof v === 'string' && v.length > 0);
-    if (!hasClientId) {
+    if (!WEB_CLIENT_ID) {
       showAlert(
         'Not Configured',
-        'Google Sign-In is not configured. Set EXPO_PUBLIC_GOOGLE_*_CLIENT_ID in your .env file.',
+        'Google Sign-In is not configured. Set EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID in your .env file.',
       );
       return;
     }
-    await promptAsync();
+    // Configured fresh right before use rather than once-and-cached — this
+    // flow's config (offlineAccess: false, no extra scopes) differs from
+    // the calendar-connect flow's, so whichever hook runs must always
+    // assert its own config immediately beforehand instead of trusting a
+    // stale one left behind by whichever hook happened to run first.
+    GoogleSignin.configure({
+      webClientId: WEB_CLIENT_ID,
+      iosClientId: IOS_CLIENT_ID || undefined,
+      offlineAccess: false,
+    });
+    setBusy(true);
+    try {
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      // Google Play Services caches the last-used account and silently
+      // re-signs-in with it on subsequent calls, skipping the account
+      // picker entirely — which breaks switching accounts or signing up
+      // with a different Google account than last time. Signing out first
+      // clears that cache so the picker always shows, letting the user
+      // pick any account on the device every time.
+      await GoogleSignin.signOut().catch(() => {});
+      const result = await GoogleSignin.signIn();
+      if (result.type === 'cancelled') return;
+
+      const idToken = result.data?.idToken;
+      if (!idToken) {
+        throw new Error('Google did not return an ID token.');
+      }
+
+      const resp = await authApi.googleAuth({ idToken });
+      await onSuccess(resp);
+    } catch (e) {
+      const msg = e?.response?.data?.error || e?.message || 'Google sign-in failed.';
+      showAlert('Error', msg);
+    } finally {
+      setBusy(false);
+    }
   };
 
-  return { signIn, isLoading: !request || busy };
+  return { signIn, isLoading: busy };
 }

@@ -11,6 +11,7 @@ import {
   PostTag,
 } from '../../database/models';
 import { NotFoundError, ForbiddenError } from '../../shared/utils/errors';
+import { getSignedUrl } from '../../shared/utils/s3';
 import { CommentReaction } from '../../database/models';
 import logger from '../../shared/utils/logger';
 import * as notificationService from '../notification/service';
@@ -29,23 +30,23 @@ import type {
 
 // ── Helpers ──
 
-function toAuthorResponse(user: User): FeedAuthorResponse {
+async function toAuthorResponse(user: User): Promise<FeedAuthorResponse> {
   return {
     id: user.id,
     displayName: user.displayName,
-    avatarUrl: user.avatarUrl,
+    avatarUrl: await getSignedUrl(user.avatarUrl),
     avatarEmoji: user.avatarEmoji,
   };
 }
 
-function toMediaResponse(items: FeedMedia[]): FeedMediaResponse[] {
-  return items.map((m) => ({
+async function toMediaResponse(items: FeedMedia[]): Promise<FeedMediaResponse[]> {
+  return Promise.all(items.map(async (m) => ({
     id: m.id,
-    mediaUrl: m.mediaUrl,
+    mediaUrl: (await getSignedUrl(m.mediaUrl))!,
     mediaType: m.mediaType,
-    thumbnailUrl: m.thumbnailUrl,
+    thumbnailUrl: await getSignedUrl(m.thumbnailUrl),
     fileSizeBytes: m.fileSizeBytes,
-  }));
+  })));
 }
 
 /**
@@ -125,29 +126,31 @@ async function getCommentCounts(
   return map;
 }
 
-function toPostResponse(
+async function toPostResponse(
   post: FeedPost,
   likeData: LikeData,
   commentCount: number,
-): FeedPostResponse {
+): Promise<FeedPostResponse> {
   const postTags = post.get('postTags') as unknown as PostTag[] | undefined;
-  const taggedUsers = (postTags || [])
-    .filter((t) => t.get('taggedUser'))
-    .map((t) => {
-      const u = t.get('taggedUser') as User;
-      return {
-        id: u.id,
-        displayName: u.displayName,
-        avatarUrl: u.avatarUrl,
-      };
-    }) || [];
+  const taggedUsers = await Promise.all(
+    (postTags || [])
+      .filter((t) => t.get('taggedUser'))
+      .map(async (t) => {
+        const u = t.get('taggedUser') as User;
+        return {
+          id: u.id,
+          displayName: u.displayName,
+          avatarUrl: await getSignedUrl(u.avatarUrl),
+        };
+      }),
+  );
 
   return {
     id: post.id,
-    author: toAuthorResponse(post.get('author') as unknown as User),
+    author: await toAuthorResponse(post.get('author') as unknown as User),
     content: post.content,
     mediaType: post.mediaType,
-    media: toMediaResponse(post.get('media') as unknown as FeedMedia[] || []),
+    media: await toMediaResponse(post.get('media') as unknown as FeedMedia[] || []),
     likeCount: likeData.likeCount,
     commentCount,
     isLikedByMe: likeData.isLikedByMe,
@@ -220,7 +223,7 @@ export async function createPost(
   const postId = post.id as string;
   const likeData = (await getLikeData([postId], userId)).get(postId) || { isLikedByMe: false, likeCount: 0 };
   const commentCounts = await getCommentCounts([postId]);
-  const result = toPostResponse(fullPost, likeData, commentCounts.get(postId) || 0);
+  const result = await toPostResponse(fullPost, likeData, commentCounts.get(postId) || 0);
 
   // FR-047: Notify household members (async, fire-and-forget)
   const members = await HouseholdMember.findAll({ where: { householdId } });
@@ -305,10 +308,10 @@ export async function getFeed(
     getCommentCounts(postIds),
   ]);
 
-  const resultPosts: FeedPostResponse[] = pagePosts.map((post) => {
+  const resultPosts: FeedPostResponse[] = await Promise.all(pagePosts.map((post) => {
     const ld = likeDataMap.get(post.id) || { isLikedByMe: false, likeCount: 0 };
     return toPostResponse(post, ld, commentCounts.get(post.id) || 0);
-  });
+  }));
 
   return {
     posts: resultPosts,
@@ -342,7 +345,7 @@ export async function getPostById(
   ]);
 
   const ld = likeDataMap.get(postId) || { isLikedByMe: false, likeCount: 0 };
-  return toPostResponse(post, ld, commentCounts.get(postId) || 0);
+  return await toPostResponse(post, ld, commentCounts.get(postId) || 0);
 }
 
 /**
@@ -478,7 +481,7 @@ async function toCommentResponse(
 
   return {
     id: comment.id,
-    author: toAuthorResponse(comment.get('author') as unknown as User),
+    author: await toAuthorResponse(comment.get('author') as unknown as User),
     content: comment.content,
     parentId: comment.parentId,
     createdAt: comment.createdAt.toISOString(),

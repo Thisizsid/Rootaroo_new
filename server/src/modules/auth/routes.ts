@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { authenticate } from '../../shared/middleware/auth';
 import { validate } from '../../shared/middleware/validate';
 import { uploadAvatar } from '../../shared/middleware/upload';
-import { registerSchema, loginSchema, refreshSchema, updateProfileSchema, googleAuthSchema, verifyEmailSchema, forgotPasswordSchema, resetPasswordSchema, logoutSchema, scheduleDeletionSchema, sendPhoneOtpSchema, verifyPhoneOtpSchema, registerPhoneSchema } from './validation';
+import { registerSchema, loginSchema, refreshSchema, updateProfileSchema, googleAuthSchema, appleAuthSchema, verifyEmailSchema, forgotPasswordSchema, resetPasswordSchema, checkResetCodeSchema, logoutSchema, scheduleDeletionSchema, sendPhoneOtpSchema, verifyPhoneOtpSchema, registerPhoneSchema } from './validation';
 import * as ctrl from './controller';
 
 const router = Router();
@@ -67,6 +67,7 @@ router.post('/login', validate(loginSchema), ctrl.login);
  *         description: Authenticated
  */
 router.post('/google', validate(googleAuthSchema), ctrl.googleAuth);
+router.post('/apple', validate(appleAuthSchema), ctrl.appleAuth);
 
 router.post('/refresh', validate(refreshSchema), ctrl.refresh);
 router.post('/logout', validate(logoutSchema), ctrl.logout);
@@ -117,6 +118,28 @@ router.post('/forgot-password', validate(forgotPasswordSchema), ctrl.forgotPassw
  *         description: Invalid or expired code
  */
 router.post('/reset-password', validate(resetPasswordSchema), ctrl.resetPassword);
+
+/**
+ * @openapi
+ * /auth/check-reset-code:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Check whether a password reset code is still valid, without consuming it
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               code: { type: string, minLength: 6, maxLength: 6 }
+ *     responses:
+ *       200:
+ *         description: Code is valid
+ *       400:
+ *         description: Invalid or expired code
+ */
+router.post('/check-reset-code', validate(checkResetCodeSchema), ctrl.checkResetCode);
 
 // ── Protected Endpoints ──
 

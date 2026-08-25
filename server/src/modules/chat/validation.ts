@@ -5,7 +5,7 @@ export const createMessageSchema = {
     conversationId: z.string().uuid(),
     content: z.string().min(1).max(5000).optional(),
     mediaIds: z.array(z.string().uuid()).max(10).optional(),
-    mediaUrl: z.string().url().optional(),
+    mediaUrl: z.string().min(1).optional(),
     type: z.enum(['text', 'image', 'voice']).optional(),
     durationSeconds: z.number().int().positive().max(600).optional(),
     replyToId: z.string().uuid().optional(),

@@ -62,6 +62,7 @@ export default function InviteMembersScreen({ navigation }) {
       setupComplete: true,
     });
     useAuthStore.getState().triggerCelebration();
+    useAuthStore.getState().triggerTour();
     completeSetup();
   };
   return (

@@ -107,9 +107,9 @@ describe('Dashboard Service', () => {
       // One completion day → streak >= 1.
       expect(result.streak.current).toBeGreaterThanOrEqual(1);
       expect(result.streak.best).toBeGreaterThanOrEqual(1);
-      // Alice: 2 (task points) + 1 (grocery) = 3; Bob: 1 (todo).
-      expect(result.leaderboard[0]).toMatchObject({ userId, points: 3 });
-      expect(result.leaderboard[1]).toMatchObject({ userId: otherUserId, points: 1 });
+      // Alice: 2 (task's own custom points) + 4 (grocery) = 6; Bob: 3 (todo).
+      expect(result.leaderboard[0]).toMatchObject({ userId, points: 6 });
+      expect(result.leaderboard[1]).toMatchObject({ userId: otherUserId, points: 3 });
 
       // Recent activity is real per-member events with names.
       expect(result.recentActivity).toHaveLength(3);
@@ -154,7 +154,7 @@ describe('Dashboard Service', () => {
       await expect(getDashboard(userId)).rejects.toThrow(ForbiddenError);
     });
 
-    it('keeps the streak alive on a day with no chores but a chat message', async () => {
+    it('keeps the streak alive on a day with no chores but a check-in', async () => {
       (modelsMock.HouseholdMember.findOne as jest.Mock).mockResolvedValue({ householdId });
       (modelsMock.HouseholdMember.findAll as jest.Mock).mockResolvedValue([
         { userId, user: { displayName: 'Alice', avatarUrl: null, avatarEmoji: null } },
@@ -168,15 +168,15 @@ describe('Dashboard Service', () => {
       (modelsMock.Task.findAll as jest.Mock).mockResolvedValue([]);
       (modelsMock.TodoItem.findAll as jest.Mock).mockResolvedValue([]);
       (modelsMock.GroceryItem.findAll as jest.Mock).mockResolvedValue([]);
-      // ...but someone sent a chat message today.
-      (modelsMock.ChatMessage.findAll as jest.Mock).mockResolvedValue([
-        { createdAt: new Date() },
+      // ...but someone checked in today.
+      (modelsMock.CheckIn.findAll as jest.Mock).mockResolvedValue([
+        { checkedInAt: new Date() },
       ]);
 
       const result = await getDashboard(userId);
 
       expect(result.streak.current).toBeGreaterThanOrEqual(1);
-      // The chores chart itself is unaffected — chat isn't a "chore".
+      // The chores chart itself is unaffected — a check-in isn't a "chore".
       expect(result.activity[6]).toMatchObject({
         tasksCompleted: 0,
         todosCompleted: 0,
@@ -185,6 +185,74 @@ describe('Dashboard Service', () => {
       // ...but the day still reads as "engaged" — this is what the
       // dashboard's streak pills/copy should key off of, not the chore count.
       expect(result.activity[6].engaged).toBe(true);
+    });
+
+    it('does NOT keep the streak alive on a day with only chat messages', async () => {
+      (modelsMock.HouseholdMember.findOne as jest.Mock).mockResolvedValue({ householdId });
+      (modelsMock.HouseholdMember.findAll as jest.Mock).mockResolvedValue([
+        { userId, user: { displayName: 'Alice', avatarUrl: null, avatarEmoji: null } },
+      ]);
+      (taskService.getTaskSummary as jest.Mock).mockResolvedValue({ pending: 0, overdue: 0, completedToday: 0 });
+      (groceryService.getSummary as jest.Mock).mockResolvedValue({ pending: 0, boughtToday: 0 });
+      (todoService.getSummary as jest.Mock).mockResolvedValue({ pending: 0, completedToday: 0 });
+      (notificationService.getUnreadCount as jest.Mock).mockResolvedValue(0);
+
+      (modelsMock.Task.findAll as jest.Mock).mockResolvedValue([]);
+      (modelsMock.TodoItem.findAll as jest.Mock).mockResolvedValue([]);
+      (modelsMock.GroceryItem.findAll as jest.Mock).mockResolvedValue([]);
+
+      const result = await getDashboard(userId);
+
+      // Chat is deliberately not queried at all for streak purposes.
+      expect(modelsMock.ChatMessage.findAll).not.toHaveBeenCalled();
+      expect(result.activity[6].engaged).toBe(false);
+      expect(result.streak.current).toBe(0);
+    });
+
+    it('credits feed posts, pings, check-ins, and calendar events as real contributions (points + recent activity), without touching the chores chart', async () => {
+      (modelsMock.HouseholdMember.findOne as jest.Mock).mockResolvedValue({ householdId });
+      (modelsMock.HouseholdMember.findAll as jest.Mock).mockResolvedValue([
+        { userId, user: { displayName: 'Alice', avatarUrl: null, avatarEmoji: null } },
+        { userId: otherUserId, user: { displayName: 'Bhim', avatarUrl: null, avatarEmoji: null } },
+      ]);
+      (taskService.getTaskSummary as jest.Mock).mockResolvedValue({ pending: 0, overdue: 0, completedToday: 0 });
+      (groceryService.getSummary as jest.Mock).mockResolvedValue({ pending: 0, boughtToday: 0 });
+      (todoService.getSummary as jest.Mock).mockResolvedValue({ pending: 0, completedToday: 0 });
+      (notificationService.getUnreadCount as jest.Mock).mockResolvedValue(0);
+
+      (modelsMock.Task.findAll as jest.Mock).mockResolvedValue([]);
+      (modelsMock.TodoItem.findAll as jest.Mock).mockResolvedValue([]);
+      (modelsMock.GroceryItem.findAll as jest.Mock).mockResolvedValue([]);
+      (modelsMock.FeedPost.findAll as jest.Mock).mockResolvedValue([
+        { createdAt: new Date(), userId },
+      ]);
+      (modelsMock.PingRequest.findAll as jest.Mock).mockResolvedValue([
+        { createdAt: new Date(), requesterId: otherUserId },
+      ]);
+      (modelsMock.CheckIn.findAll as jest.Mock).mockResolvedValue([
+        { checkedInAt: new Date(), userId: otherUserId },
+      ]);
+      (modelsMock.CalendarEvent.findAll as jest.Mock).mockResolvedValue([
+        { createdAt: new Date(), createdBy: userId },
+      ]);
+
+      const result = await getDashboard(userId);
+
+      // Chores chart is untouched — none of these are "chores".
+      expect(result.activity[6]).toMatchObject({
+        tasksCompleted: 0,
+        todosCompleted: 0,
+        groceriesBought: 0,
+      });
+
+      // Alice: 1 feed post (2) + 1 calendar event (3) = 5 points. Bhim: 1 ping (1) + 1 check-in (2) = 3 points.
+      const alice = result.leaderboard.find((l) => l.userId === userId);
+      const bhim = result.leaderboard.find((l) => l.userId === otherUserId);
+      expect(alice?.points).toBe(5);
+      expect(bhim?.points).toBe(3);
+
+      const kinds = result.recentActivity.map((a) => a.kind).sort();
+      expect(kinds).toEqual(['calendar', 'checkin', 'feed', 'ping']);
     });
 
     it('buckets a completion into the household-local day, not the server/UTC day', async () => {

@@ -1,73 +1,75 @@
-import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
-import { useEffect, useMemo, useState } from 'react';
-import { Platform } from 'react-native';
+import { useState } from 'react';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { showAlert } from '../services/themedAlert';
 import { eventApi } from '../api/event';
 
-WebBrowser.maybeCompleteAuthSession();
-
-const ANDROID_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || '';
-const IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '';
 const WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '';
+const IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '';
 
-// Same OAuth client as login, but with an incremental Calendar scope and
-// `access_type=offline` + `prompt=consent` so Google actually issues a
-// refresh token — required for the backend to sync in the background.
-const CALENDAR_SCOPES = ['openid', 'email', 'profile', 'https://www.googleapis.com/auth/calendar'];
+// Narrowest scopes that cover what the backend actually does: read/write
+// events (create/update/delete + two-way sync) and read-only access to the
+// calendar list (to resolve the user's primary calendar id on connect).
+// Both are "sensitive" scopes, not "restricted" like the full `calendar`
+// scope — restricted scopes are what force a paid CASA security assessment
+// during Google's app verification, so staying inside the sensitive tier
+// keeps publishing to production dramatically simpler.
+const CALENDAR_SCOPES = [
+  'https://www.googleapis.com/auth/calendar.events',
+  'https://www.googleapis.com/auth/calendar.calendarlist.readonly',
+];
 
 export function useGoogleCalendarConnect(onConnected) {
   const [busy, setBusy] = useState(false);
 
-  const config = useMemo(() => {
-    const base = { scopes: CALENDAR_SCOPES, extraParams: { access_type: 'offline', prompt: 'consent' } };
-    if (Platform.OS === 'android' && ANDROID_CLIENT_ID) return { ...base, androidClientId: ANDROID_CLIENT_ID };
-    if (Platform.OS === 'ios' && IOS_CLIENT_ID) return { ...base, iosClientId: IOS_CLIENT_ID };
-    if (WEB_CLIENT_ID) return { ...base, webClientId: WEB_CLIENT_ID };
-    return null;
-  }, []);
-
-  const fallbackConfig = useMemo(() => {
-    if (config) return config;
-    const base = { scopes: CALENDAR_SCOPES, extraParams: { access_type: 'offline', prompt: 'consent' } };
-    if (Platform.OS === 'android') return { ...base, androidClientId: '' };
-    if (Platform.OS === 'ios') return { ...base, iosClientId: '' };
-    return base;
-  }, [config]);
-
-  const [request, response, promptAsync] = Google.useAuthRequest(fallbackConfig);
-
-  useEffect(() => {
-    if (response?.type === 'success') {
-      const { code } = response.params;
-      const redirectUri = request?.redirectUri;
-      if (code && redirectUri) {
-        setBusy(true);
-        eventApi
-          .connectGoogleCalendar({ code, redirectUri })
-          .then(async (status) => {
-            await onConnected(status);
-          })
-          .catch((e) => {
-            const msg = e?.response?.data?.error || 'Could not connect Google Calendar.';
-            showAlert('Error', msg);
-          })
-          .finally(() => setBusy(false));
-      }
-    }
-  }, [response]);
-
   const connect = async () => {
-    const hasClientId = config && Object.values(config).some((v) => typeof v === 'string' && v.length > 0);
-    if (!hasClientId) {
+    if (!WEB_CLIENT_ID) {
       showAlert(
         'Not Configured',
-        'Google Sign-In is not configured. Set EXPO_PUBLIC_GOOGLE_*_CLIENT_ID in your .env file.',
+        'Google Sign-In is not configured. Set EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID in your .env file.',
       );
       return;
     }
-    await promptAsync();
+    setBusy(true);
+    try {
+      // Configured fresh right before use (not a one-time guard like the
+      // plain sign-in hook used to have) — this flow needs offlineAccess
+      // and the calendar scope, a different config than login's, so it
+      // can't rely on whichever hook happened to configure first.
+      GoogleSignin.configure({
+        webClientId: WEB_CLIENT_ID,
+        iosClientId: IOS_CLIENT_ID || undefined,
+        offlineAccess: true,
+        scopes: CALENDAR_SCOPES,
+        // Android only: without this, Google skips issuing a refresh token
+        // on any authorization after the very first one for this Google
+        // account (it assumes the app already stored one from before) —
+        // that's exactly what produces "Google did not grant offline
+        // access" on reconnect/re-auth. Forces the consent screen + a fresh
+        // code every time so the backend always gets a refresh token.
+        forceCodeForRefreshToken: true,
+      });
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      // Same reasoning as useGoogleSignIn — without this, Play Services
+      // silently reuses whichever Google account was last used instead of
+      // showing the account picker.
+      await GoogleSignin.signOut().catch(() => {});
+      const result = await GoogleSignin.signIn();
+      if (result.type === 'cancelled') return;
+
+      const serverAuthCode = result.data?.serverAuthCode;
+      if (!serverAuthCode) {
+        throw new Error('Google did not return a server auth code.');
+      }
+
+      const status = await eventApi.connectGoogleCalendar({ code: serverAuthCode });
+      await onConnected(status);
+    } catch (e) {
+      const msg = e?.response?.data?.error || e?.message || 'Could not connect Google Calendar.';
+      showAlert('Error', msg);
+    } finally {
+      setBusy(false);
+    }
   };
 
-  return { connect, isLoading: !request || busy };
+  return { connect, isLoading: busy };
 }

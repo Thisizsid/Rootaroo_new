@@ -4,6 +4,7 @@ export interface RegisterBody {
   email: string;
   password: string;
   displayName?: string;
+  phone?: string;
 }
 
 export interface LoginBody {
@@ -28,8 +29,12 @@ export interface UpdateProfileBody {
 }
 
 export interface GoogleAuthBody {
-  code: string;
-  redirectUri: string;
+  idToken: string;
+}
+
+export interface AppleAuthBody {
+  idToken: string;
+  displayName?: string;
 }
 
 export interface VerifyEmailBody {
@@ -43,6 +48,10 @@ export interface ForgotPasswordBody {
 export interface ResetPasswordBody {
   code: string;
   password: string;
+}
+
+export interface CheckResetCodeBody {
+  code: string;
 }
 
 export interface ScheduleDeletionBody {
