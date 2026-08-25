@@ -60,6 +60,7 @@ export default function PhoneVerificationScreen({ navigation, route }) {
       const result = await resolvePostAuthNavigation(resp, 'phone', navigation, progress);
       if (result === 'home') {
         useAuthStore.getState().triggerCelebration();
+        useAuthStore.getState().triggerTour();
       }
     } catch (e) {
       setInvalid(true); // mockup screen10c: red boxes + inline error

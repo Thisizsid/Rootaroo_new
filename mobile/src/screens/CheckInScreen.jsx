@@ -37,6 +37,7 @@ import { haversineDistanceKm, formatDistance } from '../shared/utils/geo';
 import Avatar from '../components/Avatar';
 import { KeyboardAvoider } from '../shared/components/KeyboardAware';
 import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
+import { DARK_MAP_STYLE } from '../shared/constants/darkMapStyle';
 const PLACE_ICON_EMOJI = {
   home: '⌂',
   office: '💼',
@@ -74,7 +75,6 @@ function formatCountdown(msRemaining) {
  * positions, and the "focus" pin for a tapped Recent entry) are plain RN
  * views rendered as native map markers via <Marker>.
  */
-const MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/dark';
 
 /**
  * CheckInScreen ("Ping") — map-first redesign (concept approved by user).
@@ -765,7 +765,7 @@ export default function CheckInScreen({ navigation }) {
       <View style={styles.map}>
         <MapLibreMap
           style={StyleSheet.absoluteFill}
-          mapStyle={MAP_STYLE_URL}
+          mapStyle={DARK_MAP_STYLE}
           compass={false}
           logo={false}
           attribution
@@ -1300,7 +1300,7 @@ export default function CheckInScreen({ navigation }) {
               {placeCoords ? (
                 <MapLibreMap
                   style={StyleSheet.absoluteFill}
-                  mapStyle={MAP_STYLE_URL}
+                  mapStyle={DARK_MAP_STYLE}
                   compass={false}
                   logo={false}
                   attribution={false}
