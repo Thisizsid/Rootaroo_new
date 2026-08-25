@@ -36,6 +36,29 @@ export async function uploadVoiceCtrl(
   }
 }
 
+export async function uploadChatImageCtrl(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const file = req.file;
+    if (!file) {
+      res.status(400).json({ success: false, error: 'No file provided' });
+      return;
+    }
+    const result = await uploadBuffer(file.buffer, 'chat/image', file.mimetype, file.originalname.split('.').pop());
+    // Same shape as uploadVoiceCtrl — `url` is the S3 key, resolved to a
+    // signed URL on read via chat/service.ts.
+    res.status(201).json({
+      success: true,
+      data: { url: result.key },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function sendMessageCtrl(
   req: Request,
   res: Response,

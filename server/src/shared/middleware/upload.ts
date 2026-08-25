@@ -57,3 +57,9 @@ export const uploadChatVoice = multer({
   fileFilter: audioFilter,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB (short voice notes)
 });
+
+export const uploadChatImage = multer({
+  storage: memory,
+  fileFilter: imageFilter,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+});

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -26,6 +26,8 @@ import LoadingSkeleton from '../components/LoadingSkeleton';
 import OfflineBanner from '../components/OfflineBanner';
 import { KeyboardAvoider } from '../shared/components/KeyboardAware';
 import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
+import { SpotlightTourProvider, AttachStep } from 'react-native-spotlight-tour';
+import TourTooltip from '../shared/components/TourTooltip';
 const AVATAR_COLORS = [colors.gold, colors.avatarTan, colors.avatarLilac, colors.avatarSage, colors.avatarSky];
 const PAD = 24;
 function initials(name) {
@@ -170,6 +172,56 @@ export default function ConversationsScreen() {
   const nav = useNavigation();
   const user = useAuthStore((s) => s.user);
   const householdId = useAuthStore((s) => s.householdId);
+  const showChatTour = useAuthStore((s) => s.showChatTour);
+  const dismissChatTour = useAuthStore((s) => s.dismissChatTour);
+  const triggerTasksTour = useAuthStore((s) => s.triggerTasksTour);
+  const composeRef = useRef(null);
+  const peopleRef = useRef(null);
+  const tourRef = useRef(null);
+  const tourSteps = useMemo(() => {
+    const meta = [
+      { ref: composeRef, title: 'Direct message', body: 'Tap here to message one person directly or search for someone.' },
+      { ref: peopleRef, title: 'Group chat', body: 'Tap here to start a group conversation with your whole household.' },
+    ];
+    return meta.map(({ ref, title, body }, i) => ({
+      before: () => {},
+      render: (props) => {
+        const isChainLast = i === meta.length - 1;
+        return (
+          <TourTooltip
+            {...props}
+            title={title}
+            body={body}
+            total={meta.length}
+            continueLabel={isChainLast ? 'Continue to Tasks' : undefined}
+            onContinue={isChainLast ? () => {
+              props.stop();
+              nav.navigate('TasksStack');
+              triggerTasksTour();
+            } : undefined}
+          />
+        );
+      },
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (!showChatTour) return;
+    let cancelled = false;
+    const tryStart = () => {
+      if (cancelled) return;
+      if (tourRef.current) {
+        tourRef.current.start();
+        dismissChatTour();
+      } else {
+        requestAnimationFrame(tryStart);
+      }
+    };
+    tryStart();
+    return () => {
+      cancelled = true;
+    };
+  }, [showChatTour, dismissChatTour]);
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -340,6 +392,14 @@ export default function ConversationsScreen() {
     return <LoadingSkeleton variant="list" />;
   }
   return (
+    <SpotlightTourProvider
+      ref={tourRef}
+      steps={tourSteps}
+      shape="rectangle"
+      motion="slide"
+      overlayColor={colors.shadow}
+      overlayOpacity={0.82}
+    >
     <View
       style={[
         styles.container,
@@ -360,28 +420,34 @@ export default function ConversationsScreen() {
       <View style={styles.msgsHeader}>
         <Text style={styles.msgsTitle}>Messages</Text>
         <View style={styles.msgsActions}>
-          <TouchableOpacity
-            style={styles.iconBtn}
-            activeOpacity={0.7}
-            onPress={() => {
-              setSearchQuery('');
-              setModalVisible(true);
-            }}
-          >
-            <ComposeIcon size={18} color={colors.ink} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.iconBtn}
-            onPress={handleMessageEveryone}
-            disabled={creating || otherMembers.length === 0}
-            activeOpacity={0.7}
-          >
-            {creating ? (
-              <ActivityIndicator size="small" color={colors.gold} />
-            ) : (
-              <PeopleIcon size={20} color={colors.ink} />
-            )}
-          </TouchableOpacity>
+          <AttachStep index={0} style={{ alignSelf: 'center' }}>
+            <TouchableOpacity
+              ref={composeRef}
+              style={styles.iconBtn}
+              activeOpacity={0.7}
+              onPress={() => {
+                setSearchQuery('');
+                setModalVisible(true);
+              }}
+            >
+              <ComposeIcon size={18} color={colors.ink} />
+            </TouchableOpacity>
+          </AttachStep>
+          <AttachStep index={1} style={{ alignSelf: 'center' }}>
+            <TouchableOpacity
+              ref={peopleRef}
+              style={styles.iconBtn}
+              onPress={handleMessageEveryone}
+              disabled={creating || otherMembers.length === 0}
+              activeOpacity={0.7}
+            >
+              {creating ? (
+                <ActivityIndicator size="small" color={colors.gold} />
+              ) : (
+                <PeopleIcon size={20} color={colors.ink} />
+              )}
+            </TouchableOpacity>
+          </AttachStep>
         </View>
       </View>
 
@@ -568,6 +634,7 @@ export default function ConversationsScreen() {
         </KeyboardAvoider>
       </Modal>
     </View>
+    </SpotlightTourProvider>
   );
 }
 

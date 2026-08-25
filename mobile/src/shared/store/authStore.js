@@ -15,6 +15,11 @@ export const useAuthStore = create((set, get) => ({
   householdId: null,
   signupProgress: null,
   celebrate: false,
+  showTour: true, // TEMP: forced on for testing — revert to false before shipping
+  showFeedTour: false,
+  showChatTour: false,
+  showTasksTour: false,
+  showMoreTour: false,
 
   setAuth: (user, accessToken, refreshToken) => {
     set({ user, accessToken, refreshToken, isAuthenticated: true, isLoading: false });
@@ -62,6 +67,23 @@ export const useAuthStore = create((set, get) => ({
   // the first Home screen it lands on; returning logins skip it.
   triggerCelebration: () => set({ celebrate: true }),
   clearCelebration: () => set({ celebrate: false }),
+
+  // Same one-time-per-fresh-signup trigger as celebrate — the app tour
+  // popup shown the first time a new account lands on Home.
+  triggerTour: () => set({ showTour: true }),
+  dismissTour: () => set({ showTour: false }),
+
+  // Guided chain: each screen's tour ends with a "Continue to X" button
+  // (see TourTooltip's continueLabel/onContinue) that navigates to the next
+  // screen and triggers its one-shot tour directly.
+  triggerFeedTour: () => set({ showFeedTour: true }),
+  dismissFeedTour: () => set({ showFeedTour: false }),
+  triggerChatTour: () => set({ showChatTour: true }),
+  dismissChatTour: () => set({ showChatTour: false }),
+  triggerTasksTour: () => set({ showTasksTour: true }),
+  dismissTasksTour: () => set({ showTasksTour: false }),
+  triggerMoreTour: () => set({ showMoreTour: true }),
+  dismissMoreTour: () => set({ showMoreTour: false }),
 
   completeSetup: () => {
     const { accessToken, refreshToken, user } = get();

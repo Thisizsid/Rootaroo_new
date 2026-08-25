@@ -22,7 +22,7 @@ export interface StreakInfo {
   best: number;
 }
 
-export type RecentActivityKind = 'task' | 'todo' | 'grocery';
+export type RecentActivityKind = 'task' | 'todo' | 'grocery' | 'ping' | 'checkin' | 'calendar' | 'feed';
 
 export interface RecentActivityItem {
   date: string; // YYYY-MM-DD
