@@ -8,14 +8,20 @@ import {
   updateEntrySchema,
   entryIdParamSchema,
   entryQuerySchema,
+  historyQuerySchema,
+  onThisDayQuerySchema,
 } from './validation';
 
 const router = Router();
 
 router.use(authenticate);
 
-// Media upload — before /:id
+// Media upload + stats reads — all before /:id, or the UUID param route
+// would swallow them.
 router.post('/media/upload', uploadFeedMedia.array('files', 10), ctrl.uploadMedia);
+router.get('/stats', ctrl.stats);
+router.get('/history', validate(historyQuerySchema), ctrl.history);
+router.get('/on-this-day', validate(onThisDayQuerySchema), ctrl.onThisDay);
 
 // Journal CRUD
 router.post('/', validate(createEntrySchema), ctrl.create);

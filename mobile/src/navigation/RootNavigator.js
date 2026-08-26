@@ -38,6 +38,10 @@ import MoreScreen from '../screens/MoreScreen';
 import CreatePostScreen from '../screens/CreatePostScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import FeedScreen from '../screens/FeedScreen';
+import JournalScreen from '../screens/JournalScreen';
+import JournalEntryEditorScreen from '../screens/JournalEntryEditorScreen';
+import JournalEntryDetailScreen from '../screens/JournalEntryDetailScreen';
+import JournalHistoryScreen from '../screens/JournalHistoryScreen';
 import CommentsScreen from '../screens/CommentsScreen';
 import PhotoGalleryScreen from '../screens/PhotoGalleryScreen';
 
@@ -73,6 +77,9 @@ const MoreNav = createNativeStackNavigator();
 
 /* Vault screens are a fully immersive dark experience — no floating tab dock. */
 const VAULT_ROUTES = ['Vault', 'VaultUpload', 'VaultSetup', 'VaultViewer'];
+// Writing and reading one entry are full-screen tasks — the dock would only
+// compete with the composer's own footer and the detail screen's actions.
+const JOURNAL_FULLSCREEN_ROUTES = ['JournalEditor', 'JournalEntry'];
 
 
 function AuthNavigator() {
@@ -149,6 +156,16 @@ function MoreNavigator() {
       />
       <MoreNav.Screen name="VaultSetup" component={VaultSetupScreen} />
       <MoreNav.Screen name="VaultViewer" component={VaultViewerScreen} />
+      <MoreNav.Screen name="Journal" component={JournalScreen} />
+      <MoreNav.Screen name="JournalHistory" component={JournalHistoryScreen} />
+      <MoreNav.Screen name="JournalEntry" component={JournalEntryDetailScreen} />
+      <MoreNav.Screen
+        name="JournalEditor"
+        component={JournalEntryEditorScreen}
+        // The composer is a modal task, not a place in the More hierarchy:
+        // it slides up, and swiping it away is the same as Cancel.
+        options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+      />
       <MoreNav.Screen name="Calendar" component={CalendarScreen} />
       <MoreNav.Screen name="CheckIn" component={CheckInScreen} />
       <MoreNav.Screen
@@ -434,7 +451,10 @@ function MainNavigator() {
         component={MoreNavigator}
         options={({ route }) => {
           const routeName = getFocusedRouteNameFromRoute(route);
-          const hideTab = routeName === 'NotificationPreferences' || (!!routeName && VAULT_ROUTES.includes(routeName));
+          const hideTab =
+            routeName === 'NotificationPreferences' ||
+            (!!routeName &&
+              (VAULT_ROUTES.includes(routeName) || JOURNAL_FULLSCREEN_ROUTES.includes(routeName)));
           return {
             tabBarLabel: 'More',
             tabBarStyle: hideTab ? { display: 'none' } : tabBarStyle,

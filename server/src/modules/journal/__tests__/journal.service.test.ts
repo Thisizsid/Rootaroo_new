@@ -4,6 +4,9 @@ import {
   getEntryById,
   updateEntry,
   deleteEntry,
+  getStats,
+  getHistory,
+  getOnThisDay,
 } from '../service';
 import * as models from '../../../database/models';
 import { ForbiddenError, NotFoundError } from '../../../shared/utils/errors';
@@ -21,12 +24,14 @@ jest.mock('../../../database/models', () => {
     cls.findOne = jest.fn();
     cls.findByPk = jest.fn();
     cls.bulkCreate = jest.fn();
+    cls.destroy = jest.fn();
     return cls;
   };
   return {
     JournalEntry: mockModel('JournalEntry'),
     JournalMedia: mockModel('JournalMedia'),
     HouseholdMember: mockModel('HouseholdMember'),
+    Household: mockModel('Household'),
   };
 });
 
@@ -56,6 +61,7 @@ describe('Journal Service', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     modelsMock.HouseholdMember.findOne.mockResolvedValue({ householdId, userId });
+    modelsMock.Household.findByPk.mockResolvedValue({ id: householdId, timezone: 'UTC' });
   });
 
   describe('createEntry', () => {
@@ -173,6 +179,218 @@ describe('Journal Service', () => {
       modelsMock.JournalEntry.findOne.mockResolvedValue(null);
 
       await expect(deleteEntry(otherUserId, entryId)).rejects.toThrow(NotFoundError);
+    });
+  });
+});
+
+// ── Stats / history / on-this-day ──
+//
+// These all bucket instants into calendar days, so every test here pins both
+// the clock and the timezone: a "streak" that only holds in UTC-during-July is
+// not a tested streak.
+
+describe('Journal Stats', () => {
+  const NOW = new Date('2026-07-17T09:00:00Z');
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers().setSystemTime(NOW);
+    modelsMock.HouseholdMember.findOne.mockResolvedValue({ householdId, userId });
+    modelsMock.Household.findByPk.mockResolvedValue({ id: householdId, timezone: 'UTC' });
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  /** A bare entry row as `getStats`/`getHistory` read it (no media, no `get`). */
+  function row(dateIso: string, extra: any = {}) {
+    return { createdAt: new Date(dateIso), content: 'a few words here', mood: null, tags: null, ...extra };
+  }
+
+  describe('getStats', () => {
+    it('counts consecutive days ending today', async () => {
+      modelsMock.JournalEntry.findAll.mockResolvedValue([
+        row('2026-07-15T08:00:00Z'),
+        row('2026-07-16T08:00:00Z'),
+        row('2026-07-17T08:00:00Z'),
+      ]);
+
+      const stats = await getStats(userId, 'UTC');
+
+      expect(stats.streak).toBe(3);
+      expect(stats.wroteToday).toBe(true);
+    });
+
+    it('keeps the streak alive on a day not yet written', async () => {
+      // Yesterday and the day before are written; today is not. The user has
+      // until midnight, so the card must still read 2 — not 0.
+      modelsMock.JournalEntry.findAll.mockResolvedValue([
+        row('2026-07-15T08:00:00Z'),
+        row('2026-07-16T08:00:00Z'),
+      ]);
+
+      const stats = await getStats(userId, 'UTC');
+
+      expect(stats.streak).toBe(2);
+      expect(stats.wroteToday).toBe(false);
+    });
+
+    it('breaks the streak across a missed day but remembers the best run', async () => {
+      modelsMock.JournalEntry.findAll.mockResolvedValue([
+        row('2026-07-01T08:00:00Z'),
+        row('2026-07-02T08:00:00Z'),
+        row('2026-07-03T08:00:00Z'),
+        row('2026-07-04T08:00:00Z'),
+        // 5th–16th missed.
+        row('2026-07-17T08:00:00Z'),
+      ]);
+
+      const stats = await getStats(userId, 'UTC');
+
+      expect(stats.streak).toBe(1);
+      expect(stats.bestStreak).toBe(4);
+    });
+
+    it('counts multiple entries on one day as a single streak day', async () => {
+      modelsMock.JournalEntry.findAll.mockResolvedValue([
+        row('2026-07-17T06:00:00Z'),
+        row('2026-07-17T20:00:00Z'),
+      ]);
+
+      const stats = await getStats(userId, 'UTC');
+
+      expect(stats.streak).toBe(1);
+      expect(stats.entriesThisMonth).toBe(2);
+    });
+
+    it('buckets days in the caller timezone, not the server one', async () => {
+      // 00:30 UTC on the 17th is still the 16th in New York — so in that zone
+      // there is no entry today and the streak is yesterday's single day.
+      modelsMock.JournalEntry.findAll.mockResolvedValue([row('2026-07-17T00:30:00Z')]);
+
+      const stats = await getStats(userId, 'America/New_York');
+
+      expect(stats.wroteToday).toBe(false);
+      expect(stats.last7Days[5]).toMatchObject({ date: '2026-07-16', written: true });
+    });
+
+    it('returns seven days ending today, and today’s prompt', async () => {
+      modelsMock.JournalEntry.findAll.mockResolvedValue([]);
+
+      const stats = await getStats(userId, 'UTC');
+
+      expect(stats.last7Days).toHaveLength(7);
+      expect(stats.last7Days[0].date).toBe('2026-07-11');
+      expect(stats.last7Days[6].date).toBe('2026-07-17');
+      expect(stats.streak).toBe(0);
+      expect(stats.prompt).toEqual(expect.any(String));
+      // Stable within the day — the home screen must not reshuffle on refresh.
+      expect((await getStats(userId, 'UTC')).prompt).toBe(stats.prompt);
+    });
+
+    it('sums words only for the current month', async () => {
+      modelsMock.JournalEntry.findAll.mockResolvedValue([
+        row('2026-06-30T08:00:00Z', { content: 'one two three four five' }),
+        row('2026-07-02T08:00:00Z', { content: 'one two three' }),
+      ]);
+
+      const stats = await getStats(userId, 'UTC');
+
+      expect(stats.entriesThisMonth).toBe(1);
+      expect(stats.wordsThisMonth).toBe(3);
+    });
+  });
+
+  describe('getHistory', () => {
+    it('takes the last mood of a day and reports the modal mood', async () => {
+      modelsMock.JournalEntry.findAll.mockResolvedValue([
+        row('2026-07-01T08:00:00Z', { mood: 'calm', tags: ['gratitude'] }),
+        row('2026-07-02T08:00:00Z', { mood: 'low' }),
+        // Same day, written later — the day ended calm.
+        row('2026-07-02T22:00:00Z', { mood: 'calm', tags: ['gratitude', 'family'] }),
+        row('2026-07-03T08:00:00Z', { mood: 'happy' }),
+      ]);
+
+      const history = await getHistory(userId, '2026-07', 'UTC');
+
+      expect(history.moodDays).toEqual([
+        { date: '2026-07-01', mood: 'calm', score: 4 },
+        { date: '2026-07-02', mood: 'calm', score: 4 },
+        { date: '2026-07-03', mood: 'happy', score: 5 },
+      ]);
+      expect(history.moodSummary).toBe('Mostly calm');
+      expect(history.goodDays).toBe(3);
+      expect(history.topTags).toEqual([
+        { tag: 'gratitude', count: 2 },
+        { tag: 'family', count: 1 },
+      ]);
+    });
+
+    it('compares against the previous month per day, not per entry', async () => {
+      modelsMock.JournalEntry.findAll.mockResolvedValue([
+        // June: one rough day, written about three times over.
+        row('2026-06-10T08:00:00Z', { mood: 'rough' }),
+        row('2026-06-10T12:00:00Z', { mood: 'rough' }),
+        row('2026-06-10T18:00:00Z', { mood: 'rough' }),
+        // July: one calm day. 4 vs 1 → +300%, regardless of June's entry count.
+        row('2026-07-05T08:00:00Z', { mood: 'calm' }),
+      ]);
+
+      const history = await getHistory(userId, '2026-07', 'UTC');
+
+      expect(history.moodDeltaPercent).toBe(300);
+    });
+
+    it('reports no delta when the previous month recorded no mood', async () => {
+      modelsMock.JournalEntry.findAll.mockResolvedValue([
+        row('2026-07-05T08:00:00Z', { mood: 'calm' }),
+      ]);
+
+      expect((await getHistory(userId, '2026-07', 'UTC')).moodDeltaPercent).toBeNull();
+    });
+
+    it('describes the grid: 31 days starting on a Wednesday', async () => {
+      modelsMock.JournalEntry.findAll.mockResolvedValue([]);
+
+      const history = await getHistory(userId, '2026-07', 'UTC');
+
+      expect(history.daysInMonth).toBe(31);
+      // 2026-07-01 is a Wednesday; the grid starts Monday, so index 2.
+      expect(history.firstWeekday).toBe(2);
+      expect(history.moodSummary).toBeNull();
+    });
+
+    it('defaults to the current month', async () => {
+      modelsMock.JournalEntry.findAll.mockResolvedValue([]);
+
+      expect((await getHistory(userId, undefined, 'UTC')).month).toBe('2026-07');
+    });
+  });
+
+  describe('getOnThisDay', () => {
+    it('returns one entry per past year, most recent first', async () => {
+      modelsMock.JournalEntry.findOne
+        .mockResolvedValueOnce({ id: 'a', createdAt: new Date('2025-07-17T08:00:00Z'), content: 'Yellowstone trip' })
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ id: 'c', createdAt: new Date('2023-07-17T08:00:00Z'), content: 'Moving day' })
+        .mockResolvedValue(null);
+
+      const results = await getOnThisDay(userId, '2026-07-17', 'UTC');
+
+      expect(results).toEqual([
+        { id: 'a', date: '2025-07-17', yearsAgo: 1, snippet: 'Yellowstone trip' },
+        { id: 'c', date: '2023-07-17', yearsAgo: 3, snippet: 'Moving day' },
+      ]);
+    });
+
+    it('skips Feb 29 in years that do not have one', async () => {
+      modelsMock.JournalEntry.findOne.mockResolvedValue(null);
+
+      await getOnThisDay(userId, '2028-02-29', 'UTC');
+
+      // 2027, 2026, 2025 and 2023 are common years; only 2024 is queried.
+      expect(modelsMock.JournalEntry.findOne).toHaveBeenCalledTimes(1);
     });
   });
 });

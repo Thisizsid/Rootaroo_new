@@ -123,6 +123,10 @@ export default function MoreScreen({ navigation }) {
       title: 'Features',
       rows: [
         {
+          label: 'Journal',
+          onPress: go('Journal'),
+        },
+        {
           label: 'Ping',
           onPress: go('CheckIn'),
         },

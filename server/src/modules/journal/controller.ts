@@ -7,6 +7,12 @@ function getUserId(req: Request): string {
   return (req as AuthenticatedRequest).user!.userId;
 }
 
+/** The caller's IANA zone, so day boundaries match the phone's calendar. */
+function getClientTimeZone(req: Request): string | undefined {
+  const header = req.headers['x-timezone'];
+  return typeof header === 'string' ? header : undefined;
+}
+
 export async function create(req: Request, res: Response, next: NextFunction) {
   try {
     const result = await journalService.createEntry(getUserId(req), req.body);
@@ -39,6 +45,29 @@ export async function remove(req: Request, res: Response, next: NextFunction) {
   try {
     await journalService.deleteEntry(getUserId(req), req.params.id);
     res.status(200).json({ success: true, data: { message: 'Journal entry deleted successfully' } });
+  } catch (e) { next(e); }
+}
+
+export async function stats(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await journalService.getStats(getUserId(req), getClientTimeZone(req));
+    res.status(200).json({ success: true, data: result });
+  } catch (e) { next(e); }
+}
+
+export async function history(req: Request, res: Response, next: NextFunction) {
+  try {
+    const month = req.query.month as string | undefined;
+    const result = await journalService.getHistory(getUserId(req), month, getClientTimeZone(req));
+    res.status(200).json({ success: true, data: result });
+  } catch (e) { next(e); }
+}
+
+export async function onThisDay(req: Request, res: Response, next: NextFunction) {
+  try {
+    const date = req.query.date as string | undefined;
+    const result = await journalService.getOnThisDay(getUserId(req), date, getClientTimeZone(req));
+    res.status(200).json({ success: true, data: result });
   } catch (e) { next(e); }
 }
 

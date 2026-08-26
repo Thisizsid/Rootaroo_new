@@ -6,6 +6,8 @@ class JournalEntry extends Model {
   declare householdId: string;
   declare userId: string;
   declare content: string | null;
+  declare mood: string | null;
+  declare tags: string[] | null;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare deletedAt: Date | null;
@@ -30,6 +32,17 @@ JournalEntry.init(
     },
     content: {
       type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    mood: {
+      type: DataTypes.STRING(16),
+      allowNull: true,
+    },
+    // Free-text labels, private to the entry's author. Stored as JSON rather
+    // than a join table — they are never queried across users, so a table
+    // would only add a join to every list page.
+    tags: {
+      type: DataTypes.JSON,
       allowNull: true,
     },
     createdAt: {
