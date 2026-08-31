@@ -46,6 +46,21 @@ const en = {
     afternoon: 'Good Afternoon',
     evening: 'Good Evening',
   },
+  dashboard: {
+    dailyWelcome: {
+      greeting: 'Hey {{name}}!',
+      subtitle: "Here's your daily boost",
+      close: 'Close',
+      quotes: [
+        'Small steps every day make a big difference.',
+        'Every day is a new opportunity to care for the people around you.',
+        'Home is wherever the whole family shows up.',
+        "The little things you do today are the memories they'll keep.",
+        'A family that shows up for each other can handle anything.',
+        'Today is a good day to check in on someone you love.',
+      ],
+    },
+  },
 };
 
 export default en;

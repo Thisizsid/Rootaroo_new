@@ -8,6 +8,10 @@ import RootNavigator from './src/navigation/RootNavigator';
 import AlertHost from './src/components/AlertHost';
 import { useAppFonts } from './src/shared/theme/useAppFonts';
 import { colors } from './src/shared/theme';
+// Side-effect import: registers the i18next instance react-i18next's
+// useTranslation() looks up. Scaffolded under src/i18n but never activated —
+// DailyWelcomeOverlay (Dashboard) is the first thing that depends on it.
+import './src/i18n';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 2 } },

@@ -40,6 +40,9 @@ import { colors, fonts, spacing, radius, withAlpha } from '../shared/theme';
 import Avatar from '../components/Avatar';
 import { KeyboardAvoider } from '../shared/components/KeyboardAware';
 import GlassCard, { GlassSheen } from '../shared/components/GlassCard';
+import { useTranslation } from 'react-i18next';
+import { useDailyWelcome } from '../shared/hooks/useDailyWelcome';
+import DailyWelcomeOverlay from '../shared/components/DailyWelcomeOverlay';
 import { SpotlightTourProvider, AttachStep } from 'react-native-spotlight-tour';
 import TourTooltip from '../shared/components/TourTooltip';
 import { scrollToStep } from '../shared/utils/scrollToStep';
@@ -203,6 +206,18 @@ export default function DashboardScreen() {
   const showTour = useAuthStore((s) => s.showTour);
   const dismissTour = useAuthStore((s) => s.dismissTour);
   const triggerFeedTour = useAuthStore((s) => s.triggerFeedTour);
+
+  // Daily Welcome Quote — first Dashboard visit of the local calendar day,
+  // per authenticated member. Trigger/persistence/quote-selection logic all
+  // lives in useDailyWelcome + dailyWelcomePersist; Dashboard only supplies
+  // the member id and quote count and renders the overlay. Declared up here
+  // (rather than further down, where it's used) so the App Tour effect
+  // below can read `dailyWelcome.visible`.
+  const { t } = useTranslation();
+  const dailyWelcomeQuotes = t('dashboard.dailyWelcome.quotes', { returnObjects: true });
+  const dailyWelcomeQuoteCount = Array.isArray(dailyWelcomeQuotes) ? dailyWelcomeQuotes.length : 0;
+  const dailyWelcome = useDailyWelcome(user?.id, dailyWelcomeQuoteCount);
+
   const scrollRef = useRef(null);
   const scrollOffsetY = useRef(0);
   const bellRef = useRef(null);
@@ -270,11 +285,36 @@ export default function DashboardScreen() {
   }, [showTour, dismissTour]);
   const engagementEventAt = useEngagementStore((s) => s.lastEventAt);
   const [showConfetti, setShowConfetti] = useState(false);
+
+  // Existing first-login celebration stays independent of the Daily Welcome
+  // trigger — it still fires purely off `celebrate`, never off whether the
+  // welcome is showing. The only thing coordinated here is *timing*, so a
+  // brand-new account doesn't get both firing on top of each other: a short
+  // delay gives useDailyWelcome's async SecureStore check a moment to
+  // resolve before confetti decides whether the welcome is currently up.
+  const pendingCelebrationRef = useRef(false);
   useEffect(() => {
-    if (!celebrate) return;
-    setShowConfetti(true);
-    clearCelebration();
-  }, [celebrate, clearCelebration]);
+    if (!celebrate) return undefined;
+    const timer = setTimeout(() => {
+      if (dailyWelcome.visible) {
+        pendingCelebrationRef.current = true;
+        return;
+      }
+      setShowConfetti(true);
+      clearCelebration();
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [celebrate, clearCelebration, dailyWelcome.visible]);
+  const handleDailyWelcomeDismiss = useCallback(() => {
+    dailyWelcome.dismiss();
+    if (pendingCelebrationRef.current) {
+      pendingCelebrationRef.current = false;
+      setShowConfetti(true);
+      clearCelebration();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clearCelebration]);
+
   const [data, setData] = useState(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [members, setMembers] = useState([]);
@@ -1612,6 +1652,13 @@ export default function DashboardScreen() {
           onAnimationEnd={() => setShowConfetti(false)}
         />
       )}
+
+      <DailyWelcomeOverlay
+        visible={dailyWelcome.visible}
+        name={user?.name}
+        quoteIndex={dailyWelcome.quoteIndex}
+        onDismiss={handleDailyWelcomeDismiss}
+      />
     </View>
     </SpotlightTourProvider>
   );
