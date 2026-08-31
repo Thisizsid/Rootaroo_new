@@ -78,12 +78,18 @@ export async function uploadMedia(req: Request, res: Response, next: NextFunctio
       res.status(400).json({ success: false, error: 'No files provided' });
       return;
     }
+    // Rejected here as well as in the entry schema: without this a video would
+    // be uploaded to S3 first and only refused at save time, leaving an orphan
+    // object nothing ever references.
+    if (files.some((f) => !f.mimetype.startsWith('image/'))) {
+      res.status(400).json({ success: false, error: 'Journal entries accept photos only' });
+      return;
+    }
     const results = await Promise.all(
       files.map(async (f) => {
-        const isVideo = f.mimetype.startsWith('video/');
         const result = await uploadBuffer(
           f.buffer,
-          isVideo ? 'journal/videos' : 'journal/images',
+          'journal/images',
           f.mimetype,
           f.originalname.split('.').pop(),
         );

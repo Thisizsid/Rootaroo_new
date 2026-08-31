@@ -12,7 +12,7 @@ import {
   Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { format, parseISO } from 'date-fns';
 import { colors, fonts, radius, spacing, withAlpha } from '../shared/theme';
@@ -27,13 +27,13 @@ const MAX_TAGS = 8;
 const MAX_MEDIA = 10;
 
 /**
- * The three attach buttons under the entry, left to right. Each produces the
- * same kind of draft — only the picker differs.
+ * The attach buttons under the entry. Photos only — the journal deliberately
+ * takes no video, so there is no picker for one here and the API rejects any
+ * that arrives anyway.
  */
 const ATTACH_ACTIONS = [
   { key: 'library', icon: 'image-outline', label: 'Add a photo' },
   { key: 'camera', icon: 'camera-outline', label: 'Take a photo' },
-  { key: 'video', icon: 'videocam-outline', label: 'Add a video' },
 ];
 
 /**
@@ -63,7 +63,6 @@ export default function JournalEntryEditorScreen({ navigation, route }) {
       key: m.id,
       id: m.id,
       previewUri: m.thumbnailUrl || m.mediaUrl,
-      kind: m.mediaType,
       uploading: false,
     })),
   );
@@ -90,16 +89,28 @@ export default function JournalEntryEditorScreen({ navigation, route }) {
     if (tagDraft !== null) tagInputRef.current?.focus();
   }, [tagDraft]);
 
-  const addTag = useCallback(
-    (raw) => {
-      const tag = raw.trim().toLowerCase();
-      setTagDraft(null);
-      if (!tag) return;
-      setTags((current) =>
-        current.includes(tag) || current.length >= MAX_TAGS ? current : [...current, tag],
-      );
+  const addTag = useCallback((raw) => {
+    const tag = (raw || '').trim().toLowerCase();
+    setTagDraft(null);
+    if (!tag) return;
+    setTags((current) =>
+      current.includes(tag) || current.length >= MAX_TAGS ? current : [...current, tag],
+    );
+  }, []);
+
+  /**
+   * The tag being typed, folded into a list. Tapping Save blurs the tag input,
+   * but blur only *queues* a state update — `handleSave` would still read the
+   * tags as they were a moment ago and drop the half-typed one on the floor.
+   * Resolving it from the draft at save time is what makes the tag survive.
+   */
+  const withPendingTag = useCallback(
+    (current) => {
+      const tag = (tagDraft || '').trim().toLowerCase();
+      if (!tag || current.includes(tag) || current.length >= MAX_TAGS) return current;
+      return [...current, tag];
     },
-    [],
+    [tagDraft],
   );
 
   const removeTag = useCallback((tag) => {
@@ -118,7 +129,7 @@ export default function JournalEntryEditorScreen({ navigation, route }) {
   const uploadAssets = useCallback(async (assets) => {
     const room = MAX_MEDIA - media.length;
     if (room <= 0) {
-      showAlert('Attachment limit', `An entry can hold up to ${MAX_MEDIA} photos or videos.`, [
+      showAlert('Attachment limit', `An entry can hold up to ${MAX_MEDIA} photos.`, [
         { text: 'OK' },
       ]);
       return;
@@ -127,7 +138,6 @@ export default function JournalEntryEditorScreen({ navigation, route }) {
     const drafts = batch.map((asset, i) => ({
       key: `draft-${Date.now()}-${i}`,
       previewUri: asset.uri,
-      kind: asset.type === 'video' ? 'video' : 'photo',
       uploading: true,
     }));
     setMedia((current) => [...current, ...drafts]);
@@ -138,7 +148,7 @@ export default function JournalEntryEditorScreen({ navigation, route }) {
         formData.append('files', {
           uri: asset.uri,
           name: asset.fileName || asset.uri.split('/').pop() || `journal-${Date.now()}.jpg`,
-          type: asset.mimeType || (asset.type === 'video' ? 'video/mp4' : 'image/jpeg'),
+          type: asset.mimeType || 'image/jpeg',
         });
       });
       const uploaded = await journalApi.uploadMedia(formData);
@@ -154,7 +164,7 @@ export default function JournalEntryEditorScreen({ navigation, route }) {
             // `fileName` is the durable S3 key — the value the entry stores.
             upload: {
               mediaUrl: result.fileName,
-              mediaType: m.kind,
+              mediaType: 'photo',
               fileSizeBytes: result.size,
             },
           };
@@ -183,7 +193,7 @@ export default function JournalEntryEditorScreen({ navigation, route }) {
           'Permission needed',
           wantsCamera
             ? 'Allow camera access to add a photo to this entry.'
-            : 'Allow photo library access to attach media to this entry.',
+            : 'Allow photo library access to attach a photo to this entry.',
           [{ text: 'OK' }],
         );
         return;
@@ -191,11 +201,10 @@ export default function JournalEntryEditorScreen({ navigation, route }) {
       const result = wantsCamera
         ? await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.85 })
         : await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: action === 'video' ? ['videos'] : ['images'],
-            allowsMultipleSelection: action !== 'video',
+            mediaTypes: ['images'],
+            allowsMultipleSelection: true,
             selectionLimit: MAX_MEDIA,
             quality: 0.85,
-            videoMaxDuration: 120,
           });
       if (result.canceled || !result.assets?.length) return;
       await uploadAssets(result.assets);
@@ -214,7 +223,7 @@ export default function JournalEntryEditorScreen({ navigation, route }) {
         .map((m) => (m.id ? { id: m.id } : m.upload))
         .filter(Boolean);
       const text = content.trim();
-      const body = { tags, media: attachments };
+      const body = { tags: withPendingTag(tags), media: attachments };
       if (isEditing) {
         // `mood` is sent as null (not omitted) when cleared, so unpicking a
         // face actually removes it rather than silently keeping the old one.
@@ -241,16 +250,16 @@ export default function JournalEntryEditorScreen({ navigation, route }) {
         [{ text: 'OK' }],
       );
     }
-  }, [canSave, content, tags, mood, media, isEditing, existing, navigation]);
+  }, [canSave, content, tags, withPendingTag, mood, media, isEditing, existing, navigation]);
 
   const handleCancel = useCallback(() => {
     const dirty = isEditing
       ? content !== (existing.content || '') ||
         mood !== (existing.mood || null) ||
-        tags.join() !== (existing.tags || []).join() ||
+        withPendingTag(tags).join() !== (existing.tags || []).join() ||
         media.length !== (existing.media || []).length ||
         media.some((m) => !m.id)
-      : content.trim().length > 0 || !!mood || tags.length > 0 || media.length > 0;
+      : content.trim().length > 0 || !!mood || withPendingTag(tags).length > 0 || media.length > 0;
     if (!dirty) {
       navigation.goBack();
       return;
@@ -259,7 +268,7 @@ export default function JournalEntryEditorScreen({ navigation, route }) {
       { text: 'Keep writing', style: 'cancel' },
       { text: 'Discard', style: 'destructive', onPress: () => navigation.goBack() },
     ]);
-  }, [isEditing, content, mood, tags, media, existing, navigation]);
+  }, [isEditing, content, mood, tags, withPendingTag, media, existing, navigation]);
 
   return (
     <KeyboardAvoidingView
@@ -304,7 +313,11 @@ export default function JournalEntryEditorScreen({ navigation, route }) {
                 accessibilityState={{ selected }}
                 accessibilityLabel={option.label}
               >
-                <Text style={styles.moodEmoji}>{option.emoji}</Text>
+                <MaterialCommunityIcons
+                  name={option.icon}
+                  size={21}
+                  color={selected ? colors.gold : colors.textSecondary}
+                />
               </TouchableOpacity>
             );
           })}
@@ -342,11 +355,6 @@ export default function JournalEntryEditorScreen({ navigation, route }) {
                 {item.failed ? (
                   <View style={styles.mediaOverlay}>
                     <Ionicons name="alert-circle" size={16} color={colors.danger} />
-                  </View>
-                ) : null}
-                {item.kind === 'video' && !item.uploading ? (
-                  <View style={styles.mediaBadge}>
-                    <Ionicons name="videocam" size={10} color={colors.onAccent} />
                   </View>
                 ) : null}
                 <TouchableOpacity
@@ -477,7 +485,6 @@ const styles = StyleSheet.create({
     borderColor: colors.gold,
     backgroundColor: withAlpha(colors.goldGlow, 0.12),
   },
-  moodEmoji: { fontSize: 20 },
 
   input: {
     fontFamily: fonts.body,
@@ -553,15 +560,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: withAlpha(colors.overlaySlate, 0.55),
-  },
-  mediaBadge: {
-    position: 'absolute',
-    left: 4,
-    bottom: 4,
-    borderRadius: radius.xs,
-    paddingHorizontal: 3,
-    paddingVertical: 1,
-    backgroundColor: withAlpha(colors.overlaySlate, 0.7),
   },
   mediaRemove: {
     position: 'absolute',

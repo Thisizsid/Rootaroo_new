@@ -359,30 +359,50 @@ export async function getStats(
   const timeZone = await getTimeZone(householdId, clientTimeZone);
   const todayKey = dateKey(new Date(), timeZone);
 
-  // Streak history needs every day the user has ever written, but not the
-  // entry bodies — only `created_at` and `mood` are selected, so this stays a
-  // narrow index-covered read even for a long-running journal.
-  const entries = await JournalEntry.findAll({
-    where: { householdId, userId },
-    attributes: ['createdAt', 'content', 'mood'],
-    order: [['createdAt', 'ASC']],
-  });
+  const monthKey = todayKey.slice(0, 7);
+
+  // Two reads rather than one, because they want different things:
+  //
+  //   · the streak spans the user's whole history, but needs only the day and
+  //     mood of each entry — no bodies. Selecting `content` here too would
+  //     drag every word ever written (up to 10 000 chars an entry) across the
+  //     wire on every home-screen focus, purely to word-count the last few.
+  //   · the month totals need the bodies, but only this month's.
+  const [entries, monthEntries] = await Promise.all([
+    JournalEntry.findAll({
+      where: { householdId, userId },
+      attributes: ['createdAt', 'mood'],
+      order: [['createdAt', 'ASC']],
+    }),
+    JournalEntry.findAll({
+      where: {
+        householdId,
+        userId,
+        createdAt: { [Op.gte]: fromZonedTime(`${monthKey}-01 00:00:00`, timeZone) },
+      },
+      attributes: ['createdAt', 'content'],
+    }),
+  ]);
 
   const dayKeys = new Set<string>();
   const moodByDay = new Map<string, Mood>();
-  const monthKey = todayKey.slice(0, 7);
-  let entriesThisMonth = 0;
-  let wordsThisMonth = 0;
 
   for (const entry of entries) {
     const key = dateKey(entry.createdAt, timeZone);
     dayKeys.add(key);
     // Later entries win: the last mood you recorded is how the day ended up.
     if (entry.mood) moodByDay.set(key, entry.mood as Mood);
-    if (key.startsWith(monthKey)) {
-      entriesThisMonth += 1;
-      wordsThisMonth += countWords(entry.content);
-    }
+  }
+
+  let entriesThisMonth = 0;
+  let wordsThisMonth = 0;
+  for (const entry of monthEntries) {
+    // The query's lower bound is this month's local midnight, but an entry
+    // written late on the last day of next month would also pass it once the
+    // clock rolls over — so the day key still decides.
+    if (!dateKey(entry.createdAt, timeZone).startsWith(monthKey)) continue;
+    entriesThisMonth += 1;
+    wordsThisMonth += countWords(entry.content);
   }
 
   const sortedKeys = Array.from(dayKeys).sort();

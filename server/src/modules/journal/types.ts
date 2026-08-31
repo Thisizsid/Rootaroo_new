@@ -8,7 +8,8 @@ export type Mood = 'rough' | 'low' | 'neutral' | 'calm' | 'happy';
 
 export interface EntryMediaInput {
   mediaUrl: string;
-  mediaType: 'photo' | 'video';
+  /** Photos only — see `newMediaSchema` in validation.ts. */
+  mediaType: 'photo';
   thumbnailUrl?: string;
   fileSizeBytes?: number;
 }
@@ -17,12 +18,7 @@ export interface CreateEntryBody {
   content?: string;
   mood?: Mood;
   tags?: string[];
-  media?: Array<{
-    mediaUrl: string;
-    mediaType: 'photo' | 'video';
-    thumbnailUrl?: string;
-    fileSizeBytes?: number;
-  }>;
+  media?: EntryMediaInput[];
 }
 
 export interface UpdateEntryBody {

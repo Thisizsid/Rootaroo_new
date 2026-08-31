@@ -6,9 +6,14 @@ export const MOOD_VALUES = ['rough', 'low', 'neutral', 'calm', 'happy'] as const
 
 const moodSchema = z.enum(MOOD_VALUES);
 
+// Photos only. The `journal_media.media_type` column still carries the shared
+// photo/video enum, but the journal itself accepts no video — an entry is a
+// piece of writing with stills attached, not a place to store footage.
 const newMediaSchema = z.object({
   mediaUrl: z.string().min(1, 'mediaUrl is required'),
-  mediaType: z.enum(['photo', 'video']),
+  mediaType: z.literal('photo', {
+    errorMap: () => ({ message: 'Journal entries accept photos only' }),
+  }),
   thumbnailUrl: z.string().min(1).optional(),
   fileSizeBytes: z.number().int().positive().optional(),
 });

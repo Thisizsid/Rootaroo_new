@@ -209,10 +209,17 @@ export default function JournalHistoryScreen({ navigation }) {
                 {history.goodDays === 1 ? 'good day' : 'good days'}
               </Text>
               {delta !== null ? (
-                <Text style={[styles.delta, delta < 0 && styles.deltaDown]}>
-                  {delta >= 0 ? '▲' : '▼'} {delta >= 0 ? '+' : ''}
-                  {delta}%
-                </Text>
+                <View style={styles.deltaWrap}>
+                  <Ionicons
+                    name={delta >= 0 ? 'caret-up' : 'caret-down'}
+                    size={10}
+                    color={delta >= 0 ? colors.gold : colors.danger}
+                  />
+                  <Text style={[styles.delta, delta < 0 && styles.deltaDown]}>
+                    {delta >= 0 ? '+' : ''}
+                    {delta}%
+                  </Text>
+                </View>
               ) : null}
             </View>
           </GlassCard>
@@ -295,6 +302,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
   },
   chartSummary: { flex: 1, fontFamily: fonts.body, fontSize: 11.5, color: colors.textSecondary },
+  deltaWrap: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   delta: { fontFamily: fonts.bodySemiBold, fontSize: 11.5, color: colors.gold },
   deltaDown: { color: colors.danger },
 
