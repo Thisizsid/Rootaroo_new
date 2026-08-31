@@ -11,12 +11,12 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import Svg, { Circle } from 'react-native-svg';
 import { format, isToday, isYesterday, parseISO } from 'date-fns';
 import { colors, fonts, radius, spacing, withAlpha } from '../shared/theme';
 import { journalApi } from '../shared/api/journal';
-import { moodById } from '../shared/constants/journalMoods';
+import { moodById, moodIcon } from '../shared/constants/journalMoods';
 import GlassCard from '../shared/components/GlassCard';
 import EmptyState from '../components/EmptyState';
 import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
@@ -101,7 +101,11 @@ function EntryRow({ entry, onPress, isLast }) {
       activeOpacity={0.75}
     >
       <View style={styles.entryMood}>
-        <Text style={styles.entryMoodEmoji}>{mood ? mood.emoji : '📝'}</Text>
+        <MaterialCommunityIcons
+          name={moodIcon(entry.mood)}
+          size={17}
+          color={mood ? colors.goldGlowSoft : colors.textMuted}
+        />
       </View>
       <View style={styles.entryBody}>
         <View style={styles.entryHeader}>
@@ -246,7 +250,10 @@ export default function JournalScreen({ navigation }) {
             <GlassCard style={styles.promptCard} radius={radius.lg} tone="gold">
               <Text style={styles.promptLabel}>TODAY’S PROMPT</Text>
               <Text style={styles.promptText}>{stats.prompt}</Text>
-              <Text style={styles.promptCta}>Start writing →</Text>
+              <View style={styles.promptCtaRow}>
+                <Text style={styles.promptCta}>Start writing</Text>
+                <Ionicons name="arrow-forward" size={12} color={colors.gold} />
+              </View>
             </GlassCard>
           </TouchableOpacity>
         ) : null}
@@ -418,11 +425,16 @@ const styles = StyleSheet.create({
     color: colors.ink,
     marginTop: spacing.sm,
   },
+  promptCtaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: spacing.md,
+  },
   promptCta: {
     fontFamily: fonts.bodySemiBold,
     fontSize: 12.5,
     color: colors.gold,
-    marginTop: spacing.md,
   },
 
   /* Recent entries */
@@ -454,7 +466,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderCool,
   },
-  entryMoodEmoji: { fontSize: 16 },
   entryBody: { flex: 1 },
   entryHeader: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
   entryDay: {

@@ -11,11 +11,11 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { format, parseISO } from 'date-fns';
 import { colors, fonts, radius, spacing } from '../shared/theme';
 import { journalApi } from '../shared/api/journal';
-import { moodById } from '../shared/constants/journalMoods';
+import { moodById, moodIcon } from '../shared/constants/journalMoods';
 import ConfirmSheet from '../components/ConfirmSheet';
 import ErrorState from '../components/ErrorState';
 import { showAlert } from '../shared/services/themedAlert';
@@ -142,7 +142,11 @@ export default function JournalEntryDetailScreen({ navigation, route }) {
       >
         <View style={styles.headline}>
           <View style={styles.moodCircle}>
-            <Text style={styles.moodEmoji}>{mood ? mood.emoji : '📝'}</Text>
+            <MaterialCommunityIcons
+              name={moodIcon(entry.mood)}
+              size={18}
+              color={mood ? colors.goldGlowSoft : colors.textMuted}
+            />
           </View>
           <View style={styles.headlineText}>
             <Text style={styles.date}>{format(date, 'EEEE, MMMM d')}</Text>
@@ -248,7 +252,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderCool,
   },
-  moodEmoji: { fontSize: 17 },
   headlineText: { flex: 1 },
   date: { fontFamily: fonts.displayBold, fontSize: 17, color: colors.ink },
   meta: { fontFamily: fonts.body, fontSize: 11.5, color: colors.textMuted, marginTop: 2 },
