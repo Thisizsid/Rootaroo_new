@@ -227,7 +227,7 @@ export async function googleAuth(body: GoogleAuthBody): Promise<AuthResponse> {
   }
 
   const profile = await verifyResponse.json() as {
-    sub: string; email: string; name?: string; picture?: string; aud?: string;
+    sub: string; email: string; email_verified?: string; name?: string; picture?: string; aud?: string;
   };
 
   if (profile.aud !== env.google.clientId) {
@@ -236,6 +236,7 @@ export async function googleAuth(body: GoogleAuthBody): Promise<AuthResponse> {
 
   const googleId = profile.sub;
   const email = profile.email.toLowerCase();
+  const emailVerified = profile.email_verified === 'true';
   const displayName = profile.name || email.split('@')[0];
   const avatarUrl = profile.picture;
 
@@ -244,14 +245,28 @@ export async function googleAuth(body: GoogleAuthBody): Promise<AuthResponse> {
     where: { [Op.or]: [{ googleId }, { email }] },
   });
 
-  if (user) {
-    // Link googleId if user exists with this email but no googleId
-    if (!user.googleId) {
-      user.googleId = googleId;
+  if (user && user.googleId === googleId) {
+    // Already linked — this is a normal login, not a new binding.
+    user.lastLoginAt = new Date();
+    await user.save();
+  } else if (user) {
+    // Matched only by email, with no googleId on the row yet — this is an
+    // account-BINDING action, not a login. Google's own attestation that
+    // this email is verified is the only thing standing between this and
+    // a takeover: without it, anyone with an unverified Google account
+    // sharing an existing user's email could silently link into (and then
+    // log into) that user's account.
+    if (!emailVerified) {
+      throw new AppError(401, 'This Google account\'s email address is not verified. Verify it with Google first, or sign in with your existing method.');
     }
+    user.googleId = googleId;
+    user.isVerified = true;
     user.lastLoginAt = new Date();
     await user.save();
   } else {
+    if (!emailVerified) {
+      throw new AppError(401, 'This Google account\'s email address is not verified.');
+    }
     // Create new user
     user = await User.create({
       id: uuidv4(),
@@ -298,20 +313,34 @@ export async function appleAuth(body: AppleAuthBody): Promise<AuthResponse> {
   if (!email) {
     throw new AppError(400, 'Apple did not provide an email for this account');
   }
+  const emailVerifiedClaim = payload.email_verified as boolean | string | undefined;
+  const emailVerified = emailVerifiedClaim === true || emailVerifiedClaim === 'true';
 
   // Find existing user by appleId or email
   let user = await User.findOne({
     where: { [Op.or]: [{ appleId }, { email }] },
   });
 
-  if (user) {
-    // Link appleId if user exists with this email but no appleId
-    if (!user.appleId) {
-      user.appleId = appleId;
+  if (user && user.appleId === appleId) {
+    // Already linked — normal login.
+    user.lastLoginAt = new Date();
+    await user.save();
+  } else if (user) {
+    // Matched only by email, no appleId on the row — a binding action,
+    // not a login. Same rationale as googleAuth: require Apple's own
+    // email_verified claim before trusting the email match enough to
+    // link into (and thus grant access to) an existing account.
+    if (!emailVerified) {
+      throw new AppError(401, 'This Apple ID\'s email address is not verified. Sign in with your existing method instead.');
     }
+    user.appleId = appleId;
+    user.isVerified = true;
     user.lastLoginAt = new Date();
     await user.save();
   } else {
+    if (!emailVerified) {
+      throw new AppError(401, 'This Apple ID\'s email address is not verified.');
+    }
     // Apple only returns a display name on the user's very first sign-in
     // for this app (via the native SDK response, not the JWT) — fall back
     // to deriving one from the email on every later sign-in.
@@ -551,8 +580,12 @@ export async function cancelPendingRegistration(userId: string): Promise<void> {
   const user = await User.findByPk(userId);
   if (!user) throw new NotFoundError('User');
 
-  // Only allow cancel for unverified, no-household pending accounts
-  if (user.isPhoneVerified || user.isVerified) {
+  // Only allow cancel for unverified, no-household pending accounts. A
+  // linked IdP identity (Google/Apple) means this row is no longer a bare
+  // pending registration even if isVerified is somehow still false —
+  // hard-deleting it here would let the same flow silently destroy an
+  // account another sign-in path has already bound an identity to.
+  if (user.isPhoneVerified || user.isVerified || user.googleId || user.appleId) {
     throw new AppError(400, 'Cannot cancel — account is already verified');
   }
 
@@ -617,45 +650,50 @@ export async function registerPhone(body: RegisterPhoneBody): Promise<AuthRespon
   const phone = normalizePhone(body.phone);
   if (phone.length < 8) throw new AppError(400, 'Invalid phone number');
 
-  let user = await User.findOne({ where: { phone } });
+  // Any existing row for this exact phone — verified, or a pending
+  // unverified placeholder someone else already started — must never be
+  // silently overwritten by an unauthenticated caller. Overwriting an
+  // unverified row's profile fields and minting tokens for it here was
+  // exactly the takeover: anyone who submitted a phone number matching an
+  // unverified account got full access tokens for that account with no
+  // OTP check. The only path onto an existing row now is completing OTP
+  // verification against it via sendPhoneOtp/verifyPhoneOtp.
+  const existingByPhone = await User.findOne({ where: { phone } });
+  if (existingByPhone) {
+    throw new ConflictError(
+      existingByPhone.isPhoneVerified
+        ? 'An account with this phone number already exists. Please sign in.'
+        : 'A pending registration already exists for this phone number. Verify it to continue.',
+    );
+  }
+
+  // Synthetic email so the unique email constraint is satisfied. Reused
+  // find-or-create for legitimate immediate retries (e.g. the wizard
+  // restarted before verification) — but never mutated: profile fields
+  // are only ever set once, at creation.
+  const email = `phone_${phone.replace(/\D/g, '')}@phone.rootaroo.local`;
+  let user = await User.findOne({ where: { email } });
   if (user && user.isPhoneVerified) {
     throw new ConflictError('An account with this phone number already exists. Please sign in.');
   }
-
   if (!user) {
-    // Synthetic email so unique email constraint is satisfied
-    const email = `phone_${phone.replace(/\D/g, '')}@phone.rootaroo.local`;
-    const existingEmail = await User.findOne({ where: { email } });
-    if (existingEmail) user = existingEmail;
-    else {
-      user = await User.create({
-        id: uuidv4(),
-        email,
-        passwordHash: '',
-        displayName: body.displayName,
-        phone,
-        isPhoneVerified: false,
-        isVerified: false,
-        dateOfBirth: body.dateOfBirth || null,
-        homeAddress: body.homeAddress || null,
-        addToCalendar: body.addToCalendar ?? true,
-        notifyHousehold: body.notifyHousehold ?? true,
-        avatarUrl: body.avatarUrl ?? null,
-        avatarPresetId: body.avatarPresetId ?? null,
-        avatarEmoji: body.avatarEmoji ?? null,
-        role: 'member',
-      });
-    }
-  } else {
-    user.displayName = body.displayName;
-    if (body.dateOfBirth !== undefined) user.dateOfBirth = body.dateOfBirth || null;
-    if (body.homeAddress !== undefined) user.homeAddress = body.homeAddress || null;
-    if (body.addToCalendar !== undefined) user.addToCalendar = body.addToCalendar;
-    if (body.notifyHousehold !== undefined) user.notifyHousehold = body.notifyHousehold;
-    if (body.avatarUrl !== undefined) user.avatarUrl = body.avatarUrl;
-    if (body.avatarPresetId !== undefined) user.avatarPresetId = body.avatarPresetId;
-    if (body.avatarEmoji !== undefined) user.avatarEmoji = body.avatarEmoji;
-    await user.save();
+    user = await User.create({
+      id: uuidv4(),
+      email,
+      passwordHash: '',
+      displayName: body.displayName,
+      phone,
+      isPhoneVerified: false,
+      isVerified: false,
+      dateOfBirth: body.dateOfBirth || null,
+      homeAddress: body.homeAddress || null,
+      addToCalendar: body.addToCalendar ?? true,
+      notifyHousehold: body.notifyHousehold ?? true,
+      avatarUrl: body.avatarUrl ?? null,
+      avatarPresetId: body.avatarPresetId ?? null,
+      avatarEmoji: body.avatarEmoji ?? null,
+      role: 'member',
+    });
   }
 
   const accessToken = generateAccessToken(user);

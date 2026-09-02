@@ -51,6 +51,7 @@ function setupGoogleApi(profileOverrides: Record<string, unknown> = {}) {
     json: async () => ({
       sub: 'google123',
       email: 'test@user.com',
+      email_verified: 'true',
       name: 'Test User',
       aud: env.google.clientId,
       ...profileOverrides,
@@ -180,6 +181,24 @@ describe('Auth Service — Google OAuth', () => {
     setupGoogleApi({ aud: 'someone-elses-client-id.apps.googleusercontent.com' });
     await expect(googleAuth(googleBody)).rejects.toThrow('was not issued for this app');
   });
+
+  it('should reject linking into an existing email-matched account when Google reports the email unverified', async () => {
+    setupGoogleApi({ email_verified: 'false' });
+    const user = fakeUser({ googleId: null, save: jest.fn().mockResolvedValue(undefined) });
+    (models.User.findOne as jest.Mock).mockResolvedValue(user);
+
+    await expect(googleAuth(googleBody)).rejects.toThrow('not verified');
+    expect(user.googleId).toBeNull();
+    expect(user.save).not.toHaveBeenCalled();
+  });
+
+  it('should reject creating a new account when Google reports the email unverified', async () => {
+    setupGoogleApi({ email_verified: 'false' });
+    (models.User.findOne as jest.Mock).mockResolvedValue(null);
+
+    await expect(googleAuth(googleBody)).rejects.toThrow('not verified');
+    expect(models.User.create).not.toHaveBeenCalled();
+  });
 });
 
 describe('Auth Service — Apple OAuth', () => {
@@ -189,7 +208,7 @@ describe('Auth Service — Apple OAuth', () => {
 
   function setupAppleJwt(payloadOverrides: Record<string, unknown> = {}) {
     (jwtVerify as jest.Mock).mockResolvedValue({
-      payload: { sub: 'apple123', email: 'test@user.com', ...payloadOverrides },
+      payload: { sub: 'apple123', email: 'test@user.com', email_verified: true, ...payloadOverrides },
     });
   }
 
@@ -252,6 +271,24 @@ describe('Auth Service — Apple OAuth', () => {
     setupAppleJwt({ email: undefined });
 
     await expect(appleAuth(appleBody)).rejects.toThrow('did not provide an email');
+  });
+
+  it('should reject linking into an existing email-matched account when Apple reports the email unverified', async () => {
+    setupAppleJwt({ email_verified: false });
+    const user = fakeUser({ appleId: null, save: jest.fn().mockResolvedValue(undefined) }) as any;
+    (models.User.findOne as jest.Mock).mockResolvedValue(user);
+
+    await expect(appleAuth(appleBody)).rejects.toThrow('not verified');
+    expect(user.appleId).toBeNull();
+    expect(user.save).not.toHaveBeenCalled();
+  });
+
+  it('should reject creating a new account when Apple reports the email unverified', async () => {
+    setupAppleJwt({ email_verified: false });
+    (models.User.findOne as jest.Mock).mockResolvedValue(null);
+
+    await expect(appleAuth(appleBody)).rejects.toThrow('not verified');
+    expect(models.User.create).not.toHaveBeenCalled();
   });
 });
 
@@ -501,6 +538,25 @@ describe('Auth Service — Phone OTP (app-owned code, delivered via AWS SNS)', (
       expect(result.tokens.refreshToken).toBeTruthy();
       expect(sendSms).not.toHaveBeenCalled();
       expect(models.PhoneVerification.create).not.toHaveBeenCalled();
+    });
+
+    it('should reject when a verified account already owns this phone number', async () => {
+      (models.User.findOne as jest.Mock).mockResolvedValue(fakePhoneUser({ isPhoneVerified: true }));
+
+      await expect(registerPhone({ phone: '+15551234567', displayName: 'Attacker' }))
+        .rejects.toThrow('already exists. Please sign in');
+      expect(models.User.create).not.toHaveBeenCalled();
+    });
+
+    it('should reject (not overwrite) when an unverified pending account already owns this phone number', async () => {
+      const victim = fakePhoneUser({ id: 'victim-1', displayName: 'Victim', isPhoneVerified: false });
+      (models.User.findOne as jest.Mock).mockResolvedValue(victim);
+
+      await expect(registerPhone({ phone: '+15551234567', displayName: 'Attacker' }))
+        .rejects.toThrow('pending registration already exists');
+      expect(models.User.create).not.toHaveBeenCalled();
+      expect(victim.displayName).toBe('Victim');
+      expect(victim.save).not.toHaveBeenCalled();
     });
   });
 
