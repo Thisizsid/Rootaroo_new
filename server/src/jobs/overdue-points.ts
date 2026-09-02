@@ -17,18 +17,20 @@ export function startOverduePointsReductionJob(): void {
     try {
       const now = new Date();
 
+      // Filter to actually-overdue rows in SQL rather than fetching every
+      // incomplete task globally and filtering in JS afterward (F-11) —
+      // this scan grows with total tasks platform-wide otherwise, not
+      // just the (much smaller) overdue subset.
       const candidates = await Task.findAll({
         where: {
           status: { [Op.in]: ['pending', 'reopened'] },
           pointsReduced: false,
-          dueDate: { [Op.not]: null },
+          dueDate: { [Op.not]: null, [Op.lt]: now },
         },
       });
 
       let count = 0;
       for (const task of candidates) {
-        if (!task.dueDate || new Date(task.dueDate) >= now) continue;
-
         const reduced = Math.max(0, Math.floor(task.points / 2));
         await task.update({ points: reduced, pointsReduced: true });
         count++;

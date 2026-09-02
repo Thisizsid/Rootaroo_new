@@ -74,6 +74,7 @@ function fakeEvent(overrides: any = {}) {
     recurrenceRule: null,
     googleEventId: null,
     createdAt: new Date('2026-08-03T10:00:00.000Z'),
+    household: { timezone: 'UTC' },
     invitees: [],
     save: jest.fn().mockResolvedValue(undefined),
     destroy: jest.fn().mockResolvedValue(undefined),
@@ -238,13 +239,16 @@ describe('exportHouseholdIcs (FR-185)', () => {
 });
 
 describe('notifyUpcomingEvents (FR-186)', () => {
-  // Fixed system time (23:15) so this deterministically exercises the
+  // Fixed system time (23:15 UTC) so this deterministically exercises the
   // midnight-crossing [now, now+1h] window regardless of when the suite
   // actually runs — real-wall-clock `new Date()` here previously made this
   // flaky once per day right around midnight.
-  // No 'Z' suffix — this module works entirely in server-local time
-  // (see splitDateTime/joinDateTime), so the fixed clock must match.
-  const FIXED_NOW = new Date('2026-08-10T23:15:00');
+  // Explicit 'Z' suffix: notifyUpcomingEvents compares real UTC instants
+  // against each event's own household timezone (fakeEvent defaults to
+  // 'UTC' below) — unlike other calendar functions in this file
+  // (splitDateTime/joinDateTime), it must not depend on the test
+  // runner's local system timezone (F-11).
+  const FIXED_NOW = new Date('2026-08-10T23:15:00Z');
 
   beforeEach(() => {
     jest.useFakeTimers();
@@ -292,6 +296,32 @@ describe('notifyUpcomingEvents (FR-186)', () => {
 
     expect(sent).toBe(0);
     expect(notifications.notifyHousehold).not.toHaveBeenCalled();
+  });
+
+  it('interprets the event time in the household\'s own timezone, not UTC (F-11)', async () => {
+    // FIXED_NOW is 23:15 UTC. A household in America/New_York (UTC-4 in
+    // August) with a local wall-clock event at 19:45 is also 23:45 UTC —
+    // within the next hour. Reading it as a bare UTC/server time (the old
+    // behavior) would have placed it 4 hours in the past instead.
+    (modelsMock.CalendarEvent.findAll as jest.Mock).mockResolvedValue([
+      fakeEvent({
+        title: 'Evening call',
+        eventDate: '2026-08-10',
+        startTime: '19:45:00',
+        household: { timezone: 'America/New_York' },
+      }),
+    ]);
+
+    const sent = await notifyUpcomingEvents();
+
+    expect(sent).toBe(1);
+    expect(notifications.notifyHousehold).toHaveBeenCalledWith(
+      householdId,
+      'calendar',
+      'Event starting soon',
+      expect.stringContaining('Evening call'),
+      expect.objectContaining({ type: 'calendar', eventId }),
+    );
   });
 });
 describe('Google Calendar sync', () => {

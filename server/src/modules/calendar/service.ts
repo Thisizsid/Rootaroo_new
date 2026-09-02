@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
-import { CalendarEvent, CalendarSyncState, EventInvitee, HouseholdMember, User } from '../../database/models';
+import { fromZonedTime } from 'date-fns-tz';
+import { CalendarEvent, CalendarSyncState, EventInvitee, HouseholdMember, Household, User } from '../../database/models';
 import { Op } from 'sequelize';
 import { ForbiddenError, NotFoundError } from '../../shared/utils/errors';
 import { getUserHousehold as getUserHouseholdCore } from '../../shared/utils/household';
@@ -366,20 +367,32 @@ export async function notifyUpcomingEvents(): Promise<number> {
   const pad = (n: number) => String(n).padStart(2, '0');
   const dateStr = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
+  // Widen by a day on each side to cover every timezone offset a household
+  // could be in (UTC-12..UTC+14) — the precise per-event check below,
+  // using that event's own household timezone, is what actually decides
+  // inclusion in the [now, now+1h] window.
+  const dayMs = 24 * 60 * 60 * 1000;
+  const candidateDates = [...new Set([
+    dateStr(new Date(now.getTime() - dayMs)),
+    dateStr(now),
+    dateStr(inOneHour),
+    dateStr(new Date(inOneHour.getTime() + dayMs)),
+  ])];
+
   const events = await CalendarEvent.findAll({
-    where: {
-      // Both boundary dates in case the [now, now+1h] window crosses midnight.
-      eventDate: { [Op.in]: [...new Set([dateStr(now), dateStr(inOneHour)])] },
-    },
+    where: { eventDate: { [Op.in]: candidateDates } },
+    include: [{ model: Household, as: 'household', attributes: ['timezone'] }],
   });
 
   let sent = 0;
   for (const ev of events) {
     const startTime = ev.startTime || '00:00:00';
-    // Combine the event's own date + time into a real Date so the window
-    // check is correct across a midnight boundary (comparing time-of-day
-    // strings alone breaks when now/now+1h span two different days).
-    const startsAt = new Date(`${ev.eventDate}T${startTime}`);
+    // The event's date+time is the household's local wall-clock time, not
+    // the server's — parsing it as a bare Date (previously) interpreted it
+    // in the server's own timezone instead, which is wrong for any
+    // household not in that zone (F-11).
+    const timezone = (ev as unknown as { household?: Household }).household?.timezone || 'UTC';
+    const startsAt = fromZonedTime(`${ev.eventDate}T${startTime}`, timezone);
     if (startsAt < now || startsAt > inOneHour) continue;
 
     const householdId = ev.householdId;
