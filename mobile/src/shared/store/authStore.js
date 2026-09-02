@@ -15,7 +15,7 @@ export const useAuthStore = create((set, get) => ({
   householdId: null,
   signupProgress: null,
   celebrate: false,
-  showTour: true, // TEMP: forced on for testing — revert to false before shipping
+  showTour: false,
   showFeedTour: false,
   showChatTour: false,
   showTasksTour: false,
