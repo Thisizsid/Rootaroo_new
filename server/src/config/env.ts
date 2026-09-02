@@ -32,6 +32,11 @@ export const env = {
     refreshExpiry: process.env.JWT_REFRESH_EXPIRY || '30d',
   },
 
+  // Dedicated key for encrypting Google Calendar OAuth tokens at rest
+  // (CalendarSyncState.accessToken/refreshToken) — kept separate from
+  // JWT_ACCESS_SECRET so rotating one doesn't require rotating the other.
+  calendarTokenKek: process.env.CALENDAR_TOKEN_KEK || 'dev-calendar-token-kek',
+
   google: {
     clientId: process.env.GOOGLE_CLIENT_ID || '',
     clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
@@ -87,6 +92,7 @@ if (env.nodeEnv === 'production') {
     !process.env.JWT_ACCESS_SECRET && 'JWT_ACCESS_SECRET',
     !process.env.S3_ACCESS_KEY_ID && 'S3_ACCESS_KEY_ID',
     !process.env.S3_SECRET_ACCESS_KEY && 'S3_SECRET_ACCESS_KEY',
+    !process.env.CALENDAR_TOKEN_KEK && 'CALENDAR_TOKEN_KEK',
   ].filter(Boolean);
 
   if (missing.length > 0) {
