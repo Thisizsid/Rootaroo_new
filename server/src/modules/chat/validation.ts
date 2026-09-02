@@ -68,9 +68,3 @@ export const removeParticipantSchema = {
 export const messageIdParamSchema = {
   params: z.object({ id: z.string().uuid() }),
 };
-
-export const typingSchema = {
-  query: z.object({
-    action: z.enum(['start', 'stop']),
-  }),
-};

@@ -6,8 +6,6 @@ import {
   deleteMessage,
   addReaction,
   removeReaction,
-  typingStart,
-  typingStop,
   createConversation,
   deleteConversation,
   addParticipant,
@@ -364,24 +362,6 @@ describe('Chat Service', () => {
 
       expect(ChatReaction.destroy).toHaveBeenCalledWith({ where: { messageId, userId, reaction: '👍' } });
       expect(Array.isArray(result)).toBe(true);
-    });
-  });
-
-  // ── typingStart / typingStop (FR-149) ──
-
-  describe('typing indicator', () => {
-    it('should broadcast typing start', async () => {
-      await expect(typingStart(userId)).resolves.toBeUndefined();
-    });
-
-    it('should broadcast typing stop', async () => {
-      await expect(typingStop(userId)).resolves.toBeUndefined();
-    });
-
-    it('should throw if user is not a household member on typingStart', async () => {
-      (HouseholdMember.findOne as jest.Mock).mockResolvedValue(null);
-
-      await expect(typingStart(userId)).rejects.toThrow(ForbiddenError);
     });
   });
 

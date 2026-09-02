@@ -7,6 +7,7 @@ import {
   Conversation,
   ConversationParticipant,
   FeedMedia,
+  FeedPost,
   HouseholdMember,
   User,
 } from '../../database/models';
@@ -348,10 +349,14 @@ export async function sendMessage(
   let type: 'text' | 'image' | 'voice' = 'text';
   let durationSeconds: number | null = null;
 
-  // FR-143: Attach media from feed upload
+  // FR-143: Attach media from feed upload. FeedMedia has no householdId
+  // column of its own (it's denormalized on FeedPost) — filtering
+  // `where: { householdId }` directly on FeedMedia queried a column that
+  // doesn't exist. Scope through the FeedPost association instead (F-17).
   if (body.mediaIds && body.mediaIds.length > 0) {
     const medias = await FeedMedia.findAll({
-      where: { id: { [Op.in]: body.mediaIds }, householdId },
+      where: { id: { [Op.in]: body.mediaIds } },
+      include: [{ model: FeedPost, as: 'post', where: { householdId }, attributes: [] }],
     });
     if (medias.length > 0) {
       mediaUrl = medias[0].get('mediaUrl') as string;
@@ -678,38 +683,13 @@ export async function getReactions(messageId: string): Promise<ReactionCountResp
   return counts;
 }
 
-// ── Typing Indicator (FR-149) ──
-
-export async function typingStart(userId: string): Promise<void> {
-  const membership = await HouseholdMember.findOne({ where: { userId } });
-  if (!membership) throw new ForbiddenError('You must belong to a household');
-
-  const householdId = membership.householdId;
-
-  const user = await User.findByPk(userId, { attributes: ['id', 'displayName'] });
-  const displayName = user?.get('displayName') as string || 'Someone';
-
-  try {
-    const io = getIO();
-    io.to(householdId).emit('typing_start', { userId, displayName });
-  } catch {
-    /* ignore */
-  }
-}
-
-export async function typingStop(userId: string): Promise<void> {
-  const membership = await HouseholdMember.findOne({ where: { userId } });
-  if (!membership) return; // silently ignore if not member
-
-  const householdId = membership.householdId;
-
-  try {
-    const io = getIO();
-    io.to(householdId).emit('typing_stop', { userId });
-  } catch {
-    /* ignore */
-  }
-}
+// Typing indicator: handled entirely via the 'chat:typing'/'chat:stop-typing'
+// socket events in socket/chatSocket.ts, which correctly broadcast to
+// `household:${householdId}` — the room clients actually join. A REST
+// typingStart/typingStop pair used to live here too, but broadcast to the
+// bare householdId (no prefix), reaching zero connected clients; removed
+// rather than fixed, since the socket-event path was already correct and
+// is the one actually used (F-17).
 
 // ── Participant Management ──
 

@@ -10,7 +10,6 @@ import {
   deleteReactionSchema,
   messageQuerySchema,
   messageIdParamSchema,
-  typingSchema,
   createConversationSchema,
   conversationIdParamSchema,
   addParticipantSchema,
@@ -29,8 +28,13 @@ router.post('/conversations/:id/participants', validate(addParticipantSchema), c
 router.delete('/conversations/:id/participants/:userId', validate(removeParticipantSchema), ctrl.removeParticipantCtrl);
 router.post('/conversations/:id/invite', validate(addParticipantSchema), ctrl.inviteParticipantCtrl);
 
-// Typing indicator — before /:id
-router.post('/typing', validate(typingSchema), ctrl.typingCtrl);                                   // FR-149
+// Typing indicator: client-driven via the 'chat:typing'/'chat:stop-typing'
+// socket events (socket/chatSocket.ts) — there used to also be a REST
+// POST /typing path here, but it broadcast to the bare householdId room
+// instead of `household:${householdId}` (the room clients actually join),
+// so it reached zero connected clients. Removed rather than fixed, since
+// the socket-event path was already correct and is the one actually used
+// (F-17).
 
 // Voice message upload — before /:id
 router.post('/media/voice', uploadChatVoice.single('file'), ctrl.uploadVoiceCtrl);
