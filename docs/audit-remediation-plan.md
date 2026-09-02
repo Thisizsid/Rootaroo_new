@@ -96,6 +96,8 @@ these are targeted patches to existing functions.
 
 - Generate one baseline migration (`sequelize-cli migration:generate` seeded from current models, or `--init` snapshot) that `CREATE TABLE`s every one of the 39 models with their current shape, then mark it as already-applied in `SequelizeMeta` for existing dev/staging DBs (so it only matters for genuinely fresh environments, e.g. new prod). This unblocks any environment where `sequelize.sync()` is skipped (production) — today those have **no way** to create the schema at all.
 
+**Status: deferred.** This requires running `sequelize-cli`'s generation against a real MySQL instance and verifying the resulting SQL — not something safely doable without live DB access. Do this in a session with a local/staging MySQL available; don't hand-author 39 tables' worth of CREATE TABLE statements without running and checking them.
+
 ### F-12 — `changeMemberRole` can mint unlimited extra admins
 `modules/household/service.ts`: `changeMemberRole` (applies `body.role` with no restriction), `removeMember` (blanket-blocks removing any `admin` target), `transferAdmin` (clean 1:1 swap, no change needed).
 
