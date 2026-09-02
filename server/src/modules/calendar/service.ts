@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { CalendarEvent, CalendarSyncState, EventInvitee, HouseholdMember, User } from '../../database/models';
 import { Op } from 'sequelize';
 import { ForbiddenError, NotFoundError } from '../../shared/utils/errors';
+import { getUserHousehold as getUserHouseholdCore } from '../../shared/utils/household';
 import * as notificationService from '../../shared/services/notifications';
 import {
   exchangeCodeForTokens,
@@ -26,11 +27,7 @@ import type {
 
 /** The household the user currently belongs to (same rule as tasks/expenses). */
 async function getUserHouseholdId(userId: string): Promise<string> {
-  const membership = await HouseholdMember.findOne({ where: { userId } });
-  if (!membership) {
-    throw new ForbiddenError('You must belong to a household to use the calendar');
-  }
-  return membership.householdId;
+  return getUserHouseholdCore(userId, 'You must belong to a household to use the calendar');
 }
 
 /** "2026-08-03T18:00:00.000Z" -> { date: "2026-08-03", time: "18:00:00" } in server-local time. */

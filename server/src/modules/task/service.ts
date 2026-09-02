@@ -3,10 +3,9 @@ import {
   Task,
   TaskAssignee,
   User,
-  HouseholdMember,
 } from '../../database/models';
 import { NotFoundError, ForbiddenError } from '../../shared/utils/errors';
-import { isCurrentHouseholdAdmin } from '../../shared/utils/household';
+import { isCurrentHouseholdAdmin, getUserHousehold as getUserHouseholdCore } from '../../shared/utils/household';
 import logger from '../../shared/utils/logger';
 import { getIO } from '../../shared/utils/socket';
 import * as notificationService from '../notification/service';
@@ -41,11 +40,7 @@ function toAssigneeResponse(user: User): TaskAssigneeResponse {
 }
 
 async function getUserHousehold(userId: string): Promise<string> {
-  const membership = await HouseholdMember.findOne({ where: { userId } });
-  if (!membership) {
-    throw new ForbiddenError('You must belong to a household to manage tasks');
-  }
-  return membership.householdId;
+  return getUserHouseholdCore(userId, 'You must belong to a household to manage tasks');
 }
 
 function todayStart(): Date {

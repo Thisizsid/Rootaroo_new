@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Op } from 'sequelize';
 import { PingRequest, CheckIn, User, HouseholdMember } from '../../database/models';
 import { AppError, ForbiddenError, NotFoundError } from '../../shared/utils/errors';
+import { getUserHousehold as getUserHouseholdCore } from '../../shared/utils/household';
 import { getIO } from '../../shared/utils/socket';
 import * as notificationService from '../../shared/services/notifications';
 import type {
@@ -15,11 +16,7 @@ import type {
 // ── Helpers ──
 
 async function getUserHousehold(userId: string): Promise<string> {
-  const membership = await HouseholdMember.findOne({ where: { userId } });
-  if (!membership) {
-    throw new ForbiddenError('You must belong to a household to use Ping');
-  }
-  return membership.householdId;
+  return getUserHouseholdCore(userId, 'You must belong to a household to use Ping');
 }
 
 function toPingRequestResponse(pingRequest: PingRequest): PingRequestResponse {

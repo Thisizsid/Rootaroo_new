@@ -11,6 +11,7 @@ import {
   User,
 } from '../../database/models';
 import { NotFoundError, ForbiddenError, ValidationError } from '../../shared/utils/errors';
+import { getUserHousehold as getUserHouseholdCore } from '../../shared/utils/household';
 import { getSignedUrl } from '../../shared/utils/s3';
 import { getIO } from '../../shared/utils/socket';
 import type {
@@ -239,9 +240,7 @@ export async function getUserConversations(userId: string): Promise<Conversation
 // ── Helpers ──
 
 async function ensureHouseholdMember(userId: string): Promise<string> {
-  const membership = await HouseholdMember.findOne({ where: { userId } });
-  if (!membership) throw new ForbiddenError('You must belong to a household to send messages');
-  return membership.householdId;
+  return getUserHouseholdCore(userId, 'You must belong to a household to send messages');
 }
 
 async function isHouseholdAdmin(userId: string, householdId: string): Promise<boolean> {

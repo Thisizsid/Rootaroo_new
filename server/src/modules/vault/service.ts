@@ -5,11 +5,10 @@ import {
   VaultDocumentKey,
   VaultKey,
   User,
-  HouseholdMember,
 } from '../../database/models';
 import { NotFoundError, ForbiddenError } from '../../shared/utils/errors';
 import { uploadBuffer, deleteObject, getSignedUrl } from '../../shared/utils/s3';
-import { isCurrentHouseholdAdmin } from '../../shared/utils/household';
+import { isCurrentHouseholdAdmin, getUserHousehold as getUserHouseholdCore } from '../../shared/utils/household';
 import type {
   CreateVaultDocumentBody,
   UpdateVaultDocumentBody,
@@ -24,11 +23,7 @@ const MAX_STORAGE_BYTES = 2 * 1024 * 1024 * 1024; // 2GB
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 
 export async function getUserHousehold(userId: string): Promise<string> {
-  const membership = await HouseholdMember.findOne({ where: { userId } });
-  if (!membership) {
-    throw new ForbiddenError('You must belong to a household to use the vault');
-  }
-  return membership.householdId;
+  return getUserHouseholdCore(userId, 'You must belong to a household to use the vault');
 }
 
 async function toDocumentResponse(doc: VaultDocument): Promise<VaultDocumentResponse> {

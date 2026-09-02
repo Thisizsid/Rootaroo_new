@@ -1,4 +1,25 @@
 import { HouseholdMember } from '../../database/models';
+import { ForbiddenError } from './errors';
+
+/**
+ * Resolves the household a user currently belongs to. This exact
+ * find-and-throw was previously copy-pasted (as getUserHousehold,
+ * ensureHouseholdMember, or getUserHouseholdId) into 13 separate service
+ * files, each only differing in the error message — a single source of
+ * truth here means any future change to how tenant resolution works only
+ * has to happen once (F-13). `errorMessage` preserves each call site's
+ * original, feature-specific wording.
+ */
+export async function getUserHousehold(
+  userId: string,
+  errorMessage = 'You must belong to a household to do this',
+): Promise<string> {
+  const membership = await HouseholdMember.findOne({ where: { userId } });
+  if (!membership) {
+    throw new ForbiddenError(errorMessage);
+  }
+  return membership.householdId;
+}
 
 /**
  * Re-checks a user's current household admin status directly against the

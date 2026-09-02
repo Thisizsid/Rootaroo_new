@@ -12,7 +12,7 @@ import {
 } from '../../database/models';
 import { NotFoundError, ForbiddenError } from '../../shared/utils/errors';
 import { getSignedUrl } from '../../shared/utils/s3';
-import { isCurrentHouseholdAdmin } from '../../shared/utils/household';
+import { isCurrentHouseholdAdmin, getUserHousehold as getUserHouseholdCore } from '../../shared/utils/household';
 import { CommentReaction } from '../../database/models';
 import logger from '../../shared/utils/logger';
 import * as notificationService from '../notification/service';
@@ -55,11 +55,7 @@ async function toMediaResponse(items: FeedMedia[]): Promise<FeedMediaResponse[]>
  * Throws 403 if the user does not belong to any household.
  */
 async function getUserHousehold(userId: string): Promise<string> {
-  const membership = await HouseholdMember.findOne({ where: { userId } });
-  if (!membership) {
-    throw new ForbiddenError('You must belong to a household to use the feed');
-  }
-  return membership.householdId;
+  return getUserHouseholdCore(userId, 'You must belong to a household to use the feed');
 }
 
 /**
