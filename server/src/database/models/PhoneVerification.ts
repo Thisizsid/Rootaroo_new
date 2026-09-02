@@ -8,6 +8,7 @@ class PhoneVerification extends Model {
   declare token: string;
   declare expiresAt: Date;
   declare verifiedAt: Date | null;
+  declare attempts: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
 }
 
@@ -40,6 +41,11 @@ PhoneVerification.init(
       type: DataTypes.DATE,
       allowNull: true,
       field: 'verified_at',
+    },
+    attempts: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
     },
     createdAt: {
       type: DataTypes.DATE,

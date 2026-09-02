@@ -7,6 +7,7 @@ class PasswordReset extends Model {
   declare token: string;
   declare expiresAt: Date;
   declare usedAt: Date | null;
+  declare attempts: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
 }
 
@@ -35,6 +36,11 @@ PasswordReset.init(
       type: DataTypes.DATE,
       allowNull: true,
       field: 'used_at',
+    },
+    attempts: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
     },
     createdAt: {
       type: DataTypes.DATE,

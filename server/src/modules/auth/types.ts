@@ -46,11 +46,13 @@ export interface ForgotPasswordBody {
 }
 
 export interface ResetPasswordBody {
+  email: string;
   code: string;
   password: string;
 }
 
 export interface CheckResetCodeBody {
+  email: string;
   code: string;
 }
 

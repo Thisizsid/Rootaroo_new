@@ -19,6 +19,7 @@ jest.mock('../../../database/models', () => ({
 import * as models from '../../../database/models';
 import { sendSms } from '../../../shared/utils/sns';
 import { jwtVerify } from 'jose';
+import { hashOtpCode } from '../../../shared/utils/otp';
 
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
@@ -327,9 +328,13 @@ describe('Auth Service — Password Reset', () => {
 
   describe('resetPassword', () => {
     it('should hash new password, update user, mark code used, and revoke existing sessions', async () => {
-      const record = { userId: 'u1', update: jest.fn().mockResolvedValue(undefined) };
+      (models.User.findOne as jest.Mock).mockResolvedValue({ id: 'u1', email: 'test@user.com' });
+      const record = {
+        userId: 'u1', token: hashOtpCode('123456'), attempts: 0,
+        update: jest.fn().mockResolvedValue(undefined), save: jest.fn().mockResolvedValue(undefined),
+      };
       (models.PasswordReset.findOne as jest.Mock).mockResolvedValue(record);
-      await resetPassword({ code: '123456', password: 'newpass123' });
+      await resetPassword({ email: 'test@user.com', code: '123456', password: 'newpass123' });
       expect(models.User.update).toHaveBeenCalledWith(
         { passwordHash: expect.any(String) },
         { where: { id: 'u1' } },
@@ -339,22 +344,51 @@ describe('Auth Service — Password Reset', () => {
     });
 
     it('should throw for invalid or expired code', async () => {
+      (models.User.findOne as jest.Mock).mockResolvedValue({ id: 'u1', email: 'test@user.com' });
       (models.PasswordReset.findOne as jest.Mock).mockResolvedValue(null);
-      await expect(resetPassword({ code: 'wrong', password: 'newpass123' }))
+      await expect(resetPassword({ email: 'test@user.com', code: 'wrong', password: 'newpass123' }))
         .rejects.toThrow('Invalid or expired reset code');
       expect(models.RefreshToken.destroy).not.toHaveBeenCalled();
+    });
+
+    it('should throw when the email does not match any account (code-only guessing no longer works)', async () => {
+      (models.User.findOne as jest.Mock).mockResolvedValue(null);
+      await expect(resetPassword({ email: 'nobody@user.com', code: '123456', password: 'newpass123' }))
+        .rejects.toThrow('Invalid or expired reset code');
+      expect(models.PasswordReset.findOne).not.toHaveBeenCalled();
+    });
+
+    it('should increment attempts and reject when the code does not match the stored hash', async () => {
+      (models.User.findOne as jest.Mock).mockResolvedValue({ id: 'u1', email: 'test@user.com' });
+      const record = { userId: 'u1', token: hashOtpCode('123456'), attempts: 0, save: jest.fn().mockResolvedValue(undefined) };
+      (models.PasswordReset.findOne as jest.Mock).mockResolvedValue(record);
+      await expect(resetPassword({ email: 'test@user.com', code: '000000', password: 'newpass123' }))
+        .rejects.toThrow('Invalid or expired reset code');
+      expect(record.attempts).toBe(1);
+      expect(record.save).toHaveBeenCalled();
+    });
+
+    it('should lock out once attempts reach the max, without re-checking the hash', async () => {
+      (models.User.findOne as jest.Mock).mockResolvedValue({ id: 'u1', email: 'test@user.com' });
+      const record = { userId: 'u1', token: hashOtpCode('123456'), attempts: 5, save: jest.fn() };
+      (models.PasswordReset.findOne as jest.Mock).mockResolvedValue(record);
+      await expect(resetPassword({ email: 'test@user.com', code: '123456', password: 'newpass123' }))
+        .rejects.toThrow('Invalid or expired reset code');
+      expect(record.save).not.toHaveBeenCalled();
     });
   });
 
   describe('checkResetCode', () => {
     it('should resolve without throwing for a valid, unexpired, unused code', async () => {
-      (models.PasswordReset.findOne as jest.Mock).mockResolvedValue({ userId: 'u1' });
-      await expect(checkResetCode('123456')).resolves.toBeUndefined();
+      (models.User.findOne as jest.Mock).mockResolvedValue({ id: 'u1', email: 'test@user.com' });
+      (models.PasswordReset.findOne as jest.Mock).mockResolvedValue({ userId: 'u1', token: hashOtpCode('123456'), attempts: 0 });
+      await expect(checkResetCode({ email: 'test@user.com', code: '123456' })).resolves.toBeUndefined();
     });
 
     it('should throw for invalid or expired code without consuming anything', async () => {
+      (models.User.findOne as jest.Mock).mockResolvedValue({ id: 'u1', email: 'test@user.com' });
       (models.PasswordReset.findOne as jest.Mock).mockResolvedValue(null);
-      await expect(checkResetCode('000000')).rejects.toThrow('Invalid or expired reset code');
+      await expect(checkResetCode({ email: 'test@user.com', code: '000000' })).rejects.toThrow('Invalid or expired reset code');
       expect(models.User.update).not.toHaveBeenCalled();
     });
   });
@@ -511,7 +545,10 @@ describe('Auth Service — Phone OTP (app-owned code, delivered via AWS SNS)', (
 
   describe('verifyPhoneOtp', () => {
     it('should mark the user verified and issue tokens for a valid code', async () => {
-      const record = { userId: 'u1', verifiedAt: null, save: jest.fn().mockResolvedValue(undefined) };
+      const record = {
+        userId: 'u1', token: hashOtpCode('123456'), attempts: 0, verifiedAt: null,
+        save: jest.fn().mockResolvedValue(undefined),
+      };
       (models.PhoneVerification.findOne as jest.Mock).mockResolvedValue(record);
       const user = fakePhoneUser();
       (models.User.findByPk as jest.Mock).mockResolvedValue(user);
@@ -520,7 +557,7 @@ describe('Auth Service — Phone OTP (app-owned code, delivered via AWS SNS)', (
 
       expect(models.PhoneVerification.findOne).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ phone: '+15551234567', token: '123456', verifiedAt: null }),
+          where: expect.objectContaining({ phone: '+15551234567', verifiedAt: null }),
         }),
       );
       expect(record.verifiedAt).toBeInstanceOf(Date);
@@ -534,6 +571,29 @@ describe('Auth Service — Phone OTP (app-owned code, delivered via AWS SNS)', (
       await expect(verifyPhoneOtp({ phone: '+15551234567', code: '000000' }, 'u1'))
         .rejects.toThrow('Invalid or expired verification code');
       expect(models.User.findByPk).not.toHaveBeenCalled();
+    });
+
+    it('should increment attempts and reject when the code does not match the stored hash', async () => {
+      const record = {
+        userId: 'u1', token: hashOtpCode('123456'), attempts: 0, verifiedAt: null,
+        save: jest.fn().mockResolvedValue(undefined),
+      };
+      (models.PhoneVerification.findOne as jest.Mock).mockResolvedValue(record);
+
+      await expect(verifyPhoneOtp({ phone: '+15551234567', code: '000000' }, 'u1'))
+        .rejects.toThrow('Invalid or expired verification code');
+      expect(record.attempts).toBe(1);
+      expect(record.save).toHaveBeenCalled();
+      expect(models.User.findByPk).not.toHaveBeenCalled();
+    });
+
+    it('should lock out once attempts reach the max, without re-checking the hash', async () => {
+      const record = { userId: 'u1', token: hashOtpCode('123456'), attempts: 5, verifiedAt: null, save: jest.fn() };
+      (models.PhoneVerification.findOne as jest.Mock).mockResolvedValue(record);
+
+      await expect(verifyPhoneOtp({ phone: '+15551234567', code: '123456' }, 'u1'))
+        .rejects.toThrow('Invalid or expired verification code');
+      expect(record.save).not.toHaveBeenCalled();
     });
   });
 });

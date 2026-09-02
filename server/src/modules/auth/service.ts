@@ -9,11 +9,12 @@ import { getMailer } from '../../shared/utils/mailer';
 import { getSignedUrl } from '../../shared/utils/s3';
 import { sendSms } from '../../shared/utils/sns';
 import { jwtVerify, createRemoteJWKSet } from 'jose';
+import { hashOtpCode, MAX_OTP_ATTEMPTS } from '../../shared/utils/otp';
 import { UnauthorizedError, ConflictError, NotFoundError, AppError } from '../../shared/utils/errors';
 import type {
   RegisterBody, LoginBody, AuthResponse, AuthTokens, UserResponse, UpdateProfileBody, GoogleAuthBody,
   AppleAuthBody,
-  VerifyEmailBody, ForgotPasswordBody, ResetPasswordBody, ScheduleDeletionBody,
+  VerifyEmailBody, ForgotPasswordBody, ResetPasswordBody, CheckResetCodeBody, ScheduleDeletionBody,
   SendPhoneOtpBody, VerifyPhoneOtpBody, RegisterPhoneBody,
 } from './types';
 
@@ -357,10 +358,16 @@ export async function sendVerification(userId: string): Promise<string | undefin
   // Send email using shared mailer singleton
   const transporter = getMailer();
 
-  // If SMTP is not configured, return the code for dev-mode display
+  // If SMTP is not configured, return the code for dev-mode display only —
+  // never in production, where a missing SMTP config should be a delivery
+  // failure, not a JSON-response leak of a live verification code.
   if (!transporter) {
-    console.warn(`[DEV] Email verification code for ${user.email}: ${code}`);
-    return code;
+    if (env.nodeEnv !== 'production') {
+      console.warn(`[DEV] Email verification code for ${user.email}: ${code}`);
+      return code;
+    }
+    console.error(`SMTP is not configured — unable to deliver email verification code for user ${userId}`);
+    return undefined;
   }
 
   await transporter.sendMail({
@@ -406,13 +413,14 @@ export async function forgotPassword(body: ForgotPasswordBody): Promise<void> {
     { where: { userId: user.id, usedAt: null } },
   );
 
-  // Generate 6-digit code
+  // Generate 6-digit code — only the hash is ever persisted; the raw code
+  // exists only for delivery (email/dev-log), never stored at rest.
   const code = randomInt(100000, 1000000).toString();
 
   await PasswordReset.create({
     id: uuidv4(),
     userId: user.id,
-    token: code,
+    token: hashOtpCode(code),
     expiresAt: new Date(Date.now() + 15 * 60 * 1000),
   });
 
@@ -420,7 +428,11 @@ export async function forgotPassword(body: ForgotPasswordBody): Promise<void> {
   const transporter = getMailer();
 
   if (!transporter) {
-    console.warn(`[DEV] Password reset code for ${user.email}: ${code}`);
+    if (env.nodeEnv !== 'production') {
+      console.warn(`[DEV] Password reset code for ${user.email}: ${code}`);
+    } else {
+      console.error(`SMTP is not configured — unable to deliver password reset code for user ${user.id}`);
+    }
     return;
   }
 
@@ -432,25 +444,42 @@ export async function forgotPassword(body: ForgotPasswordBody): Promise<void> {
   });
 }
 
-async function findActivePasswordReset(code: string) {
-  return PasswordReset.findOne({
-    where: {
-      token: code,
-      usedAt: null,
-      expiresAt: { [Op.gt]: new Date() },
-    },
+// Looks up the most recent active reset request for the given email and
+// verifies the code against it. Scoping by email (not just the code alone)
+// closes the account-enumeration-by-code-guessing gap: knowing/guessing a
+// valid 6-digit code is no longer sufficient by itself, since it must also
+// match the specific account it claims to be for. Failed attempts increment
+// a per-record counter and lock the record out after MAX_OTP_ATTEMPTS,
+// independent of the IP-based auth rate limiter.
+async function findActivePasswordReset(email: string, code: string) {
+  const user = await User.findOne({ where: { email: email.toLowerCase() } });
+  if (!user) return null;
+
+  const record = await PasswordReset.findOne({
+    where: { userId: user.id, usedAt: null, expiresAt: { [Op.gt]: new Date() } },
+    order: [['createdAt', 'DESC']],
   });
+  if (!record) return null;
+  if (record.attempts >= MAX_OTP_ATTEMPTS) return null;
+
+  if (record.token !== hashOtpCode(code)) {
+    record.attempts += 1;
+    await record.save();
+    return null;
+  }
+
+  return record;
 }
 
-export async function checkResetCode(code: string): Promise<void> {
-  const record = await findActivePasswordReset(code);
+export async function checkResetCode(body: CheckResetCodeBody): Promise<void> {
+  const record = await findActivePasswordReset(body.email, body.code);
   if (!record) {
     throw new AppError(400, 'Invalid or expired reset code');
   }
 }
 
 export async function resetPassword(body: ResetPasswordBody): Promise<void> {
-  const record = await findActivePasswordReset(body.code);
+  const record = await findActivePasswordReset(body.email, body.code);
 
   if (!record) {
     throw new AppError(400, 'Invalid or expired reset code');
@@ -560,13 +589,17 @@ async function issuePhoneOtp(phone: string, userId: string | null): Promise<stri
     id: uuidv4(),
     phone: normalized,
     userId,
-    token: code,
+    token: hashOtpCode(code),
     expiresAt: new Date(Date.now() + 15 * 60 * 1000),
   });
 
   if (!env.sns.accessKeyId) {
-    console.warn(`[DEV] Phone OTP for ${normalized}: ${code}`);
-    return code;
+    if (env.nodeEnv !== 'production') {
+      console.warn(`[DEV] Phone OTP for ${normalized}: ${code}`);
+      return code;
+    }
+    console.error(`AWS SNS is not configured — unable to deliver phone OTP for ${normalized}`);
+    return undefined;
   }
 
   await sendSms(normalized, `Your Rootaroo verification code is: ${code}. It expires in 15 minutes.`);
@@ -675,13 +708,17 @@ export async function verifyPhoneOtp(body: VerifyPhoneOtpBody, userId?: string):
   const record = await PhoneVerification.findOne({
     where: {
       phone,
-      token: body.code,
       verifiedAt: null,
       expiresAt: { [Op.gt]: new Date() },
     },
     order: [['createdAt', 'DESC']],
   });
-  if (!record) {
+  if (!record || record.attempts >= MAX_OTP_ATTEMPTS) {
+    throw new AppError(400, 'Invalid or expired verification code');
+  }
+  if (record.token !== hashOtpCode(body.code)) {
+    record.attempts += 1;
+    await record.save();
     throw new AppError(400, 'Invalid or expired verification code');
   }
   record.verifiedAt = new Date();
