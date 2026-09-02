@@ -1,11 +1,18 @@
 import {
   generateInvitation, joinViaCode, removeMember, leaveHousehold, transferAdmin, changeMemberRole, listMembers,
   scheduleHouseholdDeletion, cancelHouseholdDeletion, confirmHouseholdDeletion, rotateInviteCode, getHousehold,
+  createHousehold,
 } from '../service';
 import * as models from '../../../database/models';
 
 jest.mock('../../../database/models', () => {
   return {
+    sequelize: {
+      transaction: jest.fn((optionsOrCb: any, maybeCb?: any) => {
+        const cb = typeof optionsOrCb === 'function' ? optionsOrCb : maybeCb;
+        return cb({});
+      }),
+    },
     Household: { create: jest.fn(), findByPk: jest.fn(), findOne: jest.fn() },
     HouseholdMember: { create: jest.fn(), findOne: jest.fn(), findAll: jest.fn(), count: jest.fn(), destroy: jest.fn() },
     Invitation: { create: jest.fn(), findOne: jest.fn(), count: jest.fn() },
@@ -102,6 +109,28 @@ describe('Household Service — Invitations', () => {
     });
   });
 
+  describe('createHousehold', () => {
+    it('should create a household and make the caller its admin', async () => {
+      (models.HouseholdMember.findOne as jest.Mock).mockResolvedValueOnce(null);
+      (models.Household.create as jest.Mock).mockResolvedValue(fakeHousehold());
+      (models.HouseholdMember.create as jest.Mock).mockResolvedValue({});
+
+      const result = await createHousehold(userId, { name: 'Test Family' });
+
+      expect(result.role).toBe('admin');
+      expect(result.memberCount).toBe(1);
+      expect(models.User.update).toHaveBeenCalledWith({ role: 'admin' }, expect.objectContaining({ where: { id: userId } }));
+    });
+
+    it('should reject if the user already belongs to a household (F-13 race guard)', async () => {
+      (models.HouseholdMember.findOne as jest.Mock).mockResolvedValueOnce(fakeMembership());
+
+      await expect(createHousehold(userId, { name: 'Another Family' }))
+        .rejects.toThrow('You already belong to a household');
+      expect(models.Household.create).not.toHaveBeenCalled();
+    });
+  });
+
   describe('joinViaCode', () => {
     it('should add user as member and mark invitation accepted', async () => {
       const inv = fakeInvitation();
@@ -120,6 +149,7 @@ describe('Household Service — Invitations', () => {
       });
       expect(inv.update).toHaveBeenCalledWith(
         expect.objectContaining({ acceptedAt: expect.any(Date) }),
+        expect.anything(),
       );
     });
 

@@ -2,7 +2,8 @@ import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
 import { Op } from 'sequelize';
-import { Household, HouseholdMember, Invitation, User, Conversation, ConversationParticipant } from '../../database/models';
+import { Transaction } from 'sequelize';
+import { sequelize, Household, HouseholdMember, Invitation, User, Conversation, ConversationParticipant } from '../../database/models';
 import { ConflictError, NotFoundError, ForbiddenError, AppError } from '../../shared/utils/errors';
 import { getSignedUrl } from '../../shared/utils/s3';
 import * as notificationService from '../../shared/services/notifications';
@@ -56,21 +57,31 @@ export async function createHousehold(
 ): Promise<HouseholdResponse> {
   const { name } = body;
 
-  const existing = await HouseholdMember.findOne({ where: { userId } });
-  if (existing) {
-    throw new ConflictError('You already belong to a household. Leave it first to create a new one.');
-  }
+  // The one-membership-per-user invariant isn't enforced at the schema
+  // level (no unique constraint on household_members.user_id alone) —
+  // without SERIALIZABLE isolation here, two concurrent calls could both
+  // pass the existence check before either commits its insert, letting a
+  // user end up with two households (F-13).
+  return await sequelize.transaction(
+    { isolationLevel: Transaction.ISOLATION_LEVELS.SERIALIZABLE },
+    async (transaction) => {
+      const existing = await HouseholdMember.findOne({ where: { userId }, transaction });
+      if (existing) {
+        throw new ConflictError('You already belong to a household. Leave it first to create a new one.');
+      }
 
-  const inviteCode = generateCode();
-  const household = await Household.create({ id: uuidv4(), name, inviteCode });
+      const inviteCode = generateCode();
+      const household = await Household.create({ id: uuidv4(), name, inviteCode }, { transaction });
 
-  await HouseholdMember.create({
-    id: uuidv4(), householdId: household.id, userId, role: 'admin', joinedAt: new Date(),
-  });
+      await HouseholdMember.create({
+        id: uuidv4(), householdId: household.id, userId, role: 'admin', joinedAt: new Date(),
+      }, { transaction });
 
-  await User.update({ role: 'admin' }, { where: { id: userId } });
+      await User.update({ role: 'admin' }, { where: { id: userId }, transaction });
 
-  return await toHouseholdResponse(household, 'admin', 1);
+      return await toHouseholdResponse(household, 'admin', 1);
+    },
+  );
 }
 
 export async function getHousehold(householdId: string, userId: string): Promise<HouseholdResponse> {
@@ -161,62 +172,79 @@ export async function rotateInviteCode(userId: string, householdId: string): Pro
 export async function joinViaCode(userId: string, body: JoinHouseholdBody): Promise<HouseholdResponse> {
   const { code } = body;
 
-  // Check user doesn't already belong to a household
-  const existing = await HouseholdMember.findOne({ where: { userId } });
-  if (existing) {
-    throw new ConflictError('You already belong to a household. Leave it first to join another.');
-  }
+  // Same race as createHousehold: the one-membership-per-user invariant
+  // has no DB-level unique constraint backing it, so the existence check
+  // and the insert must happen inside a single SERIALIZABLE transaction
+  // or two concurrent joins could both pass the check (F-13).
+  const { household } = await sequelize.transaction(
+    { isolationLevel: Transaction.ISOLATION_LEVELS.SERIALIZABLE },
+    async (transaction) => {
+      const existing = await HouseholdMember.findOne({ where: { userId }, transaction });
+      if (existing) {
+        throw new ConflictError('You already belong to a household. Leave it first to join another.');
+      }
 
-  // First: look up an Invitation record by code
-  const invitation = await Invitation.findOne({
-    where: { code },
-    include: [{ model: Household, as: 'household' }],
-  });
+      // First: look up an Invitation record by code
+      const invitation = await Invitation.findOne({
+        where: { code },
+        include: [{ model: Household, as: 'household' }],
+        transaction,
+      });
 
-  let household: Household;
+      let household: Household;
 
-  if (invitation) {
-    if (!invitation.household) {
-      throw new AppError(500, 'Invitation references a deleted household');
-    }
-    if (invitation.expiresAt < new Date()) {
-      throw new AppError(410, 'Invitation has expired. Ask the household admin for a new one.');
-    }
-    if (invitation.acceptedAt) {
-      throw new ConflictError('This invitation has already been used.');
-    }
-    household = invitation.household;
-  } else {
-    // Fallback: check the household's permanent invite code
-    const h = await Household.findOne({ where: { inviteCode: code } });
-    if (!h) {
-      throw new NotFoundError('Invitation');
-    }
-    household = h;
-  }
+      if (invitation) {
+        if (!invitation.household) {
+          throw new AppError(500, 'Invitation references a deleted household');
+        }
+        if (invitation.expiresAt < new Date()) {
+          throw new AppError(410, 'Invitation has expired. Ask the household admin for a new one.');
+        }
+        if (invitation.acceptedAt) {
+          throw new ConflictError('This invitation has already been used.');
+        }
+        household = invitation.household;
+      } else {
+        // Fallback: check the household's permanent invite code
+        const h = await Household.findOne({ where: { inviteCode: code }, transaction });
+        if (!h) {
+          throw new NotFoundError('Invitation');
+        }
+        household = h;
+      }
 
-  // Check that the user isn't already a member (double-check)
-  const alreadyMember = await HouseholdMember.findOne({ where: { householdId: household.id, userId } });
-  if (alreadyMember) {
-    throw new ConflictError('You are already a member of this household.');
-  }
+      // Check that the user isn't already a member (double-check)
+      const alreadyMember = await HouseholdMember.findOne({
+        where: { householdId: household.id, userId },
+        transaction,
+      });
+      if (alreadyMember) {
+        throw new ConflictError('You are already a member of this household.');
+      }
 
-  // Join
-  await HouseholdMember.create({
-    id: uuidv4(),
-    householdId: household.id,
-    userId,
-    role: 'member',
-    joinedAt: new Date(),
-  });
+      // Join
+      await HouseholdMember.create({
+        id: uuidv4(),
+        householdId: household.id,
+        userId,
+        role: 'member',
+        joinedAt: new Date(),
+      }, { transaction });
 
-  await User.update({ role: 'member' }, { where: { id: userId } });
+      await User.update({ role: 'member' }, { where: { id: userId }, transaction });
+
+      // Mark invitation as accepted if using an invitation record
+      if (invitation && !invitation.acceptedAt) {
+        await invitation.update({ acceptedAt: new Date() }, { transaction });
+      }
+
+      return { household, invitation };
+    },
+  );
+
+  // Enrichment, not part of the invariant being protected — fine outside
+  // the transaction.
   await addToHouseholdConversation(household.id, userId);
-
-  // Mark invitation as accepted if using an invitation record
-  if (invitation && !invitation.acceptedAt) {
-    await invitation.update({ acceptedAt: new Date() });
-  }
 
   const memberCount = await HouseholdMember.count({
     where: { householdId: household.id },
