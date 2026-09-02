@@ -18,6 +18,7 @@ router.get('/:id', ctrl.getById);
 // Invitations
 router.post('/:id/invitations', requireRole('member'), ctrl.generateInvitation);
 router.post('/join', validate(joinHouseholdSchema), ctrl.join);
+router.post('/:id/invite-code/rotate', requireRole('admin'), ctrl.rotateInviteCode);
 
 // Cover photo (admin-only)
 router.post('/:id/cover-photo', requireRole('admin'), uploadHouseholdCover, ctrl.uploadCoverPhoto);

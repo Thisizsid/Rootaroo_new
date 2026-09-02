@@ -1,6 +1,6 @@
 import {
   generateInvitation, joinViaCode, removeMember, leaveHousehold, transferAdmin, changeMemberRole, listMembers,
-  scheduleHouseholdDeletion, cancelHouseholdDeletion, confirmHouseholdDeletion,
+  scheduleHouseholdDeletion, cancelHouseholdDeletion, confirmHouseholdDeletion, rotateInviteCode, getHousehold,
 } from '../service';
 import * as models from '../../../database/models';
 
@@ -452,6 +452,48 @@ describe('Household Service — Member Management', () => {
 
       await expect(confirmHouseholdDeletion(userId, householdId, { password: 'x' }))
         .rejects.toThrow('Only the household admin can delete the household');
+    });
+  });
+
+  describe('Invite code visibility and rotation (F-05)', () => {
+    it('should hide the invite code from a non-admin member', async () => {
+      (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'member' }));
+      (models.Household.findByPk as jest.Mock).mockResolvedValue(fakeHousehold());
+      (models.HouseholdMember.count as jest.Mock).mockResolvedValue(2);
+
+      const result = await getHousehold(householdId, userId);
+
+      expect(result.inviteCode).toBeNull();
+    });
+
+    it('should include the invite code for an admin', async () => {
+      (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'admin' }));
+      (models.Household.findByPk as jest.Mock).mockResolvedValue(fakeHousehold());
+      (models.HouseholdMember.count as jest.Mock).mockResolvedValue(2);
+
+      const result = await getHousehold(householdId, userId);
+
+      expect(result.inviteCode).toBe('A1B2C3D4');
+    });
+
+    it('should rotate the invite code for an admin', async () => {
+      (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'admin' }));
+      const household = fakeHousehold({ save: jest.fn().mockResolvedValue(undefined) });
+      (models.Household.findByPk as jest.Mock).mockResolvedValue(household);
+      (models.HouseholdMember.count as jest.Mock).mockResolvedValue(1);
+
+      const result = await rotateInviteCode(userId, householdId);
+
+      expect(household.save).toHaveBeenCalled();
+      expect(result.inviteCode).toBe(household.inviteCode);
+      expect(result.inviteCode).not.toBe('A1B2C3D4');
+    });
+
+    it('should reject rotation from a non-admin', async () => {
+      (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'member' }));
+
+      await expect(rotateInviteCode(userId, householdId))
+        .rejects.toThrow('Only the household admin can rotate the invite code');
     });
   });
 });

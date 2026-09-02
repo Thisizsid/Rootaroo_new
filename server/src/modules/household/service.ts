@@ -38,7 +38,10 @@ async function toHouseholdResponse(household: Household, role: string, memberCou
   return {
     id: household.id,
     name: household.name,
-    inviteCode: household.inviteCode,
+    // The permanent invite code is a standing credential — non-admin
+    // members (children especially) don't need it and shouldn't be able
+    // to read or re-share it; only an admin can see/rotate it (F-05).
+    inviteCode: role === 'admin' ? household.inviteCode : null,
     memberCount,
     role,
     coverPhotoUrl: await getSignedUrl(household.coverPhotoUrl),
@@ -131,6 +134,28 @@ export async function generateInvitation(
     expiresAt: expiresAt.toISOString(),
     shareLink: `rootaru://join?code=${code}`,
   };
+}
+
+/**
+ * Rotates the household's permanent invite code. Admin-only — the old
+ * code stops working the moment this returns, closing off anyone who saw
+ * it previously (a former member, a leaked screenshot, etc.) without any
+ * expiry or revocation mechanism otherwise (F-05).
+ */
+export async function rotateInviteCode(userId: string, householdId: string): Promise<HouseholdResponse> {
+  const membership = await getMembership(householdId, userId);
+  if (membership.role !== 'admin') {
+    throw new ForbiddenError('Only the household admin can rotate the invite code');
+  }
+
+  const household = await Household.findByPk(householdId);
+  if (!household) throw new NotFoundError('Household');
+
+  household.inviteCode = generateCode();
+  await household.save();
+
+  const memberCount = await HouseholdMember.count({ where: { householdId } });
+  return await toHouseholdResponse(household, 'admin', memberCount);
 }
 
 export async function joinViaCode(userId: string, body: JoinHouseholdBody): Promise<HouseholdResponse> {

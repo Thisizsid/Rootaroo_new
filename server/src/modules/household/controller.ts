@@ -101,6 +101,13 @@ export async function listMembers(req: Request, res: Response, next: NextFunctio
   } catch (e) { next(e); }
 }
 
+export async function rotateInviteCode(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await householdService.rotateInviteCode(getUserId(req), req.params.id);
+    res.status(200).json({ success: true, data: result });
+  } catch (e) { next(e); }
+}
+
 export async function scheduleDeletion(req: Request, res: Response, next: NextFunction) {
   try {
     await householdService.scheduleHouseholdDeletion(getUserId(req), req.params.id, req.body, getTokenIssuedAt(req));
