@@ -541,13 +541,30 @@ export async function addComment(
 /**
  * FR-045: Delete a comment (comment author, post owner, or admin).
  */
+/**
+ * Loads a comment and confirms its parent post belongs to the given
+ * household — findByPk alone doesn't imply any tenant boundary, so
+ * deleteComment/toggleCommentReaction previously allowed acting on any
+ * comment id regardless of which household it actually belonged to
+ * (F-15). Mirrors the same post+household check getComments already does.
+ */
+async function loadCommentInHousehold(commentId: string, householdId: string): Promise<FeedComment> {
+  const comment = await FeedComment.findByPk(commentId);
+  if (!comment) throw new NotFoundError('Comment');
+
+  const post = await FeedPost.findOne({ where: { id: comment.postId, householdId }, attributes: ['id'] });
+  if (!post) throw new NotFoundError('Comment');
+
+  return comment;
+}
+
 export async function deleteComment(
   commentId: string,
   userId: string,
   userRole: string,
 ): Promise<void> {
-  const comment = await FeedComment.findByPk(commentId);
-  if (!comment) throw new NotFoundError('Comment');
+  const householdId = await getUserHousehold(userId);
+  const comment = await loadCommentInHousehold(commentId, householdId);
 
   const isOwner = comment.userId === userId;
   const isAdmin = userRole === 'admin';
@@ -575,8 +592,8 @@ export async function toggleCommentReaction(
   userId: string,
   reaction: string,
 ): Promise<{ reacted: boolean; reaction: string | null; count: number }> {
-  const comment = await FeedComment.findByPk(commentId);
-  if (!comment) throw new NotFoundError('Comment');
+  const householdId = await getUserHousehold(userId);
+  await loadCommentInHousehold(commentId, householdId);
 
   const existing = await CommentReaction.findOne({
     where: { commentId, userId, reaction },

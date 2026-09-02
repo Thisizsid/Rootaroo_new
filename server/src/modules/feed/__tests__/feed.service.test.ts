@@ -7,6 +7,7 @@ import {
   unlikePost,
   addComment,
   deleteComment,
+  toggleCommentReaction,
   getComments,
 } from '../service';
 import * as models from '../../../database/models';
@@ -360,6 +361,8 @@ describe('Feed Service', () => {
     });
 
     it('allows self-deletion of comment', async () => {
+      (modelsMock.HouseholdMember.findOne as jest.Mock).mockResolvedValue({ householdId });
+      (modelsMock.FeedPost.findOne as jest.Mock).mockResolvedValue(fakePost());
       const comment = fakeComment();
       (modelsMock.FeedComment.findByPk as jest.Mock).mockResolvedValue(comment);
 
@@ -369,6 +372,8 @@ describe('Feed Service', () => {
     });
 
     it('allows admin to delete any comment', async () => {
+      (modelsMock.HouseholdMember.findOne as jest.Mock).mockResolvedValue({ householdId });
+      (modelsMock.FeedPost.findOne as jest.Mock).mockResolvedValue(fakePost());
       const comment = fakeComment({ userId: otherUserId });
       (modelsMock.FeedComment.findByPk as jest.Mock).mockResolvedValue(comment);
 
@@ -378,6 +383,8 @@ describe('Feed Service', () => {
     });
 
     it('prevents non-owner, non-admin from deleting a comment', async () => {
+      (modelsMock.HouseholdMember.findOne as jest.Mock).mockResolvedValue({ householdId });
+      (modelsMock.FeedPost.findOne as jest.Mock).mockResolvedValue(fakePost());
       const comment = fakeComment({ userId: otherUserId });
       (modelsMock.FeedComment.findByPk as jest.Mock).mockResolvedValue(comment);
       comment.destroy = jest.fn();
@@ -387,6 +394,37 @@ describe('Feed Service', () => {
       ).rejects.toThrow('You can only delete your own comments');
 
       expect(comment.destroy).not.toHaveBeenCalled();
+    });
+
+    it('rejects deleting a comment whose post belongs to a different household (F-15)', async () => {
+      (modelsMock.HouseholdMember.findOne as jest.Mock).mockResolvedValue({ householdId });
+      (modelsMock.FeedPost.findOne as jest.Mock).mockResolvedValue(null); // post not found in caller's household
+      const comment = fakeComment();
+      (modelsMock.FeedComment.findByPk as jest.Mock).mockResolvedValue(comment);
+
+      await expect(deleteComment(commentId, mockUser.id, 'admin')).rejects.toThrow('Comment');
+      expect(comment.destroy).not.toHaveBeenCalled();
+    });
+
+    it('rejects reacting to a comment whose post belongs to a different household (F-15)', async () => {
+      (modelsMock.HouseholdMember.findOne as jest.Mock).mockResolvedValue({ householdId });
+      (modelsMock.FeedPost.findOne as jest.Mock).mockResolvedValue(null);
+      (modelsMock.FeedComment.findByPk as jest.Mock).mockResolvedValue(fakeComment());
+
+      await expect(toggleCommentReaction(commentId, mockUser.id, '👍')).rejects.toThrow('Comment');
+    });
+
+    it('allows reacting to a comment within the caller\'s household', async () => {
+      (modelsMock.HouseholdMember.findOne as jest.Mock).mockResolvedValue({ householdId });
+      (modelsMock.FeedPost.findOne as jest.Mock).mockResolvedValue(fakePost());
+      (modelsMock.FeedComment.findByPk as jest.Mock).mockResolvedValue(fakeComment());
+      (modelsMock.CommentReaction.findOne as jest.Mock).mockResolvedValue(null);
+      (modelsMock.CommentReaction.create as jest.Mock).mockResolvedValue(undefined);
+      (modelsMock.CommentReaction.count as jest.Mock) = jest.fn().mockResolvedValue(1);
+
+      const result = await toggleCommentReaction(commentId, mockUser.id, '👍');
+
+      expect(result.reacted).toBe(true);
     });
 
     it('returns paginated comments for a post', async () => {
