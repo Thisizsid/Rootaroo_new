@@ -308,6 +308,14 @@ describe('Household Service — Member Management', () => {
       await expect(changeMemberRole(userId, householdId, userId, body))
         .rejects.toThrow('Use the transfer endpoint to change your own role');
     });
+
+    it('should reject promoting a member to admin (single-admin model, F-12)', async () => {
+      (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue({ role: 'admin' });
+
+      await expect(changeMemberRole(userId, householdId, otherUserId, { role: 'admin' }))
+        .rejects.toThrow('Use the transfer endpoint to make another member admin');
+      expect(models.User.update).not.toHaveBeenCalled();
+    });
   });
 
   describe('listMembers', () => {

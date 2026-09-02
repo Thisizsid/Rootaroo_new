@@ -333,6 +333,15 @@ export async function changeMemberRole(
   if (targetUserId === adminUserId) {
     throw new AppError(400, 'Use the transfer endpoint to change your own role');
   }
+  // Single-admin model: this endpoint can promote/demote between member
+  // and child, but never mints a second admin — that would leave removeMember
+  // unable to ever offboard the extra admin (it blocks removing any admin
+  // target), with no bound on how many could accumulate this way (F-12).
+  // The only way to become admin is transferAdmin, which also demotes the
+  // caller as part of the same swap.
+  if (body.role === 'admin') {
+    throw new AppError(400, 'Use the transfer endpoint to make another member admin');
+  }
 
   const target = await HouseholdMember.findOne({
     where: { householdId, userId: targetUserId },
