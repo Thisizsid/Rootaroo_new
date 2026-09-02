@@ -7,7 +7,6 @@ export interface JwtPayload {
   userId: string;
   email: string;
   role: string;
-  householdId?: string;
   /** Standard JWT issued-at claim (seconds since epoch) — jwt.sign sets it
    *  automatically; surfaced here so step-up checks (e.g. destructive
    *  account actions for password-less accounts) can require a recently

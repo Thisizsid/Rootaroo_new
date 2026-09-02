@@ -12,6 +12,7 @@ import {
 } from '../../database/models';
 import { NotFoundError, ForbiddenError } from '../../shared/utils/errors';
 import { getSignedUrl } from '../../shared/utils/s3';
+import { isCurrentHouseholdAdmin } from '../../shared/utils/household';
 import { CommentReaction } from '../../database/models';
 import logger from '../../shared/utils/logger';
 import * as notificationService from '../notification/service';
@@ -356,7 +357,7 @@ export async function getPostById(
 export async function deletePost(
   postId: string,
   userId: string,
-  userRole: string,
+  _userRole: string,
 ): Promise<void> {
   const householdId = await getUserHousehold(userId);
 
@@ -366,7 +367,9 @@ export async function deletePost(
   if (!post) throw new NotFoundError('Post');
 
   const isOwner = post.userId === userId;
-  const isAdmin = userRole === 'admin';
+  // DB-checked, not the caller's JWT `role` claim — that claim goes stale
+  // on demotion until the token expires (F-06).
+  const isAdmin = !isOwner && (await isCurrentHouseholdAdmin(userId, householdId));
 
   if (!isOwner && !isAdmin) {
     throw new ForbiddenError('You can only delete your own posts');
@@ -561,13 +564,14 @@ async function loadCommentInHousehold(commentId: string, householdId: string): P
 export async function deleteComment(
   commentId: string,
   userId: string,
-  userRole: string,
+  _userRole: string,
 ): Promise<void> {
   const householdId = await getUserHousehold(userId);
   const comment = await loadCommentInHousehold(commentId, householdId);
 
   const isOwner = comment.userId === userId;
-  const isAdmin = userRole === 'admin';
+  // DB-checked, not the caller's JWT `role` claim (F-06 — see deletePost).
+  const isAdmin = !isOwner && (await isCurrentHouseholdAdmin(userId, householdId));
 
   let isPostOwner = false;
   if (!isOwner && !isAdmin) {
