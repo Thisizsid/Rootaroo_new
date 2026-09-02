@@ -8,6 +8,9 @@ import {
   removeReaction,
   typingStart,
   typingStop,
+  createConversation,
+  deleteConversation,
+  addParticipant,
 } from '../service';
 import { NotFoundError, ForbiddenError, ValidationError } from '../../../shared/utils/errors';
 
@@ -30,6 +33,8 @@ jest.mock('../../../database/models', () => {
     cls.destroy = jest.fn();
     cls.upsert = jest.fn();
     cls.sum = jest.fn();
+    cls.bulkCreate = jest.fn();
+    cls.findOrCreate = jest.fn();
     return cls;
   };
   return {
@@ -52,7 +57,7 @@ jest.mock('../../../shared/utils/socket', () => ({
   })),
 }));
 
-import { ChatMessage, ChatReaction, ConversationParticipant, FeedMedia, HouseholdMember, User } from '../../../database/models';
+import { ChatMessage, ChatReaction, Conversation, ConversationParticipant, FeedMedia, HouseholdMember, User } from '../../../database/models';
 
 // ── Helpers ──
 
@@ -215,6 +220,13 @@ describe('Chat Service', () => {
       expect(result.messages).toHaveLength(0);
       expect(result.hasMore).toBe(false);
     });
+
+    it('should reject a conversationId query if the caller is not a participant of it (F-04)', async () => {
+      (ConversationParticipant.findOne as jest.Mock).mockResolvedValue(null);
+
+      await expect(listMessages(userId, { conversationId: 'foreign-conv' })).rejects.toThrow(ForbiddenError);
+      expect(ChatMessage.findAll).not.toHaveBeenCalled();
+    });
   });
 
   // ── getMessageById ──
@@ -234,6 +246,13 @@ describe('Chat Service', () => {
       (ChatMessage.findOne as jest.Mock).mockResolvedValue(null);
 
       await expect(getMessageById('nonexistent', userId)).rejects.toThrow(NotFoundError);
+    });
+
+    it('should reject if the caller is not a participant of the message\'s conversation (F-04)', async () => {
+      (ChatMessage.findOne as jest.Mock).mockResolvedValue(mockMessage());
+      (ConversationParticipant.findOne as jest.Mock).mockResolvedValue(null);
+
+      await expect(getMessageById(messageId, userId)).rejects.toThrow(ForbiddenError);
     });
   });
 
@@ -363,6 +382,107 @@ describe('Chat Service', () => {
       (HouseholdMember.findOne as jest.Mock).mockResolvedValue(null);
 
       await expect(typingStart(userId)).rejects.toThrow(ForbiddenError);
+    });
+  });
+
+  // ── createConversation (M-02) ──
+
+  describe('createConversation', () => {
+    it('should reject if a participant does not belong to the caller\'s household', async () => {
+      (HouseholdMember.findAll as jest.Mock).mockResolvedValue([]); // no membership rows found
+
+      await expect(
+        createConversation(userId, { type: 'group', participantIds: [otherUserId], name: 'Group' }),
+      ).rejects.toThrow(ForbiddenError);
+      expect(Conversation.create).not.toHaveBeenCalled();
+    });
+
+    it('should create a group conversation when every participant belongs to the household', async () => {
+      (HouseholdMember.findAll as jest.Mock).mockResolvedValue([{ userId: otherUserId, householdId }]);
+      (Conversation.create as jest.Mock).mockResolvedValue({ id: conversationId });
+      const fullConv = {
+        id: conversationId,
+        householdId,
+        type: 'group',
+        name: 'Group',
+        createdBy: userId,
+        createdAt: now,
+        get: (key: string) => ({ participants: [], messages: [] } as Record<string, unknown>)[key],
+      };
+      (Conversation.findByPk as jest.Mock).mockResolvedValue(fullConv);
+
+      const result = await createConversation(userId, { type: 'group', participantIds: [otherUserId], name: 'Group' });
+
+      expect(Conversation.create).toHaveBeenCalled();
+      expect(result.id).toBe(conversationId);
+    });
+  });
+
+  // ── addParticipant (M-02) ──
+
+  describe('addParticipant', () => {
+    const conv = { id: conversationId, householdId, createdBy: userId };
+
+    it('should reject adding a user who does not belong to the household', async () => {
+      (Conversation.findOne as jest.Mock).mockResolvedValue(conv);
+      (HouseholdMember.findOne as jest.Mock).mockImplementation(({ where }: any) =>
+        Promise.resolve(where.userId === otherUserId ? null : { householdId, userId: where.userId, role: 'admin' }),
+      );
+
+      await expect(addParticipant(conversationId, otherUserId, userId)).rejects.toThrow(ForbiddenError);
+      expect(ConversationParticipant.findOrCreate).not.toHaveBeenCalled();
+    });
+
+    it('should add a participant who belongs to the household', async () => {
+      (Conversation.findOne as jest.Mock).mockResolvedValue(conv);
+      (HouseholdMember.findOne as jest.Mock).mockResolvedValue({ householdId, userId: otherUserId, role: 'admin' });
+
+      await addParticipant(conversationId, otherUserId, userId);
+
+      expect(ConversationParticipant.findOrCreate).toHaveBeenCalled();
+    });
+  });
+
+  // ── deleteConversation (M-01) ──
+
+  describe('deleteConversation', () => {
+    beforeEach(() => {
+      (ChatMessage.findAll as jest.Mock).mockResolvedValue([]);
+    });
+
+    it('should allow the creator to delete a group conversation', async () => {
+      const conv = { id: conversationId, householdId, type: 'group', createdBy: userId, destroy: jest.fn().mockResolvedValue(undefined) };
+      (Conversation.findOne as jest.Mock).mockResolvedValue(conv);
+
+      await expect(deleteConversation(conversationId, userId)).resolves.toBeUndefined();
+      expect(conv.destroy).toHaveBeenCalled();
+    });
+
+    it('should reject a non-creator, non-admin member from deleting a group conversation', async () => {
+      const conv = { id: conversationId, householdId, type: 'group', createdBy: otherUserId, destroy: jest.fn() };
+      (Conversation.findOne as jest.Mock).mockResolvedValue(conv);
+      (HouseholdMember.findOne as jest.Mock).mockResolvedValue({ householdId, userId, role: 'member' });
+
+      await expect(deleteConversation(conversationId, userId)).rejects.toThrow(ForbiddenError);
+      expect(conv.destroy).not.toHaveBeenCalled();
+    });
+
+    it('should reject a household admin who is not a participant from deleting a DM', async () => {
+      const conv = { id: conversationId, householdId, type: 'dm', createdBy: otherUserId, destroy: jest.fn() };
+      (Conversation.findOne as jest.Mock).mockResolvedValue(conv);
+      (ConversationParticipant.findOne as jest.Mock).mockResolvedValue(null);
+
+      await expect(deleteConversation(conversationId, userId)).rejects.toThrow(ForbiddenError);
+      expect(conv.destroy).not.toHaveBeenCalled();
+    });
+
+    it('should allow a DM participant to delete it', async () => {
+      const conv = { id: conversationId, householdId, type: 'dm', createdBy: otherUserId, destroy: jest.fn().mockResolvedValue(undefined) };
+      (Conversation.findOne as jest.Mock).mockResolvedValue(conv);
+      (ConversationParticipant.findOne as jest.Mock).mockResolvedValue({ conversationId, userId });
+
+      await expect(deleteConversation(conversationId, userId)).resolves.toBeUndefined();
+      expect(conv.destroy).toHaveBeenCalled();
     });
   });
 });
