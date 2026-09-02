@@ -525,14 +525,28 @@ export async function resetPassword(body: ResetPasswordBody): Promise<void> {
 
 // ── Account Deletion ──
 
-export async function scheduleDeletion(userId: string, body: ScheduleDeletionBody): Promise<void> {
+// Step-up for password-less (OAuth/phone) accounts: require the access
+// token to have been issued recently rather than silently skipping the
+// check, so a long-lived/replayed token alone isn't enough to schedule or
+// confirm account deletion.
+const STEP_UP_MAX_TOKEN_AGE_SECONDS = 5 * 60;
+
+function assertRecentTokenForPasswordlessAccount(tokenIssuedAt?: number): void {
+  const ageSeconds = tokenIssuedAt ? Math.floor(Date.now() / 1000) - tokenIssuedAt : Infinity;
+  if (ageSeconds > STEP_UP_MAX_TOKEN_AGE_SECONDS) {
+    throw new AppError(401, 'Please log in again to confirm this action.');
+  }
+}
+
+export async function scheduleDeletion(userId: string, body: ScheduleDeletionBody, tokenIssuedAt?: number): Promise<void> {
   const user = await User.findByPk(userId);
   if (!user) throw new NotFoundError('User');
 
-  // Verify password for email users; Google users (empty hash) skip check
   if (user.passwordHash) {
     const valid = await bcrypt.compare(body.password, user.passwordHash);
     if (!valid) throw new AppError(400, 'Invalid password');
+  } else {
+    assertRecentTokenForPasswordlessAccount(tokenIssuedAt);
   }
 
   user.scheduledDeletionAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
@@ -547,17 +561,29 @@ export async function cancelDeletion(userId: string): Promise<void> {
   await user.save();
 }
 
-export async function confirmDeletion(userId: string, body: ScheduleDeletionBody): Promise<void> {
+export async function confirmDeletion(userId: string, body: ScheduleDeletionBody, tokenIssuedAt?: number): Promise<void> {
   const user = await User.findByPk(userId);
   if (!user) throw new NotFoundError('User');
 
-  const valid = await bcrypt.compare(body.password, user.passwordHash || '');
-  if (!user.passwordHash || !valid) {
-    if (user.passwordHash) throw new AppError(400, 'Invalid password');
+  if (user.passwordHash) {
+    const valid = await bcrypt.compare(body.password, user.passwordHash);
+    if (!valid) throw new AppError(400, 'Invalid password');
+  } else {
+    assertRecentTokenForPasswordlessAccount(tokenIssuedAt);
   }
 
+  // The 30-day grace period only means something if confirm can't be
+  // called before scheduleDeletion, or before the window has elapsed.
+  if (!user.scheduledDeletionAt || user.scheduledDeletionAt > new Date()) {
+    throw new AppError(400, 'Deletion must be scheduled first, and the 30-day window must elapse before confirming.');
+  }
+
+  await finalizeUserDeletion(user);
+}
+
+async function finalizeUserDeletion(user: User): Promise<void> {
   // Revoke all refresh tokens
-  await RefreshToken.destroy({ where: { userId } });
+  await RefreshToken.destroy({ where: { userId: user.id } });
 
   // Free up the unique identifiers (email/phone/googleId) before soft-deleting —
   // paranoid deletes leave the row physically in the table, so without this a
@@ -572,6 +598,21 @@ export async function confirmDeletion(userId: string, body: ScheduleDeletionBody
 
   // Soft-delete the user (paranoid)
   await user.destroy();
+}
+
+/**
+ * Finalizes every account whose 30-day grace period has elapsed without a
+ * human ever confirming it manually — scheduledDeletionAt would otherwise
+ * be a timestamp nobody reads. Run by a cron job.
+ */
+export async function finalizeDueAccountDeletions(): Promise<number> {
+  const due = await User.findAll({
+    where: { scheduledDeletionAt: { [Op.lte]: new Date() } },
+  });
+  for (const user of due) {
+    await finalizeUserDeletion(user);
+  }
+  return due.length;
 }
 
 // ── Cancel pending registration ──

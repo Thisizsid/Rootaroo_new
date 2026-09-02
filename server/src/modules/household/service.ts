@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
+import { Op } from 'sequelize';
 import { Household, HouseholdMember, Invitation, User, Conversation, ConversationParticipant } from '../../database/models';
 import { ConflictError, NotFoundError, ForbiddenError, AppError } from '../../shared/utils/errors';
 import { getSignedUrl } from '../../shared/utils/s3';
@@ -356,10 +357,17 @@ export async function listMembers(
 
 // ── Household Deletion (admin-only, password-confirmed, 30-day grace) ──
 
+// A destructive action gated on a freshly-issued token, for accounts with
+// no password to check (OAuth/phone-only admins). Prevents a long-lived
+// stolen/replayed access token from being sufficient on its own — the
+// caller must have (re-)authenticated recently.
+const STEP_UP_MAX_TOKEN_AGE_SECONDS = 5 * 60;
+
 async function assertAdminWithPassword(
   userId: string,
   householdId: string,
   password: string,
+  tokenIssuedAt?: number,
 ): Promise<Household> {
   const membership = await getMembership(householdId, userId);
   if (membership.role !== 'admin') {
@@ -368,9 +376,15 @@ async function assertAdminWithPassword(
 
   const user = await User.findByPk(userId);
   if (!user) throw new NotFoundError('User');
+
   if (user.passwordHash) {
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) throw new AppError(400, 'Invalid password');
+  } else {
+    const ageSeconds = tokenIssuedAt ? Math.floor(Date.now() / 1000) - tokenIssuedAt : Infinity;
+    if (ageSeconds > STEP_UP_MAX_TOKEN_AGE_SECONDS) {
+      throw new AppError(401, 'Please log in again to confirm this action.');
+    }
   }
 
   const household = await Household.findByPk(householdId);
@@ -382,8 +396,9 @@ export async function scheduleHouseholdDeletion(
   userId: string,
   householdId: string,
   body: ScheduleHouseholdDeletionBody,
+  tokenIssuedAt?: number,
 ): Promise<void> {
-  const household = await assertAdminWithPassword(userId, householdId, body.password);
+  const household = await assertAdminWithPassword(userId, householdId, body.password, tokenIssuedAt);
 
   household.scheduledDeletionAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   await household.save();
@@ -428,13 +443,42 @@ export async function confirmHouseholdDeletion(
   userId: string,
   householdId: string,
   body: ScheduleHouseholdDeletionBody,
+  tokenIssuedAt?: number,
 ): Promise<void> {
-  const household = await assertAdminWithPassword(userId, householdId, body.password);
+  const household = await assertAdminWithPassword(userId, householdId, body.password, tokenIssuedAt);
 
+  // The 30-day grace period is the whole point of scheduling — an admin
+  // possessing a valid access token must not be able to skip straight to
+  // confirm without ever scheduling, or before the window has elapsed.
+  if (!household.scheduledDeletionAt || household.scheduledDeletionAt > new Date()) {
+    throw new AppError(400, 'Deletion must be scheduled first, and the 30-day window must elapse before confirming.');
+  }
+
+  await finalizeHouseholdDeletion(household);
+}
+
+async function finalizeHouseholdDeletion(household: Household): Promise<void> {
   // Sever every member's access; the household row itself is soft-deleted
   // (paranoid) so its data can still be audited/recovered if needed — same
   // lightweight approach used for account deletion, no cascading purge of
   // owned content (feed posts, tasks, vault docs, etc.).
-  await HouseholdMember.destroy({ where: { householdId } });
+  await HouseholdMember.destroy({ where: { householdId: household.id } });
   await household.destroy();
+}
+
+/**
+ * Finalizes every household whose 30-day grace period has elapsed without
+ * a human ever confirming it manually. Without this, scheduledDeletionAt
+ * is a timestamp nobody reads — the admin's earlier confirm-deletion call
+ * was the only path that ever actually deleted anything, so a scheduled
+ * household could sit "pending deletion" forever. Run by a cron job.
+ */
+export async function finalizeDueHouseholdDeletions(): Promise<number> {
+  const due = await Household.findAll({
+    where: { scheduledDeletionAt: { [Op.lte]: new Date() } },
+  });
+  for (const household of due) {
+    await finalizeHouseholdDeletion(household);
+  }
+  return due.length;
 }

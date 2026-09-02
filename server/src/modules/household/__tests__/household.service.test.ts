@@ -373,6 +373,27 @@ describe('Household Service — Member Management', () => {
       await expect(scheduleHouseholdDeletion(userId, householdId, { password: 'wrong' }))
         .rejects.toThrow('Invalid password');
     });
+
+    it('should allow a password-less (OAuth) admin with a freshly issued token', async () => {
+      (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'admin' }));
+      (models.User.findByPk as jest.Mock).mockResolvedValue({ id: userId, passwordHash: '' });
+      const household = fakeHousehold({ scheduledDeletionAt: null, save: jest.fn() });
+      (models.Household.findByPk as jest.Mock).mockResolvedValue(household);
+      const nowSeconds = Math.floor(Date.now() / 1000);
+
+      await scheduleHouseholdDeletion(userId, householdId, { password: '' }, nowSeconds);
+
+      expect(household.save).toHaveBeenCalled();
+    });
+
+    it('should reject a password-less (OAuth) admin with a stale token', async () => {
+      (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'admin' }));
+      (models.User.findByPk as jest.Mock).mockResolvedValue({ id: userId, passwordHash: '' });
+      const staleIssuedAt = Math.floor(Date.now() / 1000) - 10 * 60; // 10 minutes ago
+
+      await expect(scheduleHouseholdDeletion(userId, householdId, { password: '' }, staleIssuedAt))
+        .rejects.toThrow('Please log in again');
+    });
   });
 
   describe('cancelHouseholdDeletion', () => {
@@ -398,16 +419,32 @@ describe('Household Service — Member Management', () => {
   describe('confirmHouseholdDeletion', () => {
     const hash = '$2b$04$bUCIhz76H.vDDixGSaXRt.vmZy8izCpNSiK4ZVGtmhtY1twdLD31W';
 
+    const elapsedGracePeriod = new Date(Date.now() - 24 * 60 * 60 * 1000); // 1 day in the past
+
     it('should remove all members and soft-delete the household', async () => {
       (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'admin' }));
       (models.User.findByPk as jest.Mock).mockResolvedValue({ id: userId, passwordHash: hash });
-      const household = fakeHousehold({ destroy: jest.fn().mockResolvedValue(undefined) });
+      const household = fakeHousehold({
+        scheduledDeletionAt: elapsedGracePeriod,
+        destroy: jest.fn().mockResolvedValue(undefined),
+      });
       (models.Household.findByPk as jest.Mock).mockResolvedValue(household);
 
       await confirmHouseholdDeletion(userId, householdId, { password: 'password123' });
 
       expect(models.HouseholdMember.destroy).toHaveBeenCalledWith({ where: { householdId } });
       expect(household.destroy).toHaveBeenCalled();
+    });
+
+    it('should throw if the 30-day grace period has not been scheduled or has not elapsed yet', async () => {
+      (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'admin' }));
+      (models.User.findByPk as jest.Mock).mockResolvedValue({ id: userId, passwordHash: hash });
+      const household = fakeHousehold({ scheduledDeletionAt: null, destroy: jest.fn() });
+      (models.Household.findByPk as jest.Mock).mockResolvedValue(household);
+
+      await expect(confirmHouseholdDeletion(userId, householdId, { password: 'password123' }))
+        .rejects.toThrow('Deletion must be scheduled first');
+      expect(household.destroy).not.toHaveBeenCalled();
     });
 
     it('should throw ForbiddenError for a non-admin', async () => {

@@ -458,6 +458,26 @@ describe('Auth Service — Account Deletion', () => {
       await expect(scheduleDeletion('missing', { password: 'x' }))
         .rejects.toThrow('User');
     });
+
+    it('should allow a password-less (OAuth) account with a freshly issued token', async () => {
+      const user = { id: 'u1', passwordHash: '', scheduledDeletionAt: null, save: jest.fn() };
+      (models.User.findByPk as jest.Mock).mockResolvedValue(user);
+      const nowSeconds = Math.floor(Date.now() / 1000);
+
+      await scheduleDeletion('u1', { password: '' }, nowSeconds);
+
+      expect(user.save).toHaveBeenCalled();
+    });
+
+    it('should reject a password-less (OAuth) account with a stale token', async () => {
+      const user = { id: 'u1', passwordHash: '', scheduledDeletionAt: null, save: jest.fn() };
+      (models.User.findByPk as jest.Mock).mockResolvedValue(user);
+      const staleIssuedAt = Math.floor(Date.now() / 1000) - 10 * 60;
+
+      await expect(scheduleDeletion('u1', { password: '' }, staleIssuedAt))
+        .rejects.toThrow('Please log in again');
+      expect(user.save).not.toHaveBeenCalled();
+    });
   });
 
   describe('cancelDeletion', () => {
@@ -473,10 +493,13 @@ describe('Auth Service — Account Deletion', () => {
   describe('confirmDeletion', () => {
     const hash = '$2b$04$bUCIhz76H.vDDixGSaXRt.vmZy8izCpNSiK4ZVGtmhtY1twdLD31W';
 
+    const elapsedGracePeriod = new Date(Date.now() - 24 * 60 * 60 * 1000); // 1 day in the past
+
     it('should revoke tokens and soft-delete user', async () => {
       const user = {
         id: 'u1',
         passwordHash: hash,
+        scheduledDeletionAt: elapsedGracePeriod,
         update: jest.fn().mockResolvedValue(undefined),
         destroy: jest.fn().mockResolvedValue(undefined),
       };
@@ -486,10 +509,19 @@ describe('Auth Service — Account Deletion', () => {
       expect(user.destroy).toHaveBeenCalled();
     });
 
+    it('should throw if the 30-day grace period has not been scheduled or has not elapsed yet', async () => {
+      const user = { id: 'u1', passwordHash: hash, scheduledDeletionAt: null, destroy: jest.fn() };
+      (models.User.findByPk as jest.Mock).mockResolvedValue(user);
+      await expect(confirmDeletion('u1', { password: 'password123' }))
+        .rejects.toThrow('Deletion must be scheduled first');
+      expect(user.destroy).not.toHaveBeenCalled();
+    });
+
     it('should free up email/phone/googleId before soft-deleting, so they can be reused', async () => {
       const user = {
         id: 'u1',
         passwordHash: hash,
+        scheduledDeletionAt: elapsedGracePeriod,
         update: jest.fn().mockResolvedValue(undefined),
         destroy: jest.fn().mockResolvedValue(undefined),
       };

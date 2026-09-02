@@ -102,7 +102,7 @@ export async function checkResetCode(req: Request, res: Response, next: NextFunc
 export async function scheduleDeletion(req: Request, res: Response, next: NextFunction) {
   try {
     const auth = req as AuthenticatedRequest;
-    await authService.scheduleDeletion(auth.user!.userId, req.body);
+    await authService.scheduleDeletion(auth.user!.userId, req.body, auth.user!.iat);
     res.status(200).json({ success: true, data: { message: 'Account scheduled for deletion in 30 days' } });
   } catch (e) { next(e); }
 }
@@ -118,7 +118,7 @@ export async function cancelDeletion(req: Request, res: Response, next: NextFunc
 export async function confirmDeletion(req: Request, res: Response, next: NextFunction) {
   try {
     const auth = req as AuthenticatedRequest;
-    await authService.confirmDeletion(auth.user!.userId, req.body);
+    await authService.confirmDeletion(auth.user!.userId, req.body, auth.user!.iat);
     res.status(200).json({ success: true, data: { message: 'Account deleted' } });
   } catch (e) { next(e); }
 }
