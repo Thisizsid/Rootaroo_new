@@ -1,9 +1,15 @@
 import {
   generateInvitation, joinViaCode, removeMember, leaveHousehold, transferAdmin, changeMemberRole, listMembers,
   scheduleHouseholdDeletion, cancelHouseholdDeletion, confirmHouseholdDeletion, rotateInviteCode, getHousehold,
-  createHousehold,
+  createHousehold, updateCoverPhoto, removeCoverPhoto,
 } from '../service';
 import * as models from '../../../database/models';
+
+jest.mock('../../../shared/utils/s3', () => ({
+  getSignedUrl: jest.fn(() => Promise.resolve(null)),
+  deleteObject: jest.fn().mockResolvedValue(undefined),
+}));
+import { deleteObject } from '../../../shared/utils/s3';
 
 jest.mock('../../../database/models', () => {
   return {
@@ -490,6 +496,45 @@ describe('Household Service — Member Management', () => {
 
       await expect(confirmHouseholdDeletion(userId, householdId, { password: 'x' }))
         .rejects.toThrow('Only the household admin can delete the household');
+    });
+  });
+
+  describe('Cover photo (F-16)', () => {
+    beforeEach(() => { jest.clearAllMocks(); });
+
+    it('should delete the previous cover photo object after replacing it', async () => {
+      (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'admin' }));
+      const household = fakeHousehold({ coverPhotoUrl: 'household-covers/old-key.jpg', save: jest.fn().mockResolvedValue(undefined) });
+      (models.Household.findByPk as jest.Mock).mockResolvedValue(household);
+      (models.HouseholdMember.count as jest.Mock).mockResolvedValue(1);
+
+      await updateCoverPhoto(userId, householdId, 'household-covers/new-key.jpg');
+
+      expect(household.coverPhotoUrl).toBe('household-covers/new-key.jpg');
+      expect(deleteObject).toHaveBeenCalledWith('household-covers/old-key.jpg');
+    });
+
+    it('should not attempt to delete anything when there was no previous cover photo', async () => {
+      (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'admin' }));
+      const household = fakeHousehold({ coverPhotoUrl: null, save: jest.fn().mockResolvedValue(undefined) });
+      (models.Household.findByPk as jest.Mock).mockResolvedValue(household);
+      (models.HouseholdMember.count as jest.Mock).mockResolvedValue(1);
+
+      await updateCoverPhoto(userId, householdId, 'household-covers/new-key.jpg');
+
+      expect(deleteObject).not.toHaveBeenCalled();
+    });
+
+    it('should delete the object on removal (removeCoverPhoto)', async () => {
+      (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'admin' }));
+      const household = fakeHousehold({ coverPhotoUrl: 'household-covers/old-key.jpg', save: jest.fn().mockResolvedValue(undefined) });
+      (models.Household.findByPk as jest.Mock).mockResolvedValue(household);
+      (models.HouseholdMember.count as jest.Mock).mockResolvedValue(1);
+
+      await removeCoverPhoto(userId, householdId);
+
+      expect(household.coverPhotoUrl).toBeNull();
+      expect(deleteObject).toHaveBeenCalledWith('household-covers/old-key.jpg');
     });
   });
 

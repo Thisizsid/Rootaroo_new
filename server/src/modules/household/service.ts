@@ -5,7 +5,8 @@ import { Op } from 'sequelize';
 import { Transaction } from 'sequelize';
 import { sequelize, Household, HouseholdMember, Invitation, User, Conversation, ConversationParticipant } from '../../database/models';
 import { ConflictError, NotFoundError, ForbiddenError, AppError } from '../../shared/utils/errors';
-import { getSignedUrl } from '../../shared/utils/s3';
+import { getSignedUrl, deleteObject } from '../../shared/utils/s3';
+import logger from '../../shared/utils/logger';
 import * as notificationService from '../../shared/services/notifications';
 import type {
   CreateHouseholdBody, HouseholdResponse, InvitationResponse, JoinHouseholdBody,
@@ -266,8 +267,19 @@ export async function updateCoverPhoto(
   const household = await Household.findByPk(householdId);
   if (!household) throw new NotFoundError('Household');
 
+  const previousKey = household.coverPhotoUrl;
   household.coverPhotoUrl = coverPhotoUrl;
   await household.save();
+
+  // Best-effort cleanup of the object this replaces — without it, every
+  // re-upload/removal orphans the previous S3 object permanently (F-16).
+  // Only ever an S3 key here (never a raw external URL), same assumption
+  // getSignedUrl already makes elsewhere in this file.
+  if (previousKey && previousKey !== coverPhotoUrl) {
+    deleteObject(previousKey).catch((e: Error) =>
+      logger.warn('[Household] Failed to delete previous cover photo:', e.message),
+    );
+  }
 
   const memberCount = await HouseholdMember.count({ where: { householdId } });
   return await toHouseholdResponse(household, membership.role, memberCount);
