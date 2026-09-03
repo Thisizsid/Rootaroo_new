@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -8,17 +8,17 @@ import {
   ActivityIndicator,
   Image,
   StatusBar,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { format, parseISO } from 'date-fns';
-import { colors, fonts, radius, spacing } from '../shared/theme';
-import { journalApi } from '../shared/api/journal';
-import { moodById, moodIcon } from '../shared/constants/journalMoods';
-import ConfirmSheet from '../components/ConfirmSheet';
-import ErrorState from '../components/ErrorState';
-import { showAlert } from '../shared/services/themedAlert';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useFocusEffect } from "@react-navigation/native";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { format, parseISO } from "date-fns";
+import { colors, fonts, radius, spacing } from "../shared/theme";
+import { journalApi } from "../shared/api/journal";
+import { moodById, moodIcon } from "../shared/constants/journalMoods";
+import ConfirmSheet from "../components/ConfirmSheet";
+import ErrorState from "../components/ErrorState";
+import { showAlert } from "../shared/services/themedAlert";
 
 export default function JournalEntryDetailScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
@@ -52,10 +52,15 @@ export default function JournalEntryDetailScreen({ navigation, route }) {
 
   // "On this day" is anchored to the entry's own date, and only needs
   // re-fetching when that date changes — editing the text cannot move it.
-  const entryDayKey = entry ? format(parseISO(entry.createdAt), 'yyyy-MM-dd') : null;
+  const entryDayKey = entry
+    ? format(parseISO(entry.createdAt), "yyyy-MM-dd")
+    : null;
   useEffect(() => {
     if (!entryDayKey) return;
-    journalApi.onThisDay(entryDayKey).then(setOnThisDay).catch(() => setOnThisDay([]));
+    journalApi
+      .onThisDay(entryDayKey)
+      .then(setOnThisDay)
+      .catch(() => setOnThisDay([]));
   }, [entryDayKey]);
 
   const handleDelete = useCallback(async () => {
@@ -67,15 +72,19 @@ export default function JournalEntryDetailScreen({ navigation, route }) {
     } catch (e) {
       setDeleting(false);
       setConfirmingDelete(false);
-      showAlert('Could not delete', e?.response?.data?.message || 'Try again in a moment.', [
-        { text: 'OK' },
-      ]);
+      showAlert(
+        "Could not delete",
+        e?.response?.data?.message || "Try again in a moment.",
+        [{ text: "OK" }],
+      );
     }
   }, [entryId, navigation]);
 
   if (loading) {
     return (
-      <View style={[styles.screen, styles.centered, { paddingTop: insets.top }]}>
+      <View
+        style={[styles.screen, styles.centered, { paddingTop: insets.top }]}
+      >
         <StatusBar barStyle="light-content" backgroundColor={colors.canvas} />
         <ActivityIndicator color={colors.gold} />
       </View>
@@ -117,14 +126,17 @@ export default function JournalEntryDetailScreen({ navigation, route }) {
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() =>
-            showAlert('Entry options', null, [
-              { text: 'Edit entry', onPress: () => navigation.navigate('JournalEditor', { entry }) },
+            showAlert("Entry options", null, [
               {
-                text: 'Delete entry',
-                style: 'destructive',
+                text: "Edit entry",
+                onPress: () => navigation.navigate("JournalEditor", { entry }),
+              },
+              {
+                text: "Delete entry",
+                style: "destructive",
                 onPress: () => setConfirmingDelete(true),
               },
-              { text: 'Cancel', style: 'cancel' },
+              { text: "Cancel", style: "cancel" },
             ])
           }
           hitSlop={12}
@@ -132,7 +144,11 @@ export default function JournalEntryDetailScreen({ navigation, route }) {
           accessibilityRole="button"
           accessibilityLabel="Entry options"
         >
-          <Ionicons name="ellipsis-horizontal" size={20} color={colors.textSecondary} />
+          <Ionicons
+            name="ellipsis-horizontal"
+            size={20}
+            color={colors.textSecondary}
+          />
         </TouchableOpacity>
       </View>
 
@@ -149,17 +165,19 @@ export default function JournalEntryDetailScreen({ navigation, route }) {
             />
           </View>
           <View style={styles.headlineText}>
-            <Text style={styles.date}>{format(date, 'EEEE, MMMM d')}</Text>
+            <Text style={styles.date}>{format(date, "EEEE, MMMM d")}</Text>
             <Text style={styles.meta}>
-              {format(date, 'h:mmaaa')} · {entry.wordCount}{' '}
-              {entry.wordCount === 1 ? 'word' : 'words'}
+              {format(date, "h:mmaaa")} · {entry.wordCount}{" "}
+              {entry.wordCount === 1 ? "word" : "words"}
             </Text>
           </View>
         </View>
 
-        {entry.content ? <Text style={styles.body}>{entry.content}</Text> : null}
+        {entry.content ? (
+          <Text style={styles.body}>{entry.content}</Text>
+        ) : null}
 
-        {entry.media.length > 0 ? (
+        {entry?.media?.length > 0 ? (
           <View style={styles.mediaGrid}>
             {entry.media.map((item) => (
               <Image
@@ -171,7 +189,7 @@ export default function JournalEntryDetailScreen({ navigation, route }) {
           </View>
         ) : null}
 
-        {entry.tags.length > 0 ? (
+        {entry?.tags?.length > 0 ? (
           <View style={styles.tagRow}>
             {entry.tags.map((tag) => (
               <View key={tag} style={styles.tagChip}>
@@ -185,24 +203,34 @@ export default function JournalEntryDetailScreen({ navigation, route }) {
           <TouchableOpacity
             style={styles.anniversaryCard}
             activeOpacity={0.8}
-            onPress={() => navigation.push('JournalEntry', { entryId: anniversary.id })}
+            onPress={() =>
+              navigation.push("JournalEntry", { entryId: anniversary.id })
+            }
           >
             <View style={styles.anniversaryText}>
               <Text style={styles.anniversaryLabel}>ON THIS DAY</Text>
               <Text style={styles.anniversaryBody} numberOfLines={1}>
-                {anniversary.yearsAgo === 1 ? 'Last year' : `${anniversary.yearsAgo} years ago`}:{' '}
-                {anniversary.snippet || 'You wrote an entry'}
+                {anniversary.yearsAgo === 1
+                  ? "Last year"
+                  : `${anniversary.yearsAgo} years ago`}
+                : {anniversary.snippet || "You wrote an entry"}
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+            <Ionicons
+              name="chevron-forward"
+              size={16}
+              color={colors.textMuted}
+            />
           </TouchableOpacity>
         ) : null}
       </ScrollView>
 
-      <View style={[styles.actions, { paddingBottom: insets.bottom + spacing.lg }]}>
+      <View
+        style={[styles.actions, { paddingBottom: insets.bottom + spacing.lg }]}
+      >
         <TouchableOpacity
           style={styles.editBtn}
-          onPress={() => navigation.navigate('JournalEditor', { entry })}
+          onPress={() => navigation.navigate("JournalEditor", { entry })}
           activeOpacity={0.85}
         >
           <Text style={styles.editBtnText}>Edit entry</Text>
@@ -231,30 +259,35 @@ export default function JournalEntryDetailScreen({ navigation, route }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.canvas },
-  centered: { alignItems: 'center', justifyContent: 'center' },
+  centered: { alignItems: "center", justifyContent: "center" },
   topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
   },
   scroll: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xxl },
 
-  headline: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  headline: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   moodCircle: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.borderCool,
   },
   headlineText: { flex: 1 },
   date: { fontFamily: fonts.displayBold, fontSize: 17, color: colors.ink },
-  meta: { fontFamily: fonts.body, fontSize: 11.5, color: colors.textMuted, marginTop: 2 },
+  meta: {
+    fontFamily: fonts.body,
+    fontSize: 11.5,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
 
   body: {
     fontFamily: fonts.body,
@@ -265,8 +298,8 @@ const styles = StyleSheet.create({
   },
 
   mediaGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: spacing.sm,
     marginTop: spacing.lg,
   },
@@ -277,19 +310,28 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceDark,
   },
 
-  tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.xl },
+  tagRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+    marginTop: spacing.xl,
+  },
   tagChip: {
     paddingHorizontal: spacing.md,
     height: 24,
-    justifyContent: 'center',
+    justifyContent: "center",
     borderRadius: radius.pill,
     backgroundColor: colors.surface,
   },
-  tagChipText: { fontFamily: fonts.body, fontSize: 11.5, color: colors.inkDeep },
+  tagChipText: {
+    fontFamily: fonts.body,
+    fontSize: 11.5,
+    color: colors.inkDeep,
+  },
 
   anniversaryCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.md,
     marginTop: spacing.xl,
     padding: spacing.lg,
@@ -319,8 +361,8 @@ const styles = StyleSheet.create({
   editBtn: {
     height: 46,
     borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: colors.gold,
   },
   editBtnText: {
@@ -328,6 +370,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.canvas,
   },
-  deleteBtn: { alignItems: 'center', paddingVertical: spacing.md },
-  deleteBtnText: { fontFamily: fonts.bodySemiBold, fontSize: 13, color: colors.danger },
+  deleteBtn: { alignItems: "center", paddingVertical: spacing.md },
+  deleteBtnText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 13,
+    color: colors.danger,
+  },
 });
