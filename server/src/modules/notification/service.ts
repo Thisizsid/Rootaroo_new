@@ -16,6 +16,25 @@ import type {
   UpdatePreferencesBody,
 } from './types';
 
+// Maps a notification `type` string to the NotificationPreference field
+// that gates it. Types with no entry here (e.g. household deletion
+// warnings) are never opt-out-able by design — they're account-lifecycle
+// critical, not a subscribable feed. This is the single choke point every
+// send path (sendToUser directly, or via notifyUser/notifyHousehold)
+// funnels through, so the gate can't be bypassed by calling one path vs
+// the other (F-08).
+const TYPE_TO_PREFERENCE_FIELD: Partial<Record<string, keyof NotificationPreferencesResponse>> = {
+  feed: 'newPost',
+  task: 'taskAssigned',
+  todo: 'taskAssigned',
+  expense_reminder: 'newExpense',
+  check_in: 'checkIn',
+  ping_request: 'pingRequest',
+  ping_response: 'pingRequest',
+  calendar: 'calendarEvent',
+  chat: 'chatMessage',
+};
+
 // ── Device Token Management ── (DB-backed)
 
 /** Register a push notification device token. */
@@ -206,6 +225,15 @@ export async function sendToUser(
     data: data || null,
     isRead: false,
   });
+
+  // Respect the user's notification preferences before pushing — history
+  // is always recorded above regardless, so the item still shows up in
+  // their in-app notification list even with push disabled for this type.
+  const prefField = TYPE_TO_PREFERENCE_FIELD[type];
+  if (prefField) {
+    const prefs = await NotificationPreference.findOne({ where: { userId } });
+    if (prefs && prefs[prefField] === false) return;
+  }
 
   // Deliver via FCM if enabled (skip for self-actions — history only)
   if (env.fcm.enabled && !options?.skipPush) {

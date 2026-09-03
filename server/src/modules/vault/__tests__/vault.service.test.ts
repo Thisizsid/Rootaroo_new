@@ -91,8 +91,12 @@ describe('Vault Service', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Default: user belongs to household
-    (HouseholdMember.findOne as jest.Mock).mockResolvedValue({ householdId });
+    // Default: everyone belongs to the household; only adminUserId holds
+    // the admin role — used both by getUserHousehold (userId-only lookup)
+    // and the DB-backed isCurrentHouseholdAdmin check (F-06).
+    (HouseholdMember.findOne as jest.Mock).mockImplementation(({ where }: any) =>
+      Promise.resolve({ householdId, userId: where.userId, role: where.userId === adminUserId ? 'admin' : 'member' }),
+    );
   });
 
   // ─── uploadDocument ───

@@ -32,6 +32,11 @@ export const env = {
     refreshExpiry: process.env.JWT_REFRESH_EXPIRY || '30d',
   },
 
+  // Dedicated key for encrypting Google Calendar OAuth tokens at rest
+  // (CalendarSyncState.accessToken/refreshToken) — kept separate from
+  // JWT_ACCESS_SECRET so rotating one doesn't require rotating the other.
+  calendarTokenKek: process.env.CALENDAR_TOKEN_KEK || 'dev-calendar-token-kek',
+
   google: {
     clientId: process.env.GOOGLE_CLIENT_ID || '',
     clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
@@ -75,3 +80,24 @@ export const env = {
   logLevel: process.env.LOG_LEVEL || 'debug',
   uploadDir: process.env.UPLOAD_DIR || './uploads',
 };
+
+// The JWT/S3 fallbacks above exist purely for local dev convenience. In
+// production they must never be reachable — a well-known 'dev-access-secret'
+// or 'minioadmin' credential live in prod is a full auth/storage bypass, and
+// silently booting on them (rather than refusing to start) is the actual bug
+// this closes. Checked here, at import time, so it runs before anything else
+// in the app does.
+if (env.nodeEnv === 'production') {
+  const missing = [
+    !process.env.JWT_ACCESS_SECRET && 'JWT_ACCESS_SECRET',
+    !process.env.S3_ACCESS_KEY_ID && 'S3_ACCESS_KEY_ID',
+    !process.env.S3_SECRET_ACCESS_KEY && 'S3_SECRET_ACCESS_KEY',
+    !process.env.CALENDAR_TOKEN_KEK && 'CALENDAR_TOKEN_KEK',
+  ].filter(Boolean);
+
+  if (missing.length > 0) {
+    // eslint-disable-next-line no-console
+    console.error(`FATAL: refusing to start in production without required secrets: ${missing.join(', ')}`);
+    process.exit(1);
+  }
+}

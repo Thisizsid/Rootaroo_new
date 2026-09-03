@@ -7,10 +7,12 @@ import {
   Conversation,
   ConversationParticipant,
   FeedMedia,
+  FeedPost,
   HouseholdMember,
   User,
 } from '../../database/models';
 import { NotFoundError, ForbiddenError, ValidationError } from '../../shared/utils/errors';
+import { getUserHousehold as getUserHouseholdCore } from '../../shared/utils/household';
 import { getSignedUrl } from '../../shared/utils/s3';
 import { getIO } from '../../shared/utils/socket';
 import type {
@@ -59,6 +61,20 @@ export async function createConversation(
   body: CreateConversationBody,
 ): Promise<ConversationResponse> {
   const householdId = await ensureHouseholdMember(userId);
+
+  // Every participant added here must belong to the caller's own household
+  // — otherwise a caller could stamp an arbitrary user id (from any
+  // household) onto a conversation tagged with their own householdId,
+  // bypassing tenant isolation entirely (M-02).
+  const otherParticipantIds = body.participantIds.filter((id) => id !== userId);
+  if (otherParticipantIds.length > 0) {
+    const memberships = await HouseholdMember.findAll({
+      where: { userId: { [Op.in]: otherParticipantIds }, householdId },
+    });
+    if (memberships.length !== otherParticipantIds.length) {
+      throw new ForbiddenError('All participants must belong to your household');
+    }
+  }
 
   // For DMs, check if a conversation already exists between these users
   if (body.type === 'dm' && body.participantIds.length === 1) {
@@ -193,7 +209,7 @@ async function getOrCreateDm(
 }
 
 export async function getUserConversations(userId: string): Promise<ConversationResponse[]> {
-  await ensureHouseholdMember(userId);
+  const householdId = await ensureHouseholdMember(userId);
 
   // Find conversations where user is a participant
   const participations = await ConversationParticipant.findAll({
@@ -205,7 +221,7 @@ export async function getUserConversations(userId: string): Promise<Conversation
   if (convIds.length === 0) return [];
 
   const convs = await Conversation.findAll({
-    where: { id: convIds },
+    where: { id: convIds, householdId },
     include: [
       { model: User, as: 'participants' },
       {
@@ -225,9 +241,7 @@ export async function getUserConversations(userId: string): Promise<Conversation
 // ── Helpers ──
 
 async function ensureHouseholdMember(userId: string): Promise<string> {
-  const membership = await HouseholdMember.findOne({ where: { userId } });
-  if (!membership) throw new ForbiddenError('You must belong to a household to send messages');
-  return membership.householdId;
+  return getUserHouseholdCore(userId, 'You must belong to a household to send messages');
 }
 
 async function isHouseholdAdmin(userId: string, householdId: string): Promise<boolean> {
@@ -335,10 +349,14 @@ export async function sendMessage(
   let type: 'text' | 'image' | 'voice' = 'text';
   let durationSeconds: number | null = null;
 
-  // FR-143: Attach media from feed upload
+  // FR-143: Attach media from feed upload. FeedMedia has no householdId
+  // column of its own (it's denormalized on FeedPost) — filtering
+  // `where: { householdId }` directly on FeedMedia queried a column that
+  // doesn't exist. Scope through the FeedPost association instead (F-17).
   if (body.mediaIds && body.mediaIds.length > 0) {
     const medias = await FeedMedia.findAll({
-      where: { id: { [Op.in]: body.mediaIds }, householdId },
+      where: { id: { [Op.in]: body.mediaIds } },
+      include: [{ model: FeedPost, as: 'post', where: { householdId }, attributes: [] }],
     });
     if (medias.length > 0) {
       mediaUrl = medias[0].get('mediaUrl') as string;
@@ -402,6 +420,17 @@ export async function listMessages(
 
   const where: any = {};
   if (query.conversationId) {
+    // A conversation lookup here is not implicitly household-scoped — it
+    // must also confirm the caller is actually a participant, otherwise
+    // any household member could pass an arbitrary/foreign conversationId
+    // and read messages (including other members' DMs) they're not part
+    // of (F-04).
+    const participant = await ConversationParticipant.findOne({
+      where: { conversationId: query.conversationId, userId },
+    });
+    if (!participant) {
+      throw new ForbiddenError('You are not a participant in this conversation');
+    }
     where.conversationId = query.conversationId;
   } else {
     where.householdId = householdId;
@@ -465,6 +494,17 @@ export async function getMessageById(
     ],
   });
   if (!msg) throw new NotFoundError('Message not found');
+
+  // householdId scoping alone doesn't prove the caller is in this specific
+  // conversation — a household DM between two other members would still
+  // be readable by any third member who knows/guesses the message id.
+  const conversationId = msg.get('conversationId') as string;
+  const participant = await ConversationParticipant.findOne({
+    where: { conversationId, userId },
+  });
+  if (!participant) {
+    throw new ForbiddenError('You are not a participant in this conversation');
+  }
 
   const response = await toMessageResponse(msg);
 
@@ -643,38 +683,13 @@ export async function getReactions(messageId: string): Promise<ReactionCountResp
   return counts;
 }
 
-// ── Typing Indicator (FR-149) ──
-
-export async function typingStart(userId: string): Promise<void> {
-  const membership = await HouseholdMember.findOne({ where: { userId } });
-  if (!membership) throw new ForbiddenError('You must belong to a household');
-
-  const householdId = membership.householdId;
-
-  const user = await User.findByPk(userId, { attributes: ['id', 'displayName'] });
-  const displayName = user?.get('displayName') as string || 'Someone';
-
-  try {
-    const io = getIO();
-    io.to(householdId).emit('typing_start', { userId, displayName });
-  } catch {
-    /* ignore */
-  }
-}
-
-export async function typingStop(userId: string): Promise<void> {
-  const membership = await HouseholdMember.findOne({ where: { userId } });
-  if (!membership) return; // silently ignore if not member
-
-  const householdId = membership.householdId;
-
-  try {
-    const io = getIO();
-    io.to(householdId).emit('typing_stop', { userId });
-  } catch {
-    /* ignore */
-  }
-}
+// Typing indicator: handled entirely via the 'chat:typing'/'chat:stop-typing'
+// socket events in socket/chatSocket.ts, which correctly broadcast to
+// `household:${householdId}` — the room clients actually join. A REST
+// typingStart/typingStop pair used to live here too, but broadcast to the
+// bare householdId (no prefix), reaching zero connected clients; removed
+// rather than fixed, since the socket-event path was already correct and
+// is the one actually used (F-17).
 
 // ── Participant Management ──
 
@@ -683,7 +698,18 @@ export async function addParticipant(
   userId: string,
   requesterId: string,
 ): Promise<void> {
-  await assertCanManageParticipants(conversationId, requesterId, 'add');
+  const conv = await assertCanManageParticipants(conversationId, requesterId, 'add');
+
+  // Unlike inviteToGroup, this path had no check that the target actually
+  // belongs to the caller's household — letting a creator/admin add an
+  // arbitrary user id (from any household) as a participant (M-02).
+  const targetMembership = await HouseholdMember.findOne({
+    where: { userId, householdId: conv.householdId },
+  });
+  if (!targetMembership) {
+    throw new ForbiddenError('You can only add members of your household');
+  }
+
   await ConversationParticipant.findOrCreate({
     where: { conversationId, userId },
     defaults: { id: uuidv4(), conversationId, userId },
@@ -743,6 +769,25 @@ export async function deleteConversation(
   const householdId = await ensureHouseholdMember(userId);
   const conv = await Conversation.findOne({ where: { id: conversationId, householdId } });
   if (!conv) throw new NotFoundError('Conversation not found');
+
+  // Household scoping alone isn't an authorization check — any member
+  // (including a child role) could otherwise hard-wipe the whole thread
+  // and every other member's messages in it (M-01).
+  if (conv.type === 'dm') {
+    // DMs: only a participant can end it for themselves — no household-
+    // admin override, since this hard-deletes both sides of what may be
+    // private correspondence the admin isn't part of.
+    const participant = await ConversationParticipant.findOne({ where: { conversationId, userId } });
+    if (!participant) {
+      throw new ForbiddenError('Only a participant of this conversation can delete it');
+    }
+  } else {
+    const isCreator = conv.createdBy === userId;
+    const isAdmin = await isHouseholdAdmin(userId, householdId);
+    if (!isCreator && !isAdmin) {
+      throw new ForbiddenError('Only the creator or a household admin can delete this conversation');
+    }
+  }
 
   await sequelize.transaction(async (transaction) => {
     const messages = await ChatMessage.findAll({ where: { conversationId }, attributes: ['id'], transaction });

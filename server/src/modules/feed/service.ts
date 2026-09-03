@@ -12,6 +12,7 @@ import {
 } from '../../database/models';
 import { NotFoundError, ForbiddenError } from '../../shared/utils/errors';
 import { getSignedUrl } from '../../shared/utils/s3';
+import { isCurrentHouseholdAdmin, getUserHousehold as getUserHouseholdCore } from '../../shared/utils/household';
 import { CommentReaction } from '../../database/models';
 import logger from '../../shared/utils/logger';
 import * as notificationService from '../notification/service';
@@ -54,11 +55,7 @@ async function toMediaResponse(items: FeedMedia[]): Promise<FeedMediaResponse[]>
  * Throws 403 if the user does not belong to any household.
  */
 async function getUserHousehold(userId: string): Promise<string> {
-  const membership = await HouseholdMember.findOne({ where: { userId } });
-  if (!membership) {
-    throw new ForbiddenError('You must belong to a household to use the feed');
-  }
-  return membership.householdId;
+  return getUserHouseholdCore(userId, 'You must belong to a household to use the feed');
 }
 
 /**
@@ -356,7 +353,7 @@ export async function getPostById(
 export async function deletePost(
   postId: string,
   userId: string,
-  userRole: string,
+  _userRole: string,
 ): Promise<void> {
   const householdId = await getUserHousehold(userId);
 
@@ -366,7 +363,9 @@ export async function deletePost(
   if (!post) throw new NotFoundError('Post');
 
   const isOwner = post.userId === userId;
-  const isAdmin = userRole === 'admin';
+  // DB-checked, not the caller's JWT `role` claim — that claim goes stale
+  // on demotion until the token expires (F-06).
+  const isAdmin = !isOwner && (await isCurrentHouseholdAdmin(userId, householdId));
 
   if (!isOwner && !isAdmin) {
     throw new ForbiddenError('You can only delete your own posts');
@@ -541,16 +540,34 @@ export async function addComment(
 /**
  * FR-045: Delete a comment (comment author, post owner, or admin).
  */
-export async function deleteComment(
-  commentId: string,
-  userId: string,
-  userRole: string,
-): Promise<void> {
+/**
+ * Loads a comment and confirms its parent post belongs to the given
+ * household — findByPk alone doesn't imply any tenant boundary, so
+ * deleteComment/toggleCommentReaction previously allowed acting on any
+ * comment id regardless of which household it actually belonged to
+ * (F-15). Mirrors the same post+household check getComments already does.
+ */
+async function loadCommentInHousehold(commentId: string, householdId: string): Promise<FeedComment> {
   const comment = await FeedComment.findByPk(commentId);
   if (!comment) throw new NotFoundError('Comment');
 
+  const post = await FeedPost.findOne({ where: { id: comment.postId, householdId }, attributes: ['id'] });
+  if (!post) throw new NotFoundError('Comment');
+
+  return comment;
+}
+
+export async function deleteComment(
+  commentId: string,
+  userId: string,
+  _userRole: string,
+): Promise<void> {
+  const householdId = await getUserHousehold(userId);
+  const comment = await loadCommentInHousehold(commentId, householdId);
+
   const isOwner = comment.userId === userId;
-  const isAdmin = userRole === 'admin';
+  // DB-checked, not the caller's JWT `role` claim (F-06 — see deletePost).
+  const isAdmin = !isOwner && (await isCurrentHouseholdAdmin(userId, householdId));
 
   let isPostOwner = false;
   if (!isOwner && !isAdmin) {
@@ -575,8 +592,8 @@ export async function toggleCommentReaction(
   userId: string,
   reaction: string,
 ): Promise<{ reacted: boolean; reaction: string | null; count: number }> {
-  const comment = await FeedComment.findByPk(commentId);
-  if (!comment) throw new NotFoundError('Comment');
+  const householdId = await getUserHousehold(userId);
+  await loadCommentInHousehold(commentId, householdId);
 
   const existing = await CommentReaction.findOne({
     where: { commentId, userId, reaction },

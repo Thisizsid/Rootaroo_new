@@ -8,6 +8,7 @@ import {
   HouseholdMember,
 } from '../../database/models';
 import { NotFoundError, ForbiddenError, ValidationError } from '../../shared/utils/errors';
+import { getUserHousehold as getUserHouseholdCore } from '../../shared/utils/household';
 import * as notificationService from '../../shared/services/notifications';
 import type {
   ExpenseResponse,
@@ -21,11 +22,7 @@ import type {
 } from './types';
 
 async function getUserHousehold(userId: string): Promise<string> {
-  const membership = await HouseholdMember.findOne({ where: { userId } });
-  if (!membership) {
-    throw new ForbiddenError('You must belong to a household to manage expenses');
-  }
-  return membership.householdId;
+  return getUserHouseholdCore(userId, 'You must belong to a household to manage expenses');
 }
 
 function toExpenseResponse(expense: Expense): ExpenseResponse {

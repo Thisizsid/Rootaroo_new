@@ -10,6 +10,8 @@ import { startGroceryArchiveJob } from './jobs/grocery-archive';
 import { startEventReminderJob } from './jobs/event-reminder';
 import { startCalendarSyncJob } from './jobs/calendar-sync';
 import { startOverduePointsReductionJob } from './jobs/overdue-points';
+import { startPurgeScheduledDeletionsJob } from './jobs/purge-scheduled-deletions';
+import { startPingExpiryJob } from './jobs/ping-expiry';
 import { setIO } from './shared/utils/socket';
 import {
   socketAuthMiddleware,
@@ -76,6 +78,8 @@ async function start(): Promise<void> {
     startEventReminderJob();
     startCalendarSyncJob();
     startOverduePointsReductionJob();
+    startPurgeScheduledDeletionsJob();
+    startPingExpiryJob();
 
     server.listen(env.port, () => {
       logger.info(`

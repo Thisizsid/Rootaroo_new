@@ -5,10 +5,10 @@ import {
   VaultDocumentKey,
   VaultKey,
   User,
-  HouseholdMember,
 } from '../../database/models';
 import { NotFoundError, ForbiddenError } from '../../shared/utils/errors';
 import { uploadBuffer, deleteObject, getSignedUrl } from '../../shared/utils/s3';
+import { isCurrentHouseholdAdmin, getUserHousehold as getUserHouseholdCore } from '../../shared/utils/household';
 import type {
   CreateVaultDocumentBody,
   UpdateVaultDocumentBody,
@@ -23,11 +23,7 @@ const MAX_STORAGE_BYTES = 2 * 1024 * 1024 * 1024; // 2GB
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 
 export async function getUserHousehold(userId: string): Promise<string> {
-  const membership = await HouseholdMember.findOne({ where: { userId } });
-  if (!membership) {
-    throw new ForbiddenError('You must belong to a household to use the vault');
-  }
-  return membership.householdId;
+  return getUserHouseholdCore(userId, 'You must belong to a household to use the vault');
 }
 
 async function toDocumentResponse(doc: VaultDocument): Promise<VaultDocumentResponse> {
@@ -219,7 +215,7 @@ export async function getDocumentKey(
 export async function updateDocument(
   documentId: string,
   userId: string,
-  userRole: string,
+  _userRole: string,
   body: UpdateVaultDocumentBody
 ): Promise<VaultDocumentResponse> {
   const householdId = await getUserHousehold(userId);
@@ -233,8 +229,11 @@ export async function updateDocument(
     throw new NotFoundError('Document');
   }
 
-  // Only uploader or admin can rename
-  if (document.uploadedBy !== userId && userRole !== 'admin') {
+  // Only uploader or admin can rename. Re-checked against the DB rather
+  // than trusting the caller's JWT `role` claim, which goes stale the
+  // moment a user is demoted (F-06) — a demoted admin would otherwise
+  // keep this authority until their token naturally expires.
+  if (document.uploadedBy !== userId && !(await isCurrentHouseholdAdmin(userId, householdId))) {
     throw new ForbiddenError('Only the uploader or an admin can update this document');
   }
 
@@ -260,7 +259,7 @@ export async function updateDocument(
 export async function deleteDocument(
   documentId: string,
   userId: string,
-  userRole: string
+  _userRole: string
 ): Promise<void> {
   const householdId = await getUserHousehold(userId);
 
@@ -272,8 +271,8 @@ export async function deleteDocument(
     throw new NotFoundError('Document');
   }
 
-  // Only uploader or admin can delete
-  if (document.uploadedBy !== userId && userRole !== 'admin') {
+  // Only uploader or admin can delete (DB-checked, not JWT role — F-06).
+  if (document.uploadedBy !== userId && !(await isCurrentHouseholdAdmin(userId, householdId))) {
     throw new ForbiddenError('Only the uploader or an admin can delete this document');
   }
 
@@ -312,13 +311,17 @@ export async function getStorageUsage(userId: string): Promise<VaultStorageUsage
 export async function hardDeleteDocument(
   documentId: string,
   userId: string,
-  userRole: string
+  _userRole: string
 ): Promise<void> {
-  if (userRole !== 'admin') {
+  const householdId = await getUserHousehold(userId);
+
+  // Permanent delete — the highest-stakes gate in this module, so it must
+  // never rely on the caller's JWT `role` claim alone (F-06): that claim
+  // is only refreshed on login/refresh, so a demoted admin would
+  // otherwise keep this authority until their token naturally expires.
+  if (!(await isCurrentHouseholdAdmin(userId, householdId))) {
     throw new ForbiddenError('Only admins can permanently delete documents');
   }
-
-  const householdId = await getUserHousehold(userId);
 
   const document = await VaultDocument.findOne({
     where: { id: documentId, householdId },

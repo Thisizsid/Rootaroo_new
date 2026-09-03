@@ -2,9 +2,9 @@ import { v4 as uuidv4 } from 'uuid';
 import {
   TodoItem,
   User,
-  HouseholdMember,
 } from '../../database/models';
 import { NotFoundError, ForbiddenError } from '../../shared/utils/errors';
+import { getUserHousehold as getUserHouseholdCore } from '../../shared/utils/household';
 import logger from '../../shared/utils/logger';
 import { getIO } from '../../shared/utils/socket';
 import * as notificationService from '../notification/service';
@@ -29,9 +29,7 @@ function toAssignee(user: User | undefined | null): TodoAssignee | null {
 }
 
 async function getUserHousehold(userId: string): Promise<string> {
-  const membership = await HouseholdMember.findOne({ where: { userId } });
-  if (!membership) throw new ForbiddenError('You must belong to a household');
-  return membership.householdId;
+  return getUserHouseholdCore(userId);
 }
 
 function toTodoResponse(item: TodoItem): TodoResponse {

@@ -3,9 +3,9 @@ import {
   Task,
   TaskAssignee,
   User,
-  HouseholdMember,
 } from '../../database/models';
 import { NotFoundError, ForbiddenError } from '../../shared/utils/errors';
+import { isCurrentHouseholdAdmin, getUserHousehold as getUserHouseholdCore } from '../../shared/utils/household';
 import logger from '../../shared/utils/logger';
 import { getIO } from '../../shared/utils/socket';
 import * as notificationService from '../notification/service';
@@ -40,11 +40,7 @@ function toAssigneeResponse(user: User): TaskAssigneeResponse {
 }
 
 async function getUserHousehold(userId: string): Promise<string> {
-  const membership = await HouseholdMember.findOne({ where: { userId } });
-  if (!membership) {
-    throw new ForbiddenError('You must belong to a household to manage tasks');
-  }
-  return membership.householdId;
+  return getUserHouseholdCore(userId, 'You must belong to a household to manage tasks');
 }
 
 function todayStart(): Date {
@@ -253,7 +249,7 @@ export async function getTaskById(
 export async function updateTask(
   taskId: string,
   userId: string,
-  userRole: string,
+  _userRole: string,
   body: UpdateTaskBody,
 ): Promise<TaskResponse> {
   const householdId = await getUserHousehold(userId);
@@ -266,7 +262,9 @@ export async function updateTask(
     ],
   });
   if (!task) throw new NotFoundError('Task');
-  if (task.createdBy !== userId && userRole !== 'admin') {
+  // DB-checked, not the caller's JWT `role` claim, which goes stale on
+  // demotion until the token expires (F-06).
+  if (task.createdBy !== userId && !(await isCurrentHouseholdAdmin(userId, householdId))) {
     throw new ForbiddenError('Only the creator or an admin can edit this task');
   }
 
@@ -295,12 +293,13 @@ export async function updateTask(
 export async function deleteTask(
   taskId: string,
   userId: string,
-  userRole: string,
+  _userRole: string,
 ): Promise<void> {
   const householdId = await getUserHousehold(userId);
   const task = await Task.findOne({ where: { id: taskId, householdId } });
   if (!task) throw new NotFoundError('Task');
-  if (task.createdBy !== userId && userRole !== 'admin') {
+  // DB-checked, not the JWT `role` claim (F-06 — see updateTask).
+  if (task.createdBy !== userId && !(await isCurrentHouseholdAdmin(userId, householdId))) {
     throw new ForbiddenError('Only the creator or an admin can delete this task');
   }
   await task.destroy();
@@ -390,7 +389,7 @@ export async function completeTask(
 export async function reopenTask(
   taskId: string,
   userId: string,
-  userRole: string,
+  _userRole: string,
 ): Promise<TaskResponse> {
   const householdId = await getUserHousehold(userId);
   const task = await Task.findOne({
@@ -403,8 +402,9 @@ export async function reopenTask(
   });
   if (!task) throw new NotFoundError('Task');
 
-  // Only admin or the member who completed the task can reopen
-  if (userRole !== 'admin' && task.completedBy !== userId) {
+  // Only admin or the member who completed the task can reopen. DB-checked,
+  // not the JWT `role` claim (F-06 — see updateTask).
+  if (task.completedBy !== userId && !(await isCurrentHouseholdAdmin(userId, householdId))) {
     throw new ForbiddenError('Only admin or the member who completed this task can reopen it');
   }
 

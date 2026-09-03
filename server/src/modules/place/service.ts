@@ -1,16 +1,13 @@
 import { v4 as uuidv4 } from 'uuid';
-import { SavedPlace, HouseholdMember } from '../../database/models';
+import { SavedPlace } from '../../database/models';
 import { ForbiddenError, NotFoundError } from '../../shared/utils/errors';
+import { getUserHousehold as getUserHouseholdCore } from '../../shared/utils/household';
 import type { CreateSavedPlaceBody, UpdateSavedPlaceBody, SavedPlaceResponse } from './types';
 
 // ── Helpers ──
 
 async function getUserHousehold(userId: string): Promise<string> {
-  const membership = await HouseholdMember.findOne({ where: { userId } });
-  if (!membership) {
-    throw new ForbiddenError('You must belong to a household to save places');
-  }
-  return membership.householdId;
+  return getUserHouseholdCore(userId, 'You must belong to a household to save places');
 }
 
 function toSavedPlaceResponse(place: SavedPlace): SavedPlaceResponse {

@@ -1,7 +1,8 @@
 import { v4 as uuidv4 } from 'uuid';
 import { Op } from 'sequelize';
 import { CheckIn, User, HouseholdMember } from '../../database/models';
-import { ForbiddenError, NotFoundError } from '../../shared/utils/errors';
+import { NotFoundError } from '../../shared/utils/errors';
+import { getUserHousehold as getUserHouseholdCore } from '../../shared/utils/household';
 import logger from '../../shared/utils/logger';
 import { getIO } from '../../shared/utils/socket';
 import * as notificationService from '../../shared/services/notifications';
@@ -14,11 +15,7 @@ import type {
 // ── Helpers ──
 
 async function getUserHousehold(userId: string): Promise<string> {
-  const membership = await HouseholdMember.findOne({ where: { userId } });
-  if (!membership) {
-    throw new ForbiddenError('You must belong to a household to check in');
-  }
-  return membership.householdId;
+  return getUserHouseholdCore(userId, 'You must belong to a household to check in');
 }
 
 function toCheckInResponse(checkIn: CheckIn): CheckInResponse {

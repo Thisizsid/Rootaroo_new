@@ -7,6 +7,10 @@ function getUserId(req: Request): string {
   return (req as AuthenticatedRequest).user!.userId;
 }
 
+function getTokenIssuedAt(req: Request): number | undefined {
+  return (req as AuthenticatedRequest).user!.iat;
+}
+
 export async function create(req: Request, res: Response, next: NextFunction) {
   try {
     const result = await householdService.createHousehold(getUserId(req), req.body);
@@ -97,9 +101,16 @@ export async function listMembers(req: Request, res: Response, next: NextFunctio
   } catch (e) { next(e); }
 }
 
+export async function rotateInviteCode(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await householdService.rotateInviteCode(getUserId(req), req.params.id);
+    res.status(200).json({ success: true, data: result });
+  } catch (e) { next(e); }
+}
+
 export async function scheduleDeletion(req: Request, res: Response, next: NextFunction) {
   try {
-    await householdService.scheduleHouseholdDeletion(getUserId(req), req.params.id, req.body);
+    await householdService.scheduleHouseholdDeletion(getUserId(req), req.params.id, req.body, getTokenIssuedAt(req));
     res.status(200).json({ success: true, data: { message: 'Household deletion scheduled in 30 days' } });
   } catch (e) { next(e); }
 }
@@ -113,7 +124,7 @@ export async function cancelDeletion(req: Request, res: Response, next: NextFunc
 
 export async function confirmDeletion(req: Request, res: Response, next: NextFunction) {
   try {
-    await householdService.confirmHouseholdDeletion(getUserId(req), req.params.id, req.body);
+    await householdService.confirmHouseholdDeletion(getUserId(req), req.params.id, req.body, getTokenIssuedAt(req));
     res.status(200).json({ success: true, data: { message: 'Household deleted' } });
   } catch (e) { next(e); }
 }

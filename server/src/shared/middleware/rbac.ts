@@ -30,15 +30,9 @@ export function requireRole(minRole: Role) {
   };
 }
 
-export function requireHouseholdMembership(req: Request, _res: Response, next: NextFunction): void {
-  const authReq = req as AuthenticatedRequest;
-  if (!authReq.user) {
-    throw new ForbiddenError('Authentication required');
-  }
-
-  if (!authReq.user.householdId) {
-    throw new ForbiddenError('User must belong to a household');
-  }
-
-  next();
-}
+// requireHouseholdMembership was previously defined here but never wired
+// into any route — JwtPayload.householdId is never actually signed into
+// the token (generateAccessToken only signs userId/email/role), so it
+// would always 403 if it were ever mounted. Enforcement lives entirely in
+// the DB-backed checks (getUserHousehold, isCurrentHouseholdAdmin) that
+// every module's service layer already calls (F-06).

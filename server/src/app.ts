@@ -55,6 +55,19 @@ function redisRateLimiter(limiter: ReturnType<typeof rateLimit>) {
   };
 }
 
+// Auth endpoints (login, password reset, phone OTP) get the opposite
+// failure mode: these guard account-takeover surfaces, so an unthrottled
+// window during a Redis outage is worse than a temporary 503. Fails CLOSED.
+function authRedisRateLimiter(limiter: ReturnType<typeof rateLimit>) {
+  return (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (redis.status !== 'ready') {
+      res.status(503).json({ success: false, error: 'Service temporarily unavailable, please try again shortly.' });
+      return;
+    }
+    limiter(req, res, next);
+  };
+}
+
 const generalLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
   max: 100,
@@ -80,7 +93,7 @@ const authLimiter = rateLimit({
     sendCommand: (...args: string[]) => (redis as any).call(...args),
   }),
 });
-app.use('/api/v1/auth/', redisRateLimiter(authLimiter));
+app.use('/api/v1/auth/', authRedisRateLimiter(authLimiter));
 
 // ── Body Parsing ──
 app.use(express.json({ limit: '10mb' }));

@@ -52,21 +52,49 @@ router.post('/login', validate(loginSchema), ctrl.login);
  * /auth/google:
  *   post:
  *     tags: [Auth]
- *     summary: Authenticate with Google OAuth code
+ *     summary: Authenticate with a Google ID token
+ *     description: >
+ *       The mobile client obtains this ID token directly from Google's native
+ *       Sign-In SDK — there is no server-side authorization-code exchange.
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             required: [idToken]
  *             properties:
- *               code: { type: string }
- *               redirectUri: { type: string, format: uri }
+ *               idToken: { type: string }
  *     responses:
  *       200:
  *         description: Authenticated
+ *       401:
+ *         description: Token verification failed, or the account's email is unverified
  */
 router.post('/google', validate(googleAuthSchema), ctrl.googleAuth);
+
+/**
+ * @openapi
+ * /auth/apple:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Authenticate with an Apple identity token
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [idToken]
+ *             properties:
+ *               idToken: { type: string }
+ *               displayName: { type: string, description: Only provided on the user's first sign-in }
+ *     responses:
+ *       200:
+ *         description: Authenticated
+ *       401:
+ *         description: Token verification failed, or the account's email is unverified
+ */
 router.post('/apple', validate(appleAuthSchema), ctrl.appleAuth);
 
 router.post('/refresh', validate(refreshSchema), ctrl.refresh);

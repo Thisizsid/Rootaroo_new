@@ -13,6 +13,7 @@ import {
   CalendarEvent,
 } from '../../database/models';
 import { ForbiddenError } from '../../shared/utils/errors';
+import { getUserHousehold as getUserHouseholdCore } from '../../shared/utils/household';
 import * as taskService from '../task/service';
 import * as groceryService from '../grocery/service';
 import * as todoService from '../todo/service';
@@ -63,9 +64,7 @@ const POINTS_BY_KIND: Record<Exclude<RecentActivityKind, 'task'>, number> = {
 };
 
 async function getUserHousehold(userId: string): Promise<string> {
-  const membership = await HouseholdMember.findOne({ where: { userId } });
-  if (!membership) throw new ForbiddenError('You must belong to a household');
-  return membership.householdId;
+  return getUserHouseholdCore(userId);
 }
 
 /** Guards against a bogus/malicious `X-Timezone` header reaching Intl/date-fns-tz. */

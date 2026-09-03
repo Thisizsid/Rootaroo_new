@@ -1,8 +1,9 @@
 import { v4 as uuidv4 } from 'uuid';
 import { Op } from 'sequelize';
 import { formatInTimeZone, fromZonedTime } from 'date-fns-tz';
-import { JournalEntry, JournalMedia, HouseholdMember, Household } from '../../database/models';
-import { NotFoundError, ForbiddenError } from '../../shared/utils/errors';
+import { JournalEntry, JournalMedia, Household } from '../../database/models';
+import { NotFoundError } from '../../shared/utils/errors';
+import { getUserHousehold as getUserHouseholdCore } from '../../shared/utils/household';
 import { getSignedUrl } from '../../shared/utils/s3';
 import { MOOD_VALUES } from './validation';
 import type {
@@ -27,11 +28,7 @@ import type {
  * Throws 403 if the user does not belong to any household.
  */
 async function getUserHousehold(userId: string): Promise<string> {
-  const membership = await HouseholdMember.findOne({ where: { userId } });
-  if (!membership) {
-    throw new ForbiddenError('You must belong to a household to use the journal');
-  }
-  return membership.householdId;
+  return getUserHouseholdCore(userId, 'You must belong to a household to use the journal');
 }
 
 /**

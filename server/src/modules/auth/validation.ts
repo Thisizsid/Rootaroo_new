@@ -74,6 +74,7 @@ export const forgotPasswordSchema: ValidationSchemas = {
 
 export const resetPasswordSchema: ValidationSchemas = {
   body: z.object({
+    email: z.string().email('Invalid email format'),
     code: z.string().length(6, 'Reset code must be 6 characters'),
     password: z.string().min(8, 'Password must be at least 8 characters').max(128, 'Password too long'),
   }),
@@ -81,6 +82,7 @@ export const resetPasswordSchema: ValidationSchemas = {
 
 export const checkResetCodeSchema: ValidationSchemas = {
   body: z.object({
+    email: z.string().email('Invalid email format'),
     code: z.string().length(6, 'Code must be 6 characters'),
   }),
 };

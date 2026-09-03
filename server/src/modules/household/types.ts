@@ -5,7 +5,7 @@ export interface CreateHouseholdBody {
 export interface HouseholdResponse {
   id: string;
   name: string;
-  inviteCode: string;
+  inviteCode: string | null;
   memberCount: number;
   role: string;
   coverPhotoUrl: string | null;

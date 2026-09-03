@@ -1,11 +1,24 @@
 import {
   generateInvitation, joinViaCode, removeMember, leaveHousehold, transferAdmin, changeMemberRole, listMembers,
-  scheduleHouseholdDeletion, cancelHouseholdDeletion, confirmHouseholdDeletion,
+  scheduleHouseholdDeletion, cancelHouseholdDeletion, confirmHouseholdDeletion, rotateInviteCode, getHousehold,
+  createHousehold, updateCoverPhoto, removeCoverPhoto,
 } from '../service';
 import * as models from '../../../database/models';
 
+jest.mock('../../../shared/utils/s3', () => ({
+  getSignedUrl: jest.fn(() => Promise.resolve(null)),
+  deleteObject: jest.fn().mockResolvedValue(undefined),
+}));
+import { deleteObject } from '../../../shared/utils/s3';
+
 jest.mock('../../../database/models', () => {
   return {
+    sequelize: {
+      transaction: jest.fn((optionsOrCb: any, maybeCb?: any) => {
+        const cb = typeof optionsOrCb === 'function' ? optionsOrCb : maybeCb;
+        return cb({});
+      }),
+    },
     Household: { create: jest.fn(), findByPk: jest.fn(), findOne: jest.fn() },
     HouseholdMember: { create: jest.fn(), findOne: jest.fn(), findAll: jest.fn(), count: jest.fn(), destroy: jest.fn() },
     Invitation: { create: jest.fn(), findOne: jest.fn(), count: jest.fn() },
@@ -102,6 +115,28 @@ describe('Household Service — Invitations', () => {
     });
   });
 
+  describe('createHousehold', () => {
+    it('should create a household and make the caller its admin', async () => {
+      (models.HouseholdMember.findOne as jest.Mock).mockResolvedValueOnce(null);
+      (models.Household.create as jest.Mock).mockResolvedValue(fakeHousehold());
+      (models.HouseholdMember.create as jest.Mock).mockResolvedValue({});
+
+      const result = await createHousehold(userId, { name: 'Test Family' });
+
+      expect(result.role).toBe('admin');
+      expect(result.memberCount).toBe(1);
+      expect(models.User.update).toHaveBeenCalledWith({ role: 'admin' }, expect.objectContaining({ where: { id: userId } }));
+    });
+
+    it('should reject if the user already belongs to a household (F-13 race guard)', async () => {
+      (models.HouseholdMember.findOne as jest.Mock).mockResolvedValueOnce(fakeMembership());
+
+      await expect(createHousehold(userId, { name: 'Another Family' }))
+        .rejects.toThrow('You already belong to a household');
+      expect(models.Household.create).not.toHaveBeenCalled();
+    });
+  });
+
   describe('joinViaCode', () => {
     it('should add user as member and mark invitation accepted', async () => {
       const inv = fakeInvitation();
@@ -120,6 +155,7 @@ describe('Household Service — Invitations', () => {
       });
       expect(inv.update).toHaveBeenCalledWith(
         expect.objectContaining({ acceptedAt: expect.any(Date) }),
+        expect.anything(),
       );
     });
 
@@ -308,6 +344,14 @@ describe('Household Service — Member Management', () => {
       await expect(changeMemberRole(userId, householdId, userId, body))
         .rejects.toThrow('Use the transfer endpoint to change your own role');
     });
+
+    it('should reject promoting a member to admin (single-admin model, F-12)', async () => {
+      (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue({ role: 'admin' });
+
+      await expect(changeMemberRole(userId, householdId, otherUserId, { role: 'admin' }))
+        .rejects.toThrow('Use the transfer endpoint to make another member admin');
+      expect(models.User.update).not.toHaveBeenCalled();
+    });
   });
 
   describe('listMembers', () => {
@@ -373,6 +417,27 @@ describe('Household Service — Member Management', () => {
       await expect(scheduleHouseholdDeletion(userId, householdId, { password: 'wrong' }))
         .rejects.toThrow('Invalid password');
     });
+
+    it('should allow a password-less (OAuth) admin with a freshly issued token', async () => {
+      (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'admin' }));
+      (models.User.findByPk as jest.Mock).mockResolvedValue({ id: userId, passwordHash: '' });
+      const household = fakeHousehold({ scheduledDeletionAt: null, save: jest.fn() });
+      (models.Household.findByPk as jest.Mock).mockResolvedValue(household);
+      const nowSeconds = Math.floor(Date.now() / 1000);
+
+      await scheduleHouseholdDeletion(userId, householdId, { password: '' }, nowSeconds);
+
+      expect(household.save).toHaveBeenCalled();
+    });
+
+    it('should reject a password-less (OAuth) admin with a stale token', async () => {
+      (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'admin' }));
+      (models.User.findByPk as jest.Mock).mockResolvedValue({ id: userId, passwordHash: '' });
+      const staleIssuedAt = Math.floor(Date.now() / 1000) - 10 * 60; // 10 minutes ago
+
+      await expect(scheduleHouseholdDeletion(userId, householdId, { password: '' }, staleIssuedAt))
+        .rejects.toThrow('Please log in again');
+    });
   });
 
   describe('cancelHouseholdDeletion', () => {
@@ -398,10 +463,15 @@ describe('Household Service — Member Management', () => {
   describe('confirmHouseholdDeletion', () => {
     const hash = '$2b$04$bUCIhz76H.vDDixGSaXRt.vmZy8izCpNSiK4ZVGtmhtY1twdLD31W';
 
+    const elapsedGracePeriod = new Date(Date.now() - 24 * 60 * 60 * 1000); // 1 day in the past
+
     it('should remove all members and soft-delete the household', async () => {
       (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'admin' }));
       (models.User.findByPk as jest.Mock).mockResolvedValue({ id: userId, passwordHash: hash });
-      const household = fakeHousehold({ destroy: jest.fn().mockResolvedValue(undefined) });
+      const household = fakeHousehold({
+        scheduledDeletionAt: elapsedGracePeriod,
+        destroy: jest.fn().mockResolvedValue(undefined),
+      });
       (models.Household.findByPk as jest.Mock).mockResolvedValue(household);
 
       await confirmHouseholdDeletion(userId, householdId, { password: 'password123' });
@@ -410,11 +480,103 @@ describe('Household Service — Member Management', () => {
       expect(household.destroy).toHaveBeenCalled();
     });
 
+    it('should throw if the 30-day grace period has not been scheduled or has not elapsed yet', async () => {
+      (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'admin' }));
+      (models.User.findByPk as jest.Mock).mockResolvedValue({ id: userId, passwordHash: hash });
+      const household = fakeHousehold({ scheduledDeletionAt: null, destroy: jest.fn() });
+      (models.Household.findByPk as jest.Mock).mockResolvedValue(household);
+
+      await expect(confirmHouseholdDeletion(userId, householdId, { password: 'password123' }))
+        .rejects.toThrow('Deletion must be scheduled first');
+      expect(household.destroy).not.toHaveBeenCalled();
+    });
+
     it('should throw ForbiddenError for a non-admin', async () => {
       (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'member' }));
 
       await expect(confirmHouseholdDeletion(userId, householdId, { password: 'x' }))
         .rejects.toThrow('Only the household admin can delete the household');
+    });
+  });
+
+  describe('Cover photo (F-16)', () => {
+    beforeEach(() => { jest.clearAllMocks(); });
+
+    it('should delete the previous cover photo object after replacing it', async () => {
+      (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'admin' }));
+      const household = fakeHousehold({ coverPhotoUrl: 'household-covers/old-key.jpg', save: jest.fn().mockResolvedValue(undefined) });
+      (models.Household.findByPk as jest.Mock).mockResolvedValue(household);
+      (models.HouseholdMember.count as jest.Mock).mockResolvedValue(1);
+
+      await updateCoverPhoto(userId, householdId, 'household-covers/new-key.jpg');
+
+      expect(household.coverPhotoUrl).toBe('household-covers/new-key.jpg');
+      expect(deleteObject).toHaveBeenCalledWith('household-covers/old-key.jpg');
+    });
+
+    it('should not attempt to delete anything when there was no previous cover photo', async () => {
+      (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'admin' }));
+      const household = fakeHousehold({ coverPhotoUrl: null, save: jest.fn().mockResolvedValue(undefined) });
+      (models.Household.findByPk as jest.Mock).mockResolvedValue(household);
+      (models.HouseholdMember.count as jest.Mock).mockResolvedValue(1);
+
+      await updateCoverPhoto(userId, householdId, 'household-covers/new-key.jpg');
+
+      expect(deleteObject).not.toHaveBeenCalled();
+    });
+
+    it('should delete the object on removal (removeCoverPhoto)', async () => {
+      (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'admin' }));
+      const household = fakeHousehold({ coverPhotoUrl: 'household-covers/old-key.jpg', save: jest.fn().mockResolvedValue(undefined) });
+      (models.Household.findByPk as jest.Mock).mockResolvedValue(household);
+      (models.HouseholdMember.count as jest.Mock).mockResolvedValue(1);
+
+      await removeCoverPhoto(userId, householdId);
+
+      expect(household.coverPhotoUrl).toBeNull();
+      expect(deleteObject).toHaveBeenCalledWith('household-covers/old-key.jpg');
+    });
+  });
+
+  describe('Invite code visibility and rotation (F-05)', () => {
+    it('should hide the invite code from a non-admin member', async () => {
+      (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'member' }));
+      (models.Household.findByPk as jest.Mock).mockResolvedValue(fakeHousehold());
+      (models.HouseholdMember.count as jest.Mock).mockResolvedValue(2);
+
+      const result = await getHousehold(householdId, userId);
+
+      expect(result.inviteCode).toBeNull();
+    });
+
+    it('should include the invite code for an admin', async () => {
+      (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'admin' }));
+      (models.Household.findByPk as jest.Mock).mockResolvedValue(fakeHousehold());
+      (models.HouseholdMember.count as jest.Mock).mockResolvedValue(2);
+
+      const result = await getHousehold(householdId, userId);
+
+      expect(result.inviteCode).toBe('A1B2C3D4');
+    });
+
+    it('should rotate the invite code for an admin', async () => {
+      (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'admin' }));
+      const household = fakeHousehold({ save: jest.fn().mockResolvedValue(undefined) });
+      (models.Household.findByPk as jest.Mock).mockResolvedValue(household);
+      (models.HouseholdMember.count as jest.Mock).mockResolvedValue(1);
+
+      const result = await rotateInviteCode(userId, householdId);
+
+      expect(household.save).toHaveBeenCalled();
+      expect(result.inviteCode).toBe(household.inviteCode);
+      expect(result.inviteCode).not.toBe('A1B2C3D4');
+    });
+
+    it('should reject rotation from a non-admin', async () => {
+      (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'member' }));
+
+      await expect(rotateInviteCode(userId, householdId))
+        .rejects.toThrow('Only the household admin can rotate the invite code');
     });
   });
 });

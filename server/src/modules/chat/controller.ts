@@ -217,24 +217,6 @@ export async function removeParticipantCtrl(
   }
 }
 
-export async function typingCtrl(
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> {
-  try {
-    const action = req.query.action as string;
-    if (action === 'start') {
-      await chatService.typingStart(getUserId(req));
-    } else {
-      await chatService.typingStop(getUserId(req));
-    }
-    res.json({ success: true, data: { typing: action === 'start' } });
-  } catch (err) {
-    next(err);
-  }
-}
-
 export async function deleteConversationCtrl(
   req: Request,
   res: Response,
