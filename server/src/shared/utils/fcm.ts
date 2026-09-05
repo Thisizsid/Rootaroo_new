@@ -6,21 +6,24 @@ let firebaseApp: App | null = null;
 
 function getFirebaseApp(): App {
   if (!firebaseApp) {
-    if (!env.fcm.serverKey || !env.fcm.projectId) {
+    if (!env.fcm.serviceAccountBase64 || !env.fcm.projectId) {
       throw new Error('FCM credentials not configured');
     }
-    
+
     // Check if already initialized
     const existingApps = getApps();
     if (existingApps.length > 0) {
       firebaseApp = existingApps[0];
     } else {
+      // Load the real service-account JSON rather than fabricating one —
+      // a synthesized clientEmail (previous approach) can never match a
+      // real Firebase service account, which always has a random key-id
+      // suffix (e.g. firebase-adminsdk-abc12@project.iam.gserviceaccount.com).
+      const serviceAccount = JSON.parse(
+        Buffer.from(env.fcm.serviceAccountBase64, 'base64').toString('utf8'),
+      );
       firebaseApp = initializeApp({
-        credential: cert({
-          projectId: env.fcm.projectId,
-          privateKey: env.fcm.serverKey.replace(/\\n/g, '\n'),
-          clientEmail: `firebase-adminsdk@${env.fcm.projectId}.iam.gserviceaccount.com`,
-        }),
+        credential: cert(serviceAccount),
       });
     }
   }

@@ -8,8 +8,11 @@ export const env = {
 
   fcm: {
     enabled: process.env.FCM_ENABLED === 'true',
-    serverKey: process.env.FCM_SERVER_KEY || '',
     projectId: process.env.FCM_PROJECT_ID || '',
+    // Base64-encoded Firebase service-account JSON (Project Settings ->
+    // Service Accounts -> Generate new private key). Base64 sidesteps the
+    // private key's embedded newlines breaking .env parsing.
+    serviceAccountBase64: process.env.FCM_SERVICE_ACCOUNT_BASE64 || '',
   },
 
   db: {
@@ -93,6 +96,9 @@ if (env.nodeEnv === 'production') {
     !process.env.S3_ACCESS_KEY_ID && 'S3_ACCESS_KEY_ID',
     !process.env.S3_SECRET_ACCESS_KEY && 'S3_SECRET_ACCESS_KEY',
     !process.env.CALENDAR_TOKEN_KEK && 'CALENDAR_TOKEN_KEK',
+    // FCM is legitimately optional to have off — only required once deliberately enabled.
+    process.env.FCM_ENABLED === 'true' && !process.env.FCM_PROJECT_ID && 'FCM_PROJECT_ID',
+    process.env.FCM_ENABLED === 'true' && !process.env.FCM_SERVICE_ACCOUNT_BASE64 && 'FCM_SERVICE_ACCOUNT_BASE64',
   ].filter(Boolean);
 
   if (missing.length > 0) {
