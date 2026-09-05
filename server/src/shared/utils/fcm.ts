@@ -1,12 +1,15 @@
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import { env } from '../../config/env';
-import { initializeApp, cert, App, getApps } from 'firebase-admin/app';
+import { initializeApp, applicationDefault, App, getApps } from 'firebase-admin/app';
 import { getMessaging, Messaging } from 'firebase-admin/messaging';
 
 let firebaseApp: App | null = null;
 
 function getFirebaseApp(): App {
   if (!firebaseApp) {
-    if (!env.fcm.serviceAccountBase64 || !env.fcm.projectId) {
+    if (!env.fcm.credentialsBase64 || !env.fcm.projectId) {
       throw new Error('FCM credentials not configured');
     }
 
@@ -15,15 +18,28 @@ function getFirebaseApp(): App {
     if (existingApps.length > 0) {
       firebaseApp = existingApps[0];
     } else {
-      // Load the real service-account JSON rather than fabricating one —
-      // a synthesized clientEmail (previous approach) can never match a
-      // real Firebase service account, which always has a random key-id
-      // suffix (e.g. firebase-adminsdk-abc12@project.iam.gserviceaccount.com).
-      const serviceAccount = JSON.parse(
-        Buffer.from(env.fcm.serviceAccountBase64, 'base64').toString('utf8'),
-      );
+      // FCM_CREDENTIALS_BASE64 holds a base64-encoded credentials JSON —
+      // applicationDefault() auto-detects its "type" field, so this
+      // transparently accepts either:
+      //   - a real Firebase service-account key ("service_account"), or
+      //   - impersonated Application Default Credentials
+      //     ("impersonated_service_account", from `gcloud auth
+      //     application-default login --impersonate-service-account=...`),
+      //     used as an interim credential while a real key is blocked by
+      //     an org policy on service-account key creation.
+      // Swapping between the two later needs no code change — only a new
+      // base64 value in this same env var. Written to a temp file each
+      // boot since GOOGLE_APPLICATION_CREDENTIALS must point at a real
+      // file path; safe on ephemeral hosts (e.g. Railway) since it's
+      // regenerated fresh every start, never persisted.
+      const credentialsJson = Buffer.from(env.fcm.credentialsBase64, 'base64').toString('utf8');
+      const credPath = path.join(os.tmpdir(), 'fcm-credentials.json');
+      fs.writeFileSync(credPath, credentialsJson, { mode: 0o600 });
+      process.env.GOOGLE_APPLICATION_CREDENTIALS = credPath;
+
       firebaseApp = initializeApp({
-        credential: cert(serviceAccount),
+        credential: applicationDefault(),
+        projectId: env.fcm.projectId,
       });
     }
   }

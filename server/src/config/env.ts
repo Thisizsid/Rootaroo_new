@@ -9,10 +9,12 @@ export const env = {
   fcm: {
     enabled: process.env.FCM_ENABLED === 'true',
     projectId: process.env.FCM_PROJECT_ID || '',
-    // Base64-encoded Firebase service-account JSON (Project Settings ->
-    // Service Accounts -> Generate new private key). Base64 sidesteps the
-    // private key's embedded newlines breaking .env parsing.
-    serviceAccountBase64: process.env.FCM_SERVICE_ACCOUNT_BASE64 || '',
+    // Base64-encoded Google credentials JSON — either a real Firebase
+    // service-account key, or (interim, while service-account key
+    // creation is blocked by an org policy) impersonated Application
+    // Default Credentials from `gcloud auth application-default login
+    // --impersonate-service-account=...`. See shared/utils/fcm.ts.
+    credentialsBase64: process.env.FCM_CREDENTIALS_BASE64 || '',
   },
 
   db: {
@@ -98,7 +100,7 @@ if (env.nodeEnv === 'production') {
     !process.env.CALENDAR_TOKEN_KEK && 'CALENDAR_TOKEN_KEK',
     // FCM is legitimately optional to have off — only required once deliberately enabled.
     process.env.FCM_ENABLED === 'true' && !process.env.FCM_PROJECT_ID && 'FCM_PROJECT_ID',
-    process.env.FCM_ENABLED === 'true' && !process.env.FCM_SERVICE_ACCOUNT_BASE64 && 'FCM_SERVICE_ACCOUNT_BASE64',
+    process.env.FCM_ENABLED === 'true' && !process.env.FCM_CREDENTIALS_BASE64 && 'FCM_CREDENTIALS_BASE64',
   ].filter(Boolean);
 
   if (missing.length > 0) {
