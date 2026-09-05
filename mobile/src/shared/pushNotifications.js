@@ -32,3 +32,24 @@ export async function registerForPushNotificationsAsync() {
     // Best-effort — push is a delivery enhancement, never block the app on it.
   }
 }
+
+/**
+ * Unregisters this device's push token on logout, so the server stops
+ * targeting a device that's no longer signed in. Re-derives the token via
+ * `getDevicePushTokenAsync()` rather than persisting it separately — cheap
+ * (native-cached, no new permission prompt) once permission was already
+ * granted, matching how registration itself re-derives on every launch.
+ */
+export async function unregisterPushNotificationsAsync() {
+  try {
+    const { status } = await Notifications.getPermissionsAsync();
+    if (status !== 'granted') return;
+
+    const { data: token } = await Notifications.getDevicePushTokenAsync();
+    if (!token) return;
+
+    await notificationApi.unregisterToken(token);
+  } catch {
+    // Best-effort, same as registration.
+  }
+}

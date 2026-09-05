@@ -40,6 +40,10 @@ yarn-error.*
 /ios
 /android
 
+# Firebase credentials (real project config, not for git)
+/google-services.json
+/GoogleService-Info.plist
+
 # Claude Code worktrees
 .claude/worktrees/
 .env
