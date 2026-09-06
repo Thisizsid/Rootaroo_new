@@ -51,6 +51,14 @@ describe('Notification Service', () => {
       ).resolves.toBeUndefined();
     });
 
+    it('clears deletedAt on upsert, reviving a token soft-deleted by a prior logout', async () => {
+      await registerToken(userId, { token: 'abc123', platform: 'android' });
+
+      expect(modelsMock.DeviceToken.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({ userId, token: 'abc123', platform: 'android', deletedAt: null }),
+      );
+    });
+
     it('unregisters a device token', async () => {
       await registerToken(userId, { token: 'abc123', platform: 'android' });
       await expect(unregisterToken(userId, 'abc123')).resolves.toBeUndefined();

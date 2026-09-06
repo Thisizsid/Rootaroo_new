@@ -2,6 +2,21 @@ import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { notificationApi } from './api/notification';
 
+// Without a handler, expo-notifications' documented default is to NOT show
+// an incoming notification at all while the app is in the foreground —
+// pushes only appeared to work when the app was backgrounded/killed
+// (where Android's system tray renders the FCM payload natively, no JS
+// involved). Registered as an import-time side effect here so it's active
+// before any screen mounts, regardless of what imports this module first.
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
+
 /**
  * Registers this device for push notifications and hands the raw FCM/APNs
  * device token to the server (`DeviceToken`, sent via firebase-admin

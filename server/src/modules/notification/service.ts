@@ -42,10 +42,19 @@ export async function registerToken(
   userId: string,
   body: DeviceTokenBody,
 ): Promise<void> {
+  // DeviceToken is paranoid (soft-delete) via the global Sequelize define
+  // default — unregisterToken (called on logout) sets deleted_at rather
+  // than actually removing the row. Without explicitly clearing it here,
+  // re-registering the same physical device's token after a later login
+  // (matched via the unique token index) would update userId/platform but
+  // leave deleted_at set, so getUserTokens' paranoid `deleted_at IS NULL`
+  // scope would silently exclude it from every future push — forever,
+  // until the token itself changes.
   await DeviceToken.upsert({
     userId,
     token: body.token,
     platform: body.platform,
+    deletedAt: null,
   });
 }
 
