@@ -24,6 +24,7 @@ import checkInRouter from './modules/checkin/routes';
 import pingRouter from './modules/ping/routes';
 import placeRouter from './modules/place/routes';
 import journalRouter from './modules/journal/routes';
+import adminRouter from './modules/admin/routes';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger';
 import logger from './shared/utils/logger';
@@ -129,6 +130,7 @@ app.use('/api/v1/checkins', checkInRouter);
 app.use('/api/v1/pings', pingRouter);
 app.use('/api/v1/places', placeRouter);
 app.use('/api/v1/journal', journalRouter);
+app.use('/api/v1/admin', adminRouter);
 
 // ── Swagger Docs ──
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));

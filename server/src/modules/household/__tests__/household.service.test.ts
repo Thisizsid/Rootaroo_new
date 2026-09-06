@@ -1,7 +1,9 @@
 import {
   generateInvitation, joinViaCode, removeMember, leaveHousehold, transferAdmin, changeMemberRole, listMembers,
-  scheduleHouseholdDeletion, cancelHouseholdDeletion, confirmHouseholdDeletion, rotateInviteCode, getHousehold,
+  cancelHouseholdDeletion, rotateInviteCode, getHousehold,
   createHousehold, updateCoverPhoto, removeCoverPhoto,
+  requestLeaveHousehold, requestHouseholdDeletion, approveActionRequest, rejectActionRequest,
+  getMyPendingActionRequest,
 } from '../service';
 import * as models from '../../../database/models';
 
@@ -10,6 +12,11 @@ jest.mock('../../../shared/utils/s3', () => ({
   deleteObject: jest.fn().mockResolvedValue(undefined),
 }));
 import { deleteObject } from '../../../shared/utils/s3';
+
+jest.mock('../../../shared/utils/mailer', () => ({
+  sendAdminAlertEmail: jest.fn().mockResolvedValue(undefined),
+}));
+import { sendAdminAlertEmail } from '../../../shared/utils/mailer';
 
 jest.mock('../../../database/models', () => {
   return {
@@ -21,6 +28,7 @@ jest.mock('../../../database/models', () => {
     },
     Household: { create: jest.fn(), findByPk: jest.fn(), findOne: jest.fn() },
     HouseholdMember: { create: jest.fn(), findOne: jest.fn(), findAll: jest.fn(), count: jest.fn(), destroy: jest.fn() },
+    HouseholdActionRequest: { create: jest.fn(), findOne: jest.fn(), findAll: jest.fn(), findByPk: jest.fn() },
     Invitation: { create: jest.fn(), findOne: jest.fn(), count: jest.fn() },
     User: { update: jest.fn(), findByPk: jest.fn() },
     // Conversation sync is a no-op in these tests (no household-conversation
@@ -388,55 +396,180 @@ describe('Household Service — Member Management', () => {
     });
   });
 
-  describe('scheduleHouseholdDeletion', () => {
-    const hash = '$2b$04$bUCIhz76H.vDDixGSaXRt.vmZy8izCpNSiK4ZVGtmhtY1twdLD31W';
+  describe('requestLeaveHousehold', () => {
+    it('should create a pending leave request and email the admin alert', async () => {
+      (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'member' }));
+      (models.HouseholdActionRequest.findOne as jest.Mock).mockResolvedValue(null);
+      (models.HouseholdActionRequest.create as jest.Mock).mockResolvedValue({ id: 'req-1' });
+      (models.User.findByPk as jest.Mock).mockResolvedValue({ id: userId, displayName: 'Test User', email: 'test@test.com' });
 
-    it('should set scheduledDeletionAt to 30 days from now for an admin', async () => {
+      await requestLeaveHousehold(userId, householdId);
+
+      expect(models.HouseholdActionRequest.create).toHaveBeenCalledWith(
+        expect.objectContaining({ householdId, requestedBy: userId, type: 'leave' }),
+      );
+      expect(sendAdminAlertEmail).toHaveBeenCalled();
+      // The membership itself must not be touched yet — only on approval.
+      expect(models.HouseholdMember.destroy).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenError if the admin tries to request leaving', async () => {
       (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'admin' }));
-      (models.User.findByPk as jest.Mock).mockResolvedValue({ id: userId, passwordHash: hash });
-      const household = fakeHousehold({ scheduledDeletionAt: null, save: jest.fn() });
-      (models.Household.findByPk as jest.Mock).mockResolvedValue(household);
 
-      await scheduleHouseholdDeletion(userId, householdId, { password: 'password123' });
+      await expect(requestLeaveHousehold(userId, householdId))
+        .rejects.toThrow('Transfer admin role to another member');
+      expect(models.HouseholdActionRequest.create).not.toHaveBeenCalled();
+    });
 
-      expect(household.scheduledDeletionAt).toBeInstanceOf(Date);
-      expect(household.save).toHaveBeenCalled();
+    it('should throw ConflictError if a leave request is already pending', async () => {
+      (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'member' }));
+      (models.HouseholdActionRequest.findOne as jest.Mock).mockResolvedValue({ id: 'existing', status: 'pending' });
+
+      await expect(requestLeaveHousehold(userId, householdId))
+        .rejects.toThrow('already pending review');
+      expect(models.HouseholdActionRequest.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('requestHouseholdDeletion', () => {
+    it('should create a pending delete request and email the admin alert', async () => {
+      (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'admin' }));
+      (models.HouseholdActionRequest.findOne as jest.Mock).mockResolvedValue(null);
+      (models.Household.findByPk as jest.Mock).mockResolvedValue(fakeHousehold());
+      (models.HouseholdActionRequest.create as jest.Mock).mockResolvedValue({ id: 'req-2' });
+      (models.User.findByPk as jest.Mock).mockResolvedValue({ id: userId, displayName: 'Admin User', email: 'admin@test.com' });
+
+      await requestHouseholdDeletion(userId, householdId);
+
+      expect(models.HouseholdActionRequest.create).toHaveBeenCalledWith(
+        expect.objectContaining({ householdId, requestedBy: userId, type: 'delete' }),
+      );
+      expect(sendAdminAlertEmail).toHaveBeenCalled();
     });
 
     it('should throw ForbiddenError for a non-admin', async () => {
       (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'member' }));
 
-      await expect(scheduleHouseholdDeletion(userId, householdId, { password: 'x' }))
-        .rejects.toThrow('Only the household admin can delete the household');
+      await expect(requestHouseholdDeletion(userId, householdId))
+        .rejects.toThrow('Only the household admin can request deletion');
+      expect(models.HouseholdActionRequest.create).not.toHaveBeenCalled();
     });
 
-    it('should throw for wrong password', async () => {
+    it('should throw ConflictError if a delete request is already pending', async () => {
       (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'admin' }));
-      (models.User.findByPk as jest.Mock).mockResolvedValue({ id: userId, passwordHash: hash });
+      (models.HouseholdActionRequest.findOne as jest.Mock).mockResolvedValue({ id: 'existing', status: 'pending' });
 
-      await expect(scheduleHouseholdDeletion(userId, householdId, { password: 'wrong' }))
-        .rejects.toThrow('Invalid password');
+      await expect(requestHouseholdDeletion(userId, householdId))
+        .rejects.toThrow('already pending review');
+      expect(models.HouseholdActionRequest.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getMyPendingActionRequest', () => {
+    it('should return the pending request when one exists', async () => {
+      const pending = {
+        id: 'req-3', householdId, requestedBy: userId, type: 'leave', status: 'pending',
+        reviewerNote: null, reviewedAt: null, createdAt: new Date('2026-08-01'),
+      };
+      (models.HouseholdActionRequest.findOne as jest.Mock).mockResolvedValue(pending);
+
+      const result = await getMyPendingActionRequest(userId, householdId);
+
+      expect(result).toMatchObject({ id: 'req-3', type: 'leave', status: 'pending' });
     });
 
-    it('should allow a password-less (OAuth) admin with a freshly issued token', async () => {
-      (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'admin' }));
-      (models.User.findByPk as jest.Mock).mockResolvedValue({ id: userId, passwordHash: '' });
-      const household = fakeHousehold({ scheduledDeletionAt: null, save: jest.fn() });
+    it('should return null when there is no pending request', async () => {
+      (models.HouseholdActionRequest.findOne as jest.Mock).mockResolvedValue(null);
+
+      const result = await getMyPendingActionRequest(userId, householdId);
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('approveActionRequest', () => {
+    function fakeRequest(overrides: any = {}) {
+      return {
+        id: 'req-4',
+        householdId,
+        requestedBy: userId,
+        type: 'leave',
+        status: 'pending',
+        reviewerNote: null,
+        reviewedAt: null,
+        createdAt: new Date('2026-08-01'),
+        save: jest.fn().mockResolvedValue(undefined),
+        ...overrides,
+      };
+    }
+
+    it('should execute leaveHousehold and mark the request approved for a leave request', async () => {
+      const request = fakeRequest({ type: 'leave' });
+      (models.HouseholdActionRequest.findByPk as jest.Mock).mockResolvedValue(request);
+      const destroy = jest.fn().mockResolvedValue(undefined);
+      (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue({ role: 'member', destroy });
+
+      await approveActionRequest('req-4');
+
+      expect(destroy).toHaveBeenCalled();
+      expect(request.status).toBe('approved');
+      expect(request.save).toHaveBeenCalled();
+    });
+
+    it('should schedule deletion and mark the request approved for a delete request', async () => {
+      const request = fakeRequest({ type: 'delete' });
+      (models.HouseholdActionRequest.findByPk as jest.Mock).mockResolvedValue(request);
+      const household = fakeHousehold({ scheduledDeletionAt: null, save: jest.fn().mockResolvedValue(undefined) });
       (models.Household.findByPk as jest.Mock).mockResolvedValue(household);
-      const nowSeconds = Math.floor(Date.now() / 1000);
 
-      await scheduleHouseholdDeletion(userId, householdId, { password: '' }, nowSeconds);
+      await approveActionRequest('req-4', 'looks fine');
 
+      expect(household.scheduledDeletionAt).toBeInstanceOf(Date);
       expect(household.save).toHaveBeenCalled();
+      expect(request.status).toBe('approved');
+      expect(request.reviewerNote).toBe('looks fine');
     });
 
-    it('should reject a password-less (OAuth) admin with a stale token', async () => {
-      (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'admin' }));
-      (models.User.findByPk as jest.Mock).mockResolvedValue({ id: userId, passwordHash: '' });
-      const staleIssuedAt = Math.floor(Date.now() / 1000) - 10 * 60; // 10 minutes ago
+    it('should throw NotFoundError for an unknown request id', async () => {
+      (models.HouseholdActionRequest.findByPk as jest.Mock).mockResolvedValue(null);
 
-      await expect(scheduleHouseholdDeletion(userId, householdId, { password: '' }, staleIssuedAt))
-        .rejects.toThrow('Please log in again');
+      await expect(approveActionRequest('missing')).rejects.toThrow('Request not found');
+    });
+
+    it('should reject re-approving an already-reviewed request', async () => {
+      (models.HouseholdActionRequest.findByPk as jest.Mock).mockResolvedValue(fakeRequest({ status: 'approved' }));
+
+      await expect(approveActionRequest('req-4')).rejects.toThrow('already reviewed');
+    });
+  });
+
+  describe('rejectActionRequest', () => {
+    it('should mark the request rejected with zero side effects', async () => {
+      const request = {
+        id: 'req-5', householdId, requestedBy: userId, type: 'delete', status: 'pending',
+        reviewerNote: null, reviewedAt: null, createdAt: new Date(),
+        save: jest.fn().mockResolvedValue(undefined),
+      };
+      (models.HouseholdActionRequest.findByPk as jest.Mock).mockResolvedValue(request);
+
+      await rejectActionRequest('req-5', 'not needed');
+
+      expect(request.status).toBe('rejected');
+      expect(request.reviewerNote).toBe('not needed');
+      expect(models.HouseholdMember.destroy).not.toHaveBeenCalled();
+      expect(models.Household.findByPk).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundError for an unknown request id', async () => {
+      (models.HouseholdActionRequest.findByPk as jest.Mock).mockResolvedValue(null);
+
+      await expect(rejectActionRequest('missing')).rejects.toThrow('Request not found');
+    });
+
+    it('should reject re-rejecting an already-reviewed request', async () => {
+      (models.HouseholdActionRequest.findByPk as jest.Mock).mockResolvedValue({ status: 'rejected' });
+
+      await expect(rejectActionRequest('req-5')).rejects.toThrow('already reviewed');
     });
   });
 
@@ -457,45 +590,6 @@ describe('Household Service — Member Management', () => {
 
       await expect(cancelHouseholdDeletion(userId, householdId))
         .rejects.toThrow('Only the household admin can cancel a scheduled deletion');
-    });
-  });
-
-  describe('confirmHouseholdDeletion', () => {
-    const hash = '$2b$04$bUCIhz76H.vDDixGSaXRt.vmZy8izCpNSiK4ZVGtmhtY1twdLD31W';
-
-    const elapsedGracePeriod = new Date(Date.now() - 24 * 60 * 60 * 1000); // 1 day in the past
-
-    it('should remove all members and soft-delete the household', async () => {
-      (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'admin' }));
-      (models.User.findByPk as jest.Mock).mockResolvedValue({ id: userId, passwordHash: hash });
-      const household = fakeHousehold({
-        scheduledDeletionAt: elapsedGracePeriod,
-        destroy: jest.fn().mockResolvedValue(undefined),
-      });
-      (models.Household.findByPk as jest.Mock).mockResolvedValue(household);
-
-      await confirmHouseholdDeletion(userId, householdId, { password: 'password123' });
-
-      expect(models.HouseholdMember.destroy).toHaveBeenCalledWith({ where: { householdId } });
-      expect(household.destroy).toHaveBeenCalled();
-    });
-
-    it('should throw if the 30-day grace period has not been scheduled or has not elapsed yet', async () => {
-      (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'admin' }));
-      (models.User.findByPk as jest.Mock).mockResolvedValue({ id: userId, passwordHash: hash });
-      const household = fakeHousehold({ scheduledDeletionAt: null, destroy: jest.fn() });
-      (models.Household.findByPk as jest.Mock).mockResolvedValue(household);
-
-      await expect(confirmHouseholdDeletion(userId, householdId, { password: 'password123' }))
-        .rejects.toThrow('Deletion must be scheduled first');
-      expect(household.destroy).not.toHaveBeenCalled();
-    });
-
-    it('should throw ForbiddenError for a non-admin', async () => {
-      (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'member' }));
-
-      await expect(confirmHouseholdDeletion(userId, householdId, { password: 'x' }))
-        .rejects.toThrow('Only the household admin can delete the household');
     });
   });
 

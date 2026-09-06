@@ -81,8 +81,8 @@ export async function createCheckIn(
     )
     .catch(() => {});
 
-  // The sender also gets a notification-history entry (no push to self) so
-  // their own check-ins appear in the in-app notifications list.
+  // The sender also gets a notification-history entry and a push, so their
+  // own check-ins appear both in-app and as a device notification.
   notificationService
     .notifyUser(
       userId,
@@ -90,7 +90,7 @@ export async function createCheckIn(
       'Check-In',
       `You checked in at ${location}`,
       { type: 'check_in', checkInId: checkIn.id },
-      { skipPush: true },
+      { skipPush: false },
     )
     .catch(() => {});
 

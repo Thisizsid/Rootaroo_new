@@ -8,7 +8,7 @@ import * as NavigationBar from 'expo-navigation-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../shared/store/authStore';
 import { connectSocket, disconnectSocket } from '../shared/socket';
-import { registerForPushNotificationsAsync } from '../shared/pushNotifications';
+import { registerForPushNotificationsAsync, unregisterPushNotificationsAsync } from '../shared/pushNotifications';
 import SplashScreen from '../screens/SplashScreen';
 import WelcomeScreen from '../screens/WelcomeScreen';
 import ChooseMethodScreen from '../screens/ChooseMethodScreen';
@@ -499,6 +499,7 @@ export default function RootNavigator() {
       registerForPushNotificationsAsync();
     } else {
       disconnectSocket();
+      unregisterPushNotificationsAsync();
     }
   }, [isAuthenticated, accessToken]);
 

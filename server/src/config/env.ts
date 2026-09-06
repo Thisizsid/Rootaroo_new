@@ -8,8 +8,13 @@ export const env = {
 
   fcm: {
     enabled: process.env.FCM_ENABLED === 'true',
-    serverKey: process.env.FCM_SERVER_KEY || '',
     projectId: process.env.FCM_PROJECT_ID || '',
+    // Base64-encoded Google credentials JSON — either a real Firebase
+    // service-account key, or (interim, while service-account key
+    // creation is blocked by an org policy) impersonated Application
+    // Default Credentials from `gcloud auth application-default login
+    // --impersonate-service-account=...`. See shared/utils/fcm.ts.
+    credentialsBase64: process.env.FCM_CREDENTIALS_BASE64 || '',
   },
 
   db: {
@@ -75,6 +80,15 @@ export const env = {
     from: process.env.EMAIL_FROM || 'noreply@rootaroo.com',
   },
 
+  // Rootaroo's own support inbox — receives leave/delete household action
+  // request alerts (shared/utils/mailer.ts's sendAdminAlertEmail).
+  adminEmail: process.env.ADMIN_EMAIL || '',
+  // Static secret guarding the admin-only household action request review
+  // API (shared/middleware/adminApiKey.ts) — a separate credential from the
+  // per-user JWT, since these endpoints are reviewed by Rootaroo staff, not
+  // household members.
+  adminApiKey: process.env.ADMIN_API_KEY || '',
+
   sentryDsn: process.env.SENTRY_DSN || '',
   corsOrigins: (process.env.CORS_ORIGINS || 'http://localhost:3000').split(','),
   logLevel: process.env.LOG_LEVEL || 'debug',
@@ -93,11 +107,22 @@ if (env.nodeEnv === 'production') {
     !process.env.S3_ACCESS_KEY_ID && 'S3_ACCESS_KEY_ID',
     !process.env.S3_SECRET_ACCESS_KEY && 'S3_SECRET_ACCESS_KEY',
     !process.env.CALENDAR_TOKEN_KEK && 'CALENDAR_TOKEN_KEK',
+    // FCM is legitimately optional to have off — only required once deliberately enabled.
+    process.env.FCM_ENABLED === 'true' && !process.env.FCM_PROJECT_ID && 'FCM_PROJECT_ID',
+    process.env.FCM_ENABLED === 'true' && !process.env.FCM_CREDENTIALS_BASE64 && 'FCM_CREDENTIALS_BASE64',
   ].filter(Boolean);
 
   if (missing.length > 0) {
     // eslint-disable-next-line no-console
     console.error(`FATAL: refusing to start in production without required secrets: ${missing.join(', ')}`);
     process.exit(1);
+  }
+
+  // Non-fatal: an unset ADMIN_API_KEY just means the admin review
+  // endpoints 401 everyone (fails safe), not a security hole — this
+  // feature is opt-in-by-deploy, so a warning is enough.
+  if (!env.adminApiKey) {
+    // eslint-disable-next-line no-console
+    console.warn('WARNING: ADMIN_API_KEY is not set — the admin household-request review endpoints will reject all requests.');
   }
 }

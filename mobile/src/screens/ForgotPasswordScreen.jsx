@@ -74,7 +74,7 @@ export default function ForgotPasswordScreen({ navigation }) {
     }
     setLoading(true);
     try {
-      await authApi.checkResetCode(otp.join(''));
+      await authApi.checkResetCode(email.trim(), otp.join(''));
       setStep('reset');
     } catch (e) {
       showAlert('Error', e?.response?.data?.error || e?.message || 'Invalid or expired code.');
@@ -90,6 +90,7 @@ export default function ForgotPasswordScreen({ navigation }) {
     setLoading(true);
     try {
       await authApi.resetPassword({
+        email: email.trim(),
         code: otp.join(''),
         password,
       });

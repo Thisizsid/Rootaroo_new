@@ -92,7 +92,7 @@ describe('createCheckIn', () => {
     );
     expect(result.address).toBe('Kathmandu, Nepal');
 
-    // Household gets the push, sender gets a history-only entry (no push to self)
+    // Household gets the push, sender gets a push too (self check-ins push as well)
     const notifications = jest.requireMock('../../../shared/services/notifications') as {
       notifyHousehold: jest.Mock;
       notifyUser: jest.Mock;
@@ -111,7 +111,7 @@ describe('createCheckIn', () => {
       'Check-In',
       expect.stringContaining('You checked in'),
       expect.objectContaining({ type: 'check_in' }),
-      { skipPush: true },
+      { skipPush: false },
     );
   });
 
