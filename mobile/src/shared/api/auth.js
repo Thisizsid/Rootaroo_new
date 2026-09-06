@@ -32,8 +32,8 @@ export const authApi = {
   resetPassword: (data) =>
     apiClient.post('/auth/reset-password', data),
 
-  checkResetCode: (code) =>
-    apiClient.post('/auth/check-reset-code', { code }),
+  checkResetCode: (email, code) =>
+    apiClient.post('/auth/check-reset-code', { email, code }),
 
   updateProfile: (data) =>
     apiClient.patch('/auth/profile', data).then((r) => r.data.data),
