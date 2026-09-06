@@ -49,14 +49,14 @@ export const householdApi = {
   removeCoverPhoto: (householdId) =>
     apiClient.delete(`/households/${householdId}/cover-photo`).then((r) => r.data.data),
 
-  scheduleDeletion: (householdId, password) =>
-    apiClient.post(`/households/${householdId}/schedule-deletion`, { password }).then((r) => r.data.data),
+  requestDeletion: (householdId) =>
+    apiClient.post(`/households/${householdId}/request-deletion`).then((r) => r.data.data),
 
   cancelDeletion: (householdId) =>
     apiClient.post(`/households/${householdId}/cancel-deletion`).then((r) => r.data.data),
 
-  confirmDeletion: (householdId, password) =>
-    apiClient.post(`/households/${householdId}/confirm-deletion`, { password }).then((r) => r.data.data),
+  getMyPendingActionRequest: (householdId) =>
+    apiClient.get(`/households/${householdId}/action-requests/mine`).then((r) => r.data.data),
 };
 
 export async function loadMyHousehold() {

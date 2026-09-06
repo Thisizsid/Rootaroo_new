@@ -7,10 +7,6 @@ function getUserId(req: Request): string {
   return (req as AuthenticatedRequest).user!.userId;
 }
 
-function getTokenIssuedAt(req: Request): number | undefined {
-  return (req as AuthenticatedRequest).user!.iat;
-}
-
 export async function create(req: Request, res: Response, next: NextFunction) {
   try {
     const result = await householdService.createHousehold(getUserId(req), req.body);
@@ -55,8 +51,15 @@ export async function removeMember(req: Request, res: Response, next: NextFuncti
 
 export async function leave(req: Request, res: Response, next: NextFunction) {
   try {
-    await householdService.leaveHousehold(getUserId(req), req.params.id);
-    res.status(200).json({ success: true, data: { message: 'Left household successfully' } });
+    await householdService.requestLeaveHousehold(getUserId(req), req.params.id);
+    res.status(200).json({ success: true, data: { message: 'Your request to leave has been submitted for review' } });
+  } catch (e) { next(e); }
+}
+
+export async function getMyPendingActionRequest(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await householdService.getMyPendingActionRequest(getUserId(req), req.params.id);
+    res.status(200).json({ success: true, data: result });
   } catch (e) { next(e); }
 }
 
@@ -108,10 +111,10 @@ export async function rotateInviteCode(req: Request, res: Response, next: NextFu
   } catch (e) { next(e); }
 }
 
-export async function scheduleDeletion(req: Request, res: Response, next: NextFunction) {
+export async function requestDeletion(req: Request, res: Response, next: NextFunction) {
   try {
-    await householdService.scheduleHouseholdDeletion(getUserId(req), req.params.id, req.body, getTokenIssuedAt(req));
-    res.status(200).json({ success: true, data: { message: 'Household deletion scheduled in 30 days' } });
+    await householdService.requestHouseholdDeletion(getUserId(req), req.params.id);
+    res.status(200).json({ success: true, data: { message: 'Your household deletion request has been submitted for review' } });
   } catch (e) { next(e); }
 }
 
@@ -119,12 +122,5 @@ export async function cancelDeletion(req: Request, res: Response, next: NextFunc
   try {
     await householdService.cancelHouseholdDeletion(getUserId(req), req.params.id);
     res.status(200).json({ success: true, data: { message: 'Household deletion cancelled' } });
-  } catch (e) { next(e); }
-}
-
-export async function confirmDeletion(req: Request, res: Response, next: NextFunction) {
-  try {
-    await householdService.confirmHouseholdDeletion(getUserId(req), req.params.id, req.body, getTokenIssuedAt(req));
-    res.status(200).json({ success: true, data: { message: 'Household deleted' } });
   } catch (e) { next(e); }
 }

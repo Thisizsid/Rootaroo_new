@@ -1,16 +1,17 @@
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
-import bcrypt from 'bcrypt';
 import { Op } from 'sequelize';
 import { Transaction } from 'sequelize';
-import { sequelize, Household, HouseholdMember, Invitation, User, Conversation, ConversationParticipant } from '../../database/models';
+import { sequelize, Household, HouseholdMember, HouseholdActionRequest, Invitation, User, Conversation, ConversationParticipant } from '../../database/models';
 import { ConflictError, NotFoundError, ForbiddenError, AppError } from '../../shared/utils/errors';
 import { getSignedUrl, deleteObject } from '../../shared/utils/s3';
+import { sendAdminAlertEmail } from '../../shared/utils/mailer';
 import logger from '../../shared/utils/logger';
 import * as notificationService from '../../shared/services/notifications';
 import type {
   CreateHouseholdBody, HouseholdResponse, InvitationResponse, JoinHouseholdBody,
-  MemberResponse, ChangeRoleBody, ScheduleHouseholdDeletionBody,
+  MemberResponse, ChangeRoleBody, HouseholdActionRequestType, HouseholdActionRequestStatus,
+  HouseholdActionRequestResponse,
 } from './types';
 
 function generateCode(): string {
@@ -320,6 +321,11 @@ export async function removeMember(
   await removeFromHouseholdConversation(householdId, targetUserId);
 }
 
+/**
+ * Actually removes the member. Not called directly from user action anymore
+ * — only from approveActionRequest, once Rootaroo approves a pending
+ * 'leave' request (see requestLeaveHousehold below).
+ */
 export async function leaveHousehold(userId: string, householdId: string): Promise<void> {
   const membership = await getMembership(householdId, userId);
   if (membership.role === 'admin') {
@@ -429,64 +435,167 @@ export async function listMembers(
   })));
 }
 
-// ── Household Deletion (admin-only, password-confirmed, 30-day grace) ──
+// ── Household Deletion (admin-only, Rootaroo-approved, 30-day grace) ──
+//
+// Leaving and deleting a household no longer take effect directly from user
+// action — both create a pending HouseholdActionRequest that Rootaroo staff
+// review via the admin-only API (modules/admin). Only once approved does
+// the underlying action actually run (see approveActionRequest below).
 
-// A destructive action gated on a freshly-issued token, for accounts with
-// no password to check (OAuth/phone-only admins). Prevents a long-lived
-// stolen/replayed access token from being sufficient on its own — the
-// caller must have (re-)authenticated recently.
-const STEP_UP_MAX_TOKEN_AGE_SECONDS = 5 * 60;
+function toActionRequestResponse(request: HouseholdActionRequest): HouseholdActionRequestResponse {
+  return {
+    id: request.id,
+    householdId: request.householdId,
+    requestedBy: request.requestedBy,
+    type: request.type,
+    status: request.status,
+    reviewerNote: request.reviewerNote,
+    reviewedAt: request.reviewedAt ? request.reviewedAt.toISOString() : null,
+    createdAt: request.createdAt.toISOString(),
+  };
+}
 
-async function assertAdminWithPassword(
-  userId: string,
-  householdId: string,
-  password: string,
-  tokenIssuedAt?: number,
-): Promise<Household> {
-  const membership = await getMembership(householdId, userId);
-  if (membership.role !== 'admin') {
-    throw new ForbiddenError('Only the household admin can delete the household');
+async function assertNoPendingRequest(householdId: string, type: HouseholdActionRequestType): Promise<void> {
+  const existing = await HouseholdActionRequest.findOne({
+    where: { householdId, type, status: 'pending' },
+  });
+  if (existing) {
+    throw new ConflictError(`A ${type} request for this household is already pending review.`);
   }
+}
+
+export async function requestLeaveHousehold(userId: string, householdId: string): Promise<void> {
+  const membership = await getMembership(householdId, userId);
+  if (membership.role === 'admin') {
+    throw new ForbiddenError(
+      'Transfer admin role to another member before leaving the household.',
+    );
+  }
+
+  await assertNoPendingRequest(householdId, 'leave');
+
+  const request = await HouseholdActionRequest.create({
+    id: uuidv4(),
+    householdId,
+    requestedBy: userId,
+    type: 'leave',
+  });
 
   const user = await User.findByPk(userId);
-  if (!user) throw new NotFoundError('User');
+  await sendAdminAlertEmail(
+    'Rootaroo: household leave request',
+    `Request ID: ${request.id}\nHousehold: ${householdId}\nRequested by: ${user?.displayName || userId} (${user?.email || 'unknown'})\nType: leave\n\nApprove: POST /api/v1/admin/requests/${request.id}/approve\nReject: POST /api/v1/admin/requests/${request.id}/reject`,
+  ).catch((e: Error) => logger.warn('[Household] Failed to send admin alert email:', e.message));
+}
 
-  if (user.passwordHash) {
-    const valid = await bcrypt.compare(password, user.passwordHash);
-    if (!valid) throw new AppError(400, 'Invalid password');
-  } else {
-    const ageSeconds = tokenIssuedAt ? Math.floor(Date.now() / 1000) - tokenIssuedAt : Infinity;
-    if (ageSeconds > STEP_UP_MAX_TOKEN_AGE_SECONDS) {
-      throw new AppError(401, 'Please log in again to confirm this action.');
-    }
+export async function requestHouseholdDeletion(userId: string, householdId: string): Promise<void> {
+  const membership = await getMembership(householdId, userId);
+  if (membership.role !== 'admin') {
+    throw new ForbiddenError('Only the household admin can request deletion of the household');
   }
+
+  await assertNoPendingRequest(householdId, 'delete');
 
   const household = await Household.findByPk(householdId);
   if (!household) throw new NotFoundError('Household');
-  return household;
+
+  const request = await HouseholdActionRequest.create({
+    id: uuidv4(),
+    householdId,
+    requestedBy: userId,
+    type: 'delete',
+  });
+
+  const user = await User.findByPk(userId);
+  await sendAdminAlertEmail(
+    'Rootaroo: household deletion request',
+    `Request ID: ${request.id}\nHousehold: ${household.name} (${householdId})\nRequested by: ${user?.displayName || userId} (${user?.email || 'unknown'})\nType: delete\n\nApprove: POST /api/v1/admin/requests/${request.id}/approve\nReject: POST /api/v1/admin/requests/${request.id}/reject`,
+  ).catch((e: Error) => logger.warn('[Household] Failed to send admin alert email:', e.message));
 }
 
-export async function scheduleHouseholdDeletion(
+/**
+ * The caller's own most recent pending leave/delete request for this
+ * household, or null. A given user only ever has one relevant request
+ * type for a household (non-admins can only request 'leave', the admin
+ * can only request 'delete'), so this single lookup covers both cases.
+ */
+export async function getMyPendingActionRequest(
   userId: string,
   householdId: string,
-  body: ScheduleHouseholdDeletionBody,
-  tokenIssuedAt?: number,
-): Promise<void> {
-  const household = await assertAdminWithPassword(userId, householdId, body.password, tokenIssuedAt);
+): Promise<HouseholdActionRequestResponse | null> {
+  const request = await HouseholdActionRequest.findOne({
+    where: { householdId, requestedBy: userId, status: 'pending' },
+    order: [['createdAt', 'DESC']],
+  });
+  return request ? toActionRequestResponse(request) : null;
+}
 
-  household.scheduledDeletionAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-  await household.save();
+export async function listActionRequests(
+  status?: HouseholdActionRequestStatus,
+): Promise<HouseholdActionRequestResponse[]> {
+  const requests = await HouseholdActionRequest.findAll({
+    where: status ? { status } : {},
+    order: [['createdAt', 'DESC']],
+  });
+  return requests.map(toActionRequestResponse);
+}
 
-  notificationService
-    .notifyHousehold(
-      householdId,
-      'household_deletion_scheduled',
-      'Household deletion scheduled',
-      'An admin has scheduled this household for deletion in 30 days.',
-      { type: 'household_deletion_scheduled', householdId },
-      userId,
-    )
-    .catch(() => {});
+export async function approveActionRequest(
+  requestId: string,
+  reviewerNote?: string,
+): Promise<HouseholdActionRequestResponse> {
+  return await sequelize.transaction(async (transaction) => {
+    const request = await HouseholdActionRequest.findByPk(requestId, { transaction });
+    if (!request) throw new NotFoundError('Request');
+    if (request.status !== 'pending') {
+      throw new AppError(400, 'Request already reviewed');
+    }
+
+    if (request.type === 'leave') {
+      await leaveHousehold(request.requestedBy, request.householdId);
+    } else {
+      const household = await Household.findByPk(request.householdId, { transaction });
+      if (!household) throw new NotFoundError('Household');
+      household.scheduledDeletionAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      await household.save({ transaction });
+
+      notificationService
+        .notifyHousehold(
+          request.householdId,
+          'household_deletion_scheduled',
+          'Household deletion scheduled',
+          'An admin has requested this household for deletion — it will be removed in 30 days.',
+          { type: 'household_deletion_scheduled', householdId: request.householdId },
+          request.requestedBy,
+        )
+        .catch(() => {});
+    }
+
+    request.status = 'approved';
+    request.reviewedAt = new Date();
+    request.reviewerNote = reviewerNote ?? null;
+    await request.save({ transaction });
+
+    return toActionRequestResponse(request);
+  });
+}
+
+export async function rejectActionRequest(
+  requestId: string,
+  reviewerNote?: string,
+): Promise<HouseholdActionRequestResponse> {
+  const request = await HouseholdActionRequest.findByPk(requestId);
+  if (!request) throw new NotFoundError('Request');
+  if (request.status !== 'pending') {
+    throw new AppError(400, 'Request already reviewed');
+  }
+
+  request.status = 'rejected';
+  request.reviewedAt = new Date();
+  request.reviewerNote = reviewerNote ?? null;
+  await request.save();
+
+  return toActionRequestResponse(request);
 }
 
 export async function cancelHouseholdDeletion(userId: string, householdId: string): Promise<void> {
@@ -511,24 +620,6 @@ export async function cancelHouseholdDeletion(userId: string, householdId: strin
       userId,
     )
     .catch(() => {});
-}
-
-export async function confirmHouseholdDeletion(
-  userId: string,
-  householdId: string,
-  body: ScheduleHouseholdDeletionBody,
-  tokenIssuedAt?: number,
-): Promise<void> {
-  const household = await assertAdminWithPassword(userId, householdId, body.password, tokenIssuedAt);
-
-  // The 30-day grace period is the whole point of scheduling — an admin
-  // possessing a valid access token must not be able to skip straight to
-  // confirm without ever scheduling, or before the window has elapsed.
-  if (!household.scheduledDeletionAt || household.scheduledDeletionAt > new Date()) {
-    throw new AppError(400, 'Deletion must be scheduled first, and the 30-day window must elapse before confirming.');
-  }
-
-  await finalizeHouseholdDeletion(household);
 }
 
 async function finalizeHouseholdDeletion(household: Household): Promise<void> {

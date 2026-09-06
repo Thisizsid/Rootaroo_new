@@ -7,6 +7,7 @@ import EmailVerification from './EmailVerification';
 import PasswordReset from './PasswordReset';
 import Household from './Household';
 import HouseholdMember from './HouseholdMember';
+import HouseholdActionRequest from './HouseholdActionRequest';
 import Invitation from './Invitation';
 import FeedPost from './FeedPost';
 import FeedLike from './FeedLike';
@@ -49,6 +50,7 @@ const models = {
   PhoneVerification,
   Household,
   HouseholdMember,
+  HouseholdActionRequest,
   Invitation,
   FeedPost,
   FeedLike,
@@ -114,6 +116,11 @@ export function setupAssociations(): void {
   Household.hasMany(Invitation, { foreignKey: 'household_id', as: 'invitations' });
   Invitation.belongsTo(Household, { foreignKey: 'household_id', as: 'household' });
   Invitation.belongsTo(User, { foreignKey: 'invited_by', as: 'inviter' });
+
+  Household.hasMany(HouseholdActionRequest, { foreignKey: 'household_id', as: 'actionRequests' });
+  HouseholdActionRequest.belongsTo(Household, { foreignKey: 'household_id', as: 'household' });
+  User.hasMany(HouseholdActionRequest, { foreignKey: 'requested_by', as: 'householdActionRequests' });
+  HouseholdActionRequest.belongsTo(User, { foreignKey: 'requested_by', as: 'requester' });
 
   Household.hasMany(FeedPost, { foreignKey: 'household_id', as: 'feedPosts' });
   FeedPost.belongsTo(Household, { foreignKey: 'household_id', as: 'household' });
@@ -291,6 +298,7 @@ export {
   PhoneVerification,
   Household,
   HouseholdMember,
+  HouseholdActionRequest,
   Invitation,
   FeedPost,
   FeedLike,

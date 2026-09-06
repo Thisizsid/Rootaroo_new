@@ -3,7 +3,7 @@ import { authenticate } from '../../shared/middleware/auth';
 import { requireRole } from '../../shared/middleware/rbac';
 import { validate } from '../../shared/middleware/validate';
 import { uploadHouseholdCover } from '../../shared/middleware/upload';
-import { createHouseholdSchema, joinHouseholdSchema, transferAdminSchema, changeMemberRoleSchema, scheduleHouseholdDeletionSchema } from './validation';
+import { createHouseholdSchema, joinHouseholdSchema, transferAdminSchema, changeMemberRoleSchema } from './validation';
 import * as ctrl from './controller';
 
 const router = Router();
@@ -169,37 +169,51 @@ router.delete('/:id/members/:userId', ctrl.removeMember);
  */
 router.patch('/:id/members/:userId/role', validate(changeMemberRoleSchema), ctrl.changeMemberRole);
 
-// Leave / Transfer
-router.post('/:id/leave', ctrl.leave);
-router.post('/:id/transfer', validate(transferAdminSchema), ctrl.transferAdmin);
-
 /**
  * @openapi
- * /households/{id}/schedule-deletion:
+ * /households/{id}/leave:
  *   post:
  *     tags: [Household]
- *     summary: Schedule the household for deletion in 30 days (admin-only)
+ *     summary: Request to leave the household (non-admin members)
  *     description: >
- *       Password-holding admins must confirm their password. Password-less
- *       (OAuth/phone) admins must present a freshly issued access token
- *       (re-authenticated within the last 5 minutes) instead.
+ *       No longer instant — submits a HouseholdActionRequest for Rootaroo
+ *       staff to review. The member stays in the household until approved.
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema: { type: string, format: uuid }
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               password: { type: string }
  *     responses:
  *       200:
- *         description: Deletion scheduled
- *       401:
- *         description: Invalid password, or token too old for a password-less account
+ *         description: Leave request submitted
+ *       403:
+ *         description: Caller is the admin (must transfer first)
+ *       409:
+ *         description: A leave request is already pending for this household
+ */
+router.post('/:id/leave', ctrl.leave);
+router.post('/:id/transfer', validate(transferAdminSchema), ctrl.transferAdmin);
+
+/**
+ * @openapi
+ * /households/{id}/request-deletion:
+ *   post:
+ *     tags: [Household]
+ *     summary: Request deletion of the household (admin-only)
+ *     description: >
+ *       No longer password-confirmed and instant/scheduled by the admin —
+ *       submits a HouseholdActionRequest for Rootaroo staff to review.
+ *       Approval starts the existing 30-day grace period.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Deletion request submitted
+ *       409:
+ *         description: A deletion request is already pending for this household
  * /households/{id}/cancel-deletion:
  *   post:
  *     tags: [Household]
@@ -212,33 +226,21 @@ router.post('/:id/transfer', validate(transferAdminSchema), ctrl.transferAdmin);
  *     responses:
  *       200:
  *         description: Deletion cancelled
- * /households/{id}/confirm-deletion:
- *   post:
+ * /households/{id}/action-requests/mine:
+ *   get:
  *     tags: [Household]
- *     summary: Confirm and finalize a scheduled deletion (admin-only)
- *     description: >
- *       Requires the 30-day grace period to have already elapsed — cannot
- *       be called before scheduling, or before the window passes.
+ *     summary: Get the caller's own pending leave/delete request for this household, if any
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema: { type: string, format: uuid }
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               password: { type: string }
  *     responses:
  *       200:
- *         description: Household deleted
- *       400:
- *         description: Deletion not scheduled, or the 30-day window hasn't elapsed
+ *         description: The pending request, or null if none
  */
-router.post('/:id/schedule-deletion', validate(scheduleHouseholdDeletionSchema), ctrl.scheduleDeletion);
+router.post('/:id/request-deletion', ctrl.requestDeletion);
 router.post('/:id/cancel-deletion', ctrl.cancelDeletion);
-router.post('/:id/confirm-deletion', validate(scheduleHouseholdDeletionSchema), ctrl.confirmDeletion);
+router.get('/:id/action-requests/mine', ctrl.getMyPendingActionRequest);
 
 export default router;

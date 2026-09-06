@@ -80,6 +80,15 @@ export const env = {
     from: process.env.EMAIL_FROM || 'noreply@rootaroo.com',
   },
 
+  // Rootaroo's own support inbox — receives leave/delete household action
+  // request alerts (shared/utils/mailer.ts's sendAdminAlertEmail).
+  adminEmail: process.env.ADMIN_EMAIL || '',
+  // Static secret guarding the admin-only household action request review
+  // API (shared/middleware/adminApiKey.ts) — a separate credential from the
+  // per-user JWT, since these endpoints are reviewed by Rootaroo staff, not
+  // household members.
+  adminApiKey: process.env.ADMIN_API_KEY || '',
+
   sentryDsn: process.env.SENTRY_DSN || '',
   corsOrigins: (process.env.CORS_ORIGINS || 'http://localhost:3000').split(','),
   logLevel: process.env.LOG_LEVEL || 'debug',
@@ -107,5 +116,13 @@ if (env.nodeEnv === 'production') {
     // eslint-disable-next-line no-console
     console.error(`FATAL: refusing to start in production without required secrets: ${missing.join(', ')}`);
     process.exit(1);
+  }
+
+  // Non-fatal: an unset ADMIN_API_KEY just means the admin review
+  // endpoints 401 everyone (fails safe), not a security hole — this
+  // feature is opt-in-by-deploy, so a warning is enough.
+  if (!env.adminApiKey) {
+    // eslint-disable-next-line no-console
+    console.warn('WARNING: ADMIN_API_KEY is not set — the admin household-request review endpoints will reject all requests.');
   }
 }

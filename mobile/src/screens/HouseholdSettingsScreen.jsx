@@ -10,7 +10,6 @@ import {
   StatusBar,
   Modal,
   Pressable,
-  TextInput,
   Share,
 } from 'react-native';
 import { showAlert } from '../shared/services/themedAlert';
@@ -22,7 +21,6 @@ import { householdApi } from '../shared/api/household';
 import { colors, fonts, radius, withAlpha } from '../shared/theme';
 import ConfirmSheet from '../components/ConfirmSheet';
 import Avatar from '../components/Avatar';
-import { KeyboardAvoider } from '../shared/components/KeyboardAware';
 import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
 // Role options match mock Screen 37 exactly — Admin & Member only.
 const ROLE_OPTIONS = [
@@ -52,13 +50,13 @@ export default function HouseholdSettingsScreen({ navigation }) {
   const dockHeight = useTabBarDockHeight();
   const user = useAuthStore((s) => s.user);
   const householdId = useAuthStore((s) => s.householdId);
-  const logout = useAuthStore((s) => s.logout);
   const [members, setMembers] = useState([]);
   const [householdName, setHouseholdName] = useState('');
   const [createdAt, setCreatedAt] = useState('');
   const [inviteCode, setInviteCode] = useState('');
   const [myRole, setMyRole] = useState('');
   const [scheduledDeletionAt, setScheduledDeletionAt] = useState(null);
+  const [pendingRequest, setPendingRequest] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -71,11 +69,6 @@ export default function HouseholdSettingsScreen({ navigation }) {
   const [confirmRemoveMember, setConfirmRemoveMember] = useState(null);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-
-  // Password-confirm modal for household deletion (schedule or immediate)
-  const [showDeletePasswordModal, setShowDeletePasswordModal] = useState(false);
-  const [deletePassword, setDeletePassword] = useState('');
-  const [deleteLoading, setDeleteLoading] = useState(false);
   const currentUserRole = myRole || user?.role || 'member';
   const isAdmin = currentUserRole === 'admin';
   const joinLink = inviteCode ? `rootaru://join?code=${inviteCode}` : null;
@@ -85,9 +78,10 @@ export default function HouseholdSettingsScreen({ navigation }) {
       return;
     }
     try {
-      const [hh, memberList] = await Promise.all([
+      const [hh, memberList, pending] = await Promise.all([
         householdApi.getHousehold(householdId),
         householdApi.getMembers(householdId),
+        householdApi.getMyPendingActionRequest(householdId),
       ]);
       setHouseholdName(hh.name);
       setInviteCode(hh.inviteCode);
@@ -95,6 +89,7 @@ export default function HouseholdSettingsScreen({ navigation }) {
       setCreatedAt(hh.createdAt);
       setScheduledDeletionAt(hh.scheduledDeletionAt);
       setMembers(memberList);
+      setPendingRequest(pending);
     } catch {
       showAlert('Error', 'Failed to load household settings.');
     } finally {
@@ -178,7 +173,8 @@ export default function HouseholdSettingsScreen({ navigation }) {
     setActionLoading(true);
     try {
       await householdApi.leave(householdId);
-      logout();
+      showAlert('Request submitted', 'Your request to leave has been submitted for review.');
+      await load();
     } catch (e) {
       showAlert('Error', e?.response?.data?.error || 'Failed to leave.');
     } finally {
@@ -189,59 +185,19 @@ export default function HouseholdSettingsScreen({ navigation }) {
   const handleDeleteNest = () => {
     setConfirmDelete(true);
   };
-  const confirmDeleteNow = () => {
+  const confirmDeleteNow = async () => {
     setConfirmDelete(false);
-    setDeletePassword('');
-    setShowDeletePasswordModal(true);
-  };
-  const handleScheduleDeletion = async () => {
-    if (!householdId || !deletePassword) {
-      showAlert('Error', 'Enter your password to confirm.');
-      return;
-    }
-    setDeleteLoading(true);
+    if (!householdId) return;
+    setActionLoading(true);
     try {
-      await householdApi.scheduleDeletion(householdId, deletePassword);
-      setShowDeletePasswordModal(false);
-      setDeletePassword('');
+      await householdApi.requestDeletion(householdId);
+      showAlert('Request submitted', 'Your household deletion request has been submitted for review.');
       await load();
     } catch (e) {
-      showAlert('Error', e?.response?.data?.error || 'Failed. Wrong password?');
+      showAlert('Error', e?.response?.data?.error || 'Failed to submit deletion request.');
     } finally {
-      setDeleteLoading(false);
+      setActionLoading(false);
     }
-  };
-  const handleDeleteImmediately = () => {
-    if (!householdId || !deletePassword) {
-      showAlert('Error', 'Enter your password to confirm.');
-      return;
-    }
-    showAlert(
-      'Permanent Deletion',
-      'This will immediately delete the household for every member. This cannot be undone.',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Delete Forever',
-          style: 'destructive',
-          onPress: async () => {
-            setDeleteLoading(true);
-            try {
-              await householdApi.confirmDeletion(householdId, deletePassword);
-              setShowDeletePasswordModal(false);
-              logout();
-            } catch (e) {
-              showAlert('Error', e?.response?.data?.error || 'Deletion failed.');
-            } finally {
-              setDeleteLoading(false);
-            }
-          },
-        },
-      ],
-    );
   };
   const handleCancelScheduledDeletion = async () => {
     if (!householdId) return;
@@ -434,12 +390,24 @@ export default function HouseholdSettingsScreen({ navigation }) {
 
         {/* ── Danger zone ── */}
         <View style={styles.dangerCard}>
+          {pendingRequest && (
+            <View style={styles.deletionBanner}>
+              <Text style={styles.deletionBannerText}>
+                {pendingRequest.type === 'leave'
+                  ? 'Your request to leave this household is pending review.'
+                  : 'Your household deletion request is pending review.'}
+              </Text>
+            </View>
+          )}
           <TouchableOpacity
             style={[styles.dangerRow, !isAdmin && styles.dangerRowLast]}
             onPress={handleLeave}
             activeOpacity={0.7}
+            disabled={!!pendingRequest}
           >
-            <Text style={styles.dangerText}>Leave household</Text>
+            <Text style={[styles.dangerText, !!pendingRequest && styles.dangerTextDisabled]}>
+              Leave household
+            </Text>
           </TouchableOpacity>
           {isAdmin &&
             (scheduledDeletionAt ? (
@@ -461,8 +429,11 @@ export default function HouseholdSettingsScreen({ navigation }) {
                 style={[styles.dangerRow, styles.dangerRowLast]}
                 onPress={handleDeleteNest}
                 activeOpacity={0.7}
+                disabled={!!pendingRequest}
               >
-                <Text style={styles.dangerText}>Delete household</Text>
+                <Text style={[styles.dangerText, !!pendingRequest && styles.dangerTextDisabled]}>
+                  Delete household
+                </Text>
               </TouchableOpacity>
             ))}
         </View>
@@ -573,68 +544,12 @@ export default function HouseholdSettingsScreen({ navigation }) {
       <ConfirmSheet
         visible={confirmDelete}
         title="Delete Household?"
-        subtitle="This can be scheduled 30 days out (cancelable anytime) or done immediately. Everyone will lose access."
-        confirmLabel="Continue"
+        subtitle="This submits a deletion request for Rootaroo to review. If approved, the household is deleted in 30 days (cancelable anytime until then)."
+        confirmLabel="Submit request"
         onConfirm={confirmDeleteNow}
         onCancel={() => setConfirmDelete(false)}
       />
 
-      {/* Password-confirm modal — schedule (30 days) or delete immediately */}
-      <Modal
-        visible={showDeletePasswordModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowDeletePasswordModal(false)}
-        statusBarTranslucent
-        navigationBarTranslucent
-      >
-        <KeyboardAvoider>
-        <Pressable style={styles.modalOverlay} onPress={() => setShowDeletePasswordModal(false)}>
-          <Pressable
-            style={[
-              styles.modalSheet,
-              {
-                paddingBottom: insets.bottom + 44,
-              },
-            ]}
-          >
-            <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>Confirm with password</Text>
-            <TextInput
-              style={styles.deletePasswordInput}
-              value={deletePassword}
-              onChangeText={setDeletePassword}
-              placeholder="Your account password"
-              placeholderTextColor={colors.textMuted}
-              secureTextEntry
-              autoFocus
-            />
-            <TouchableOpacity
-              style={[styles.saveBtn, deleteLoading && styles.saveBtnLoading]}
-              onPress={handleScheduleDeletion}
-              disabled={deleteLoading}
-              activeOpacity={0.85}
-            >
-              {deleteLoading ? (
-                <ActivityIndicator color={colors.onAccent} />
-              ) : (
-                <Text style={styles.saveBtnText}>Schedule deletion (30 days)</Text>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={handleDeleteImmediately}
-              disabled={deleteLoading}
-              activeOpacity={0.7}
-              style={{
-                marginTop: 14,
-              }}
-            >
-              <Text style={styles.deleteImmediateText}>Delete immediately instead</Text>
-            </TouchableOpacity>
-          </Pressable>
-        </Pressable>
-        </KeyboardAvoider>
-      </Modal>
     </View>
   );
 }
@@ -830,6 +745,9 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodySemiBold,
     color: colors.danger,
   },
+  dangerTextDisabled: {
+    opacity: 0.4,
+  },
   deletionBanner: {
     backgroundColor: colors.goldTint,
     borderRadius: radius.card,
@@ -846,24 +764,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: fonts.bodySemiBold,
     color: colors.goldDeep,
-  },
-  deletePasswordInput: {
-    height: 48,
-    borderRadius: radius.card,
-    backgroundColor: colors.canvasElevated,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    paddingHorizontal: 16,
-    fontSize: 14,
-    fontFamily: fonts.body,
-    color: colors.ink,
-    marginBottom: 18,
-  },
-  deleteImmediateText: {
-    fontSize: 13,
-    fontFamily: fonts.bodySemiBold,
-    color: colors.danger,
-    textAlign: 'center',
   },
   // Role Edit modal (mock Screen 37)
   modalOverlay: {

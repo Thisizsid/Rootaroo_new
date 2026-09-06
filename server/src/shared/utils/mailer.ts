@@ -28,3 +28,30 @@ export function getMailer(): Transporter | null {
 }
 
 export { isConfigured };
+
+/**
+ * Alert Rootaroo's own admin inbox (env.adminEmail) — used for the
+ * household leave/delete action-request flow, where a member action needs
+ * a human at Rootaroo to review it. Null-safe like every other mailer call
+ * site: falls back to a console log if SMTP or ADMIN_EMAIL isn't
+ * configured, so the request row is still created either way.
+ */
+export async function sendAdminAlertEmail(subject: string, text: string): Promise<void> {
+  if (!env.adminEmail) {
+    console.warn(`[DEV] ADMIN_EMAIL not configured — admin alert not sent: ${subject}\n${text}`);
+    return;
+  }
+
+  const transporter = getMailer();
+  if (!transporter) {
+    console.warn(`[DEV] SMTP not configured — admin alert for ${env.adminEmail}: ${subject}\n${text}`);
+    return;
+  }
+
+  await transporter.sendMail({
+    from: env.smtp.from,
+    to: env.adminEmail,
+    subject,
+    text,
+  });
+}

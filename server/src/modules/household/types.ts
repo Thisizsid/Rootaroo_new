@@ -43,6 +43,16 @@ export interface ChangeRoleBody {
   role: 'admin' | 'member' | 'child';
 }
 
-export interface ScheduleHouseholdDeletionBody {
-  password: string;
+export type HouseholdActionRequestType = 'leave' | 'delete';
+export type HouseholdActionRequestStatus = 'pending' | 'approved' | 'rejected';
+
+export interface HouseholdActionRequestResponse {
+  id: string;
+  householdId: string;
+  requestedBy: string;
+  type: HouseholdActionRequestType;
+  status: HouseholdActionRequestStatus;
+  reviewerNote: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
 }
