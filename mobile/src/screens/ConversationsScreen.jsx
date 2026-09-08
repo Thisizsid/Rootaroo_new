@@ -700,11 +700,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   memberAvatarText: {
+    fontFamily: fonts.bodyBold,
     fontSize: 15,
     fontWeight: '700',
     color: colors.onAccent,
   },
   memberName: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 10,
     fontWeight: '600',
     color: colors.textMuted,
@@ -728,6 +730,7 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   msgsTitle: {
+    fontFamily: fonts.display,
     fontSize: 22,
     fontWeight: '800',
     color: colors.ink,
@@ -799,6 +802,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
   },
   avatarText: {
+    fontFamily: fonts.bodyBold,
     fontSize: 16,
     fontWeight: '700',
     color: colors.onAccent,
@@ -813,6 +817,7 @@ const styles = StyleSheet.create({
     marginBottom: 3,
   },
   conversationName: {
+    fontFamily: fonts.bodyBold,
     fontSize: 16,
     fontWeight: '700',
     color: colors.ink,
@@ -820,17 +825,20 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   timestamp: {
+    fontFamily: fonts.bodyMedium,
     fontSize: 11,
     fontWeight: '500',
     color: colors.textFaint,
   },
   senderPrefix: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 11,
     fontWeight: '600',
     color: colors.gold,
     marginBottom: 1,
   },
   lastMessage: {
+    fontFamily: fonts.body,
     fontSize: 13,
     fontWeight: '400',
     color: colors.textSecondary,

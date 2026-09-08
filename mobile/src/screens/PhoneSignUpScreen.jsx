@@ -449,6 +449,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   countryCode: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 13,
     fontWeight: '600',
     color: colors.textPrimary,
@@ -509,10 +510,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   linkMuted: {
+    fontFamily: fonts.body,
     fontSize: 13,
     color: colors.textSecondaryWarm,
   },
   linkBold: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 13,
     fontWeight: '600',
     color: colors.textPrimary,
@@ -532,11 +535,13 @@ const styles = StyleSheet.create({
     borderBottomColor: withAlpha(colors.textPrimary, 0.08),
   },
   modalTitle: {
+    fontFamily: fonts.bodyBold,
     fontSize: 16,
     fontWeight: '700',
     color: colors.textPrimary,
   },
   modalClose: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 14,
     fontWeight: '600',
     color: colors.goldWarm,
@@ -571,12 +576,14 @@ const styles = StyleSheet.create({
     fontSize: 22,
   },
   rowName: {
+    fontFamily: fonts.body,
     flex: 1,
     fontSize: 14,
     color: colors.textPrimary,
     fontWeight: '400',
   },
   rowCode: {
+    fontFamily: fonts.bodyMedium,
     fontSize: 13,
     color: colors.textSecondaryWarm,
     fontWeight: '500',

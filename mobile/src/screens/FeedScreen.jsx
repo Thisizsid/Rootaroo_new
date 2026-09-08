@@ -33,7 +33,7 @@ import OfflineBanner from '../components/OfflineBanner';
 import ConfirmSheet from '../components/ConfirmSheet';
 import { KeyboardAvoider, keyboardScrollProps } from '../shared/components/KeyboardAware';
 import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
-import { colors, radius, withAlpha } from '../shared/theme';
+import { colors, fonts, radius, withAlpha } from '../shared/theme';
 import { GlassSheen } from '../shared/components/GlassCard';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -655,7 +655,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.ink,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: fonts.bodySemiBold,
   },
   titleBar: {
     height: 56,
@@ -669,7 +669,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '800',
     color: colors.ink,
-    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    fontFamily: fonts.display,
     letterSpacing: -0.02 * 28,
   },
   postsContainer: {
@@ -716,13 +716,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.goldSoft,
     letterSpacing: 1.2,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: fonts.bodyBold,
   },
   featuredTitle: {
     fontSize: 24,
     fontWeight: '800',
     color: colors.onAccent,
-    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    fontFamily: fonts.display,
     marginBottom: 6,
     textShadowColor: withAlpha(colors.shadow, 0.5),
     textShadowOffset: {
@@ -734,7 +734,7 @@ const styles = StyleSheet.create({
   featuredSub: {
     fontSize: 13,
     color: colors.onAccent,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: fonts.body,
     lineHeight: 18,
     opacity: 0.85,
   },
@@ -784,12 +784,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.ink,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: fonts.bodySemiBold,
   },
   menuPostTime: {
     fontSize: 12,
     color: colors.textMuted,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: fonts.body,
     marginTop: 1,
   },
   menuItem: {
@@ -806,7 +806,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: colors.ink,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: fonts.bodyMedium,
   },
   likeButton: {
     flexDirection: 'row',
@@ -824,7 +824,7 @@ const styles = StyleSheet.create({
   likeText: {
     fontSize: 13,
     color: colors.textSecondary,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: fonts.bodyMedium,
   },
   postCard: {
     backgroundColor: colors.surface,
@@ -870,7 +870,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: colors.inkMuted,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: fonts.bodySemiBold,
   },
   postHeaderInfo: {
     flex: 1,
@@ -894,7 +894,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: colors.goldSoft,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: fonts.bodySemiBold,
   },
   infoRow: {
     flexDirection: 'row',
@@ -907,7 +907,7 @@ const styles = StyleSheet.create({
   infoRowText: {
     fontSize: 13,
     color: colors.textSecondary,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: fonts.body,
     flexShrink: 1,
   },
   commentInputBar: {
@@ -937,7 +937,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     color: colors.ink,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: fonts.body,
     padding: 0,
     margin: 0,
   },
@@ -945,7 +945,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: colors.gold,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: fonts.bodyBold,
   },
   recentCommentRow: {
     marginHorizontal: 20,
@@ -955,19 +955,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     color: colors.ink,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: fonts.body,
   },
   recentCommentAuthor: {
     fontSize: 13,
     lineHeight: 18,
     fontWeight: '700',
     color: colors.ink,
-    fontFamily: 'PlusJakartaSans_700Bold',
+    fontFamily: fonts.bodyBold,
   },
   recentCommentViewAll: {
     fontSize: 12,
     color: colors.textMuted,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: fonts.body,
     marginTop: 4,
   },
   mediaWrap: {
@@ -991,14 +991,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.goldSoft,
     letterSpacing: 1,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: fonts.bodyBold,
     marginBottom: 6,
   },
   mediaCaptionTitle: {
     fontSize: 20,
     fontWeight: '800',
     color: colors.onAccent,
-    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    fontFamily: fonts.display,
     lineHeight: 25,
     textShadowColor: withAlpha(colors.shadow, 0.5),
     textShadowOffset: { width: 0, height: 1 },
@@ -1027,13 +1027,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: colors.ink,
-    fontFamily: 'PlusJakartaSans_700Bold',
+    fontFamily: fonts.bodyBold,
     marginBottom: 2,
   },
   postTime: {
     fontSize: 12,
     color: colors.textMuted,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: fonts.body,
   },
   postImage: {
     width: '100%',
@@ -1042,7 +1042,7 @@ const styles = StyleSheet.create({
   postText: {
     fontSize: 15,
     color: colors.ink,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: fonts.body,
     lineHeight: 22,
     paddingHorizontal: 20,
     paddingBottom: 8,
@@ -1050,7 +1050,7 @@ const styles = StyleSheet.create({
   taggedText: {
     fontSize: 13,
     color: colors.legacyGoldDark,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: fonts.bodyMedium,
     marginBottom: 14,
   },
   loading: {
@@ -1065,13 +1065,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: colors.ink,
-    fontFamily: 'PlusJakartaSans_700Bold',
+    fontFamily: fonts.bodyBold,
     marginBottom: 6,
   },
   emptySub: {
     fontSize: 13,
     color: colors.textSecondary,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: fonts.body,
     textAlign: 'center',
     marginBottom: 16,
   },
@@ -1090,7 +1090,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.onAccent,
-    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontFamily: fonts.bodySemiBold,
   },
   fabButton: {
     width: 56,

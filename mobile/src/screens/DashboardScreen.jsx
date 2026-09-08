@@ -1,4 +1,10 @@
-import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+  useMemo,
+} from "react";
 import {
   View,
   Text,
@@ -15,39 +21,39 @@ import {
   Animated,
   Easing,
   Dimensions,
-} from 'react-native';
-import { showAlert } from '../shared/services/themedAlert';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
-import Svg, { Circle, SvgXml } from 'react-native-svg';
-import ConfettiCannon from 'react-native-confetti-cannon';
-import { Ionicons } from '@expo/vector-icons';
-import { dashboardApi } from '../shared/api/dashboard';
-import { notificationApi } from '../shared/api/notification';
-import * as NavigationBar from 'expo-navigation-bar';
-import { useAuthStore } from '../shared/store/authStore';
-import { householdApi } from '../shared/api/household';
-import { useFeedStore } from '../shared/store/feedStore';
-import { useEngagementStore } from '../shared/store/engagementStore';
-import { useFeedPhotos } from '../shared/hooks/useFeedPhotos';
-import { taskApi } from '../shared/api/task';
-import { expenseApi } from '../shared/api/expense';
-import { vaultApi } from '../shared/api/vault';
-import { eventApi } from '../shared/api/event';
-import { colors, fonts, spacing, radius, withAlpha } from '../shared/theme';
-import Avatar from '../components/Avatar';
-import { KeyboardAvoider } from '../shared/components/KeyboardAware';
-import GlassCard, { GlassSheen } from '../shared/components/GlassCard';
-import { useTranslation } from 'react-i18next';
-import { useDailyWelcome } from '../shared/hooks/useDailyWelcome';
-import DailyWelcomeOverlay from '../shared/components/DailyWelcomeOverlay';
-import { SpotlightTourProvider, AttachStep } from 'react-native-spotlight-tour';
-import TourTooltip from '../shared/components/TourTooltip';
-import { scrollToStep } from '../shared/utils/scrollToStep';
-import ContributorsStrip from '../shared/components/ContributorsStrip';
-import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
+} from "react-native";
+import { showAlert } from "../shared/services/themedAlert";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
+import Svg, { Circle, SvgXml } from "react-native-svg";
+import ConfettiCannon from "react-native-confetti-cannon";
+import { Ionicons } from "@expo/vector-icons";
+import { dashboardApi } from "../shared/api/dashboard";
+import { notificationApi } from "../shared/api/notification";
+import * as NavigationBar from "expo-navigation-bar";
+import { useAuthStore } from "../shared/store/authStore";
+import { householdApi } from "../shared/api/household";
+import { useFeedStore } from "../shared/store/feedStore";
+import { useEngagementStore } from "../shared/store/engagementStore";
+import { useFeedPhotos } from "../shared/hooks/useFeedPhotos";
+import { taskApi } from "../shared/api/task";
+import { expenseApi } from "../shared/api/expense";
+import { vaultApi } from "../shared/api/vault";
+import { eventApi } from "../shared/api/event";
+import { colors, fonts, spacing, radius, withAlpha } from "../shared/theme";
+import Avatar from "../components/Avatar";
+import { KeyboardAvoider } from "../shared/components/KeyboardAware";
+import GlassCard, { GlassSheen } from "../shared/components/GlassCard";
+import { useTranslation } from "react-i18next";
+import { useDailyWelcome } from "../shared/hooks/useDailyWelcome";
+import DailyWelcomeOverlay from "../shared/components/DailyWelcomeOverlay";
+import { SpotlightTourProvider, AttachStep } from "react-native-spotlight-tour";
+import TourTooltip from "../shared/components/TourTooltip";
+import { scrollToStep } from "../shared/utils/scrollToStep";
+import ContributorsStrip from "../shared/components/ContributorsStrip";
+import { useTabBarDockHeight } from "../shared/hooks/useTabBarDockHeight";
 
 /* ═══════════════════════════════════════════════
    Dashboard · Night glass
@@ -89,29 +95,29 @@ const BELL_SVG = `
 </svg>`;
 function getGreeting() {
   const h = new Date().getHours();
-  if (h < 12) return 'Good morning,';
-  if (h < 18) return 'Good afternoon,';
-  return 'Good evening,';
+  if (h < 12) return "Good morning,";
+  if (h < 18) return "Good afternoon,";
+  return "Good evening,";
 }
 function formatDate() {
-  return new Date().toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
+  return new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
   });
 }
 function initials(name) {
   return name
-    .split(' ')
+    .split(" ")
     .map((n) => n[0])
-    .join('')
+    .join("")
     .toUpperCase()
     .slice(0, 2);
 }
 function timeHM(iso) {
-  return new Date(iso).toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
+  return new Date(iso).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
   });
 }
 function startOfWeek(d) {
@@ -214,8 +220,12 @@ export default function DashboardScreen() {
   // (rather than further down, where it's used) so the App Tour effect
   // below can read `dailyWelcome.visible`.
   const { t } = useTranslation();
-  const dailyWelcomeQuotes = t('dashboard.dailyWelcome.quotes', { returnObjects: true });
-  const dailyWelcomeQuoteCount = Array.isArray(dailyWelcomeQuotes) ? dailyWelcomeQuotes.length : 0;
+  const dailyWelcomeQuotes = t("dashboard.dailyWelcome.quotes", {
+    returnObjects: true,
+  });
+  const dailyWelcomeQuoteCount = Array.isArray(dailyWelcomeQuotes)
+    ? dailyWelcomeQuotes.length
+    : 0;
   const dailyWelcome = useDailyWelcome(user?.id, dailyWelcomeQuoteCount);
 
   const scrollRef = useRef(null);
@@ -232,12 +242,36 @@ export default function DashboardScreen() {
   // and restart the tour's in-flight scroll sequence each time.
   const tourSteps = useMemo(() => {
     const meta = [
-      { ref: bellRef, title: 'Notifications', body: 'Tap here to see updates from your household.' },
-      { ref: streakRef, title: 'Family Streak', body: "Keep your family's daily streak going by staying active together." },
-      { ref: calendarRef, title: 'Calendar', body: "See upcoming events and tap any day to check what's planned." },
-      { ref: tasksRef, title: 'Tasks', body: "Track shared to-dos and see what's pending." },
-      { ref: quickActionsRef, title: 'Quick Actions', body: 'Send an instant status update — Home, On My Way, Safe, or Groceries.' },
-      { ref: vaultRef, title: 'Vault', body: 'Store family documents and photos, encrypted and private.' },
+      {
+        ref: bellRef,
+        title: "Notifications",
+        body: "Tap here to see updates from your household.",
+      },
+      {
+        ref: streakRef,
+        title: "Family Streak",
+        body: "Keep your family's daily streak going by staying active together.",
+      },
+      {
+        ref: calendarRef,
+        title: "Calendar",
+        body: "See upcoming events and tap any day to check what's planned.",
+      },
+      {
+        ref: tasksRef,
+        title: "Tasks",
+        body: "Track shared to-dos and see what's pending.",
+      },
+      {
+        ref: quickActionsRef,
+        title: "Quick Actions",
+        body: "Send an instant status update — Home, On My Way, Safe, or Groceries.",
+      },
+      {
+        ref: vaultRef,
+        title: "Vault",
+        body: "Store family documents and photos, encrypted and private.",
+      },
     ];
     return meta.map(({ ref, title, body }, i) => ({
       before: () => scrollToStep(scrollRef, scrollOffsetY, ref),
@@ -249,12 +283,16 @@ export default function DashboardScreen() {
             title={title}
             body={body}
             total={meta.length}
-            continueLabel={isChainLast ? 'Continue to Feed' : undefined}
-            onContinue={isChainLast ? () => {
-              props.stop();
-              nav.navigate('FeedStack');
-              triggerFeedTour();
-            } : undefined}
+            continueLabel={isChainLast ? "Continue to Feed" : undefined}
+            onContinue={
+              isChainLast
+                ? () => {
+                    props.stop();
+                    nav.navigate("FeedStack");
+                    triggerFeedTour();
+                  }
+                : undefined
+            }
           />
         );
       },
@@ -328,7 +366,7 @@ export default function DashboardScreen() {
   const [oweText, setOweText] = useState(null);
   const [oweName, setOweName] = useState(null);
   const [latestDoc, setLatestDoc] = useState(null);
-  const [latestDocTime, setLatestDocTime] = useState('');
+  const [latestDocTime, setLatestDocTime] = useState("");
   // Shared with the photo gallery — one fetch, one copy of the photo list.
   // autoLoad off: the focus effect below already fetches, including on mount.
   const feedPhotos = useFeedPhotos({ autoLoad: false });
@@ -354,8 +392,8 @@ export default function DashboardScreen() {
 
   // Quick notify
   const [showPicker, setShowPicker] = useState(false);
-  const [pendingAction, setPendingAction] = useState('');
-  const [customMsg, setCustomMsg] = useState('');
+  const [pendingAction, setPendingAction] = useState("");
+  const [customMsg, setCustomMsg] = useState("");
   const [selMembers, setSelMembers] = useState(new Set());
   const [sending, setSending] = useState(false);
   // Throttles the focus-triggered refetch below so switching tabs quickly
@@ -368,8 +406,12 @@ export default function DashboardScreen() {
     try {
       const [d, m, hh] = await Promise.all([
         dashboardApi.get(),
-        householdId ? householdApi.getMembers(householdId) : Promise.resolve([]),
-        householdId ? householdApi.getHousehold(householdId) : Promise.resolve(null),
+        householdId
+          ? householdApi.getMembers(householdId)
+          : Promise.resolve([]),
+        householdId
+          ? householdApi.getHousehold(householdId)
+          : Promise.resolve(null),
       ]);
       setData(d);
       setMembers(m);
@@ -405,7 +447,7 @@ export default function DashboardScreen() {
   useEffect(() => {
     taskApi
       .list({
-        group: 'pending',
+        group: "pending",
       })
       .then((res) => {
         const arr = Array.isArray(res) ? res : res?.pending || [];
@@ -431,7 +473,10 @@ export default function DashboardScreen() {
           const entry = (s?.ledger || []).find(
             (l) => l.toUserId === user?.id || l.fromUserId === user?.id,
           );
-          if (entry) setOweName(mine.netBalance > 0 ? entry.fromUserName : entry.toUserName);
+          if (entry)
+            setOweName(
+              mine.netBalance > 0 ? entry.fromUserName : entry.toUserName,
+            );
         }
       })
       .catch(() => {});
@@ -466,7 +511,10 @@ export default function DashboardScreen() {
   // no need for a full dashboard reload just for this).
   useFocusEffect(
     useCallback(() => {
-      notificationApi.getUnreadCount().then(setUnreadCount).catch(() => {});
+      notificationApi
+        .getUnreadCount()
+        .then(setUnreadCount)
+        .catch(() => {});
     }, []),
   );
 
@@ -522,9 +570,9 @@ export default function DashboardScreen() {
     return () => clearInterval(timer);
   }, [feedPhotos, feedFade]);
   useEffect(() => {
-    if (Platform.OS !== 'android') return;
+    if (Platform.OS !== "android") return;
     NavigationBar.setBackgroundColorAsync(colors.navyDeep);
-    NavigationBar.setButtonStyleAsync('light');
+    NavigationBar.setButtonStyleAsync("light");
   }, []);
   const activity = data?.activity || [];
   const recentActivity = data?.recentActivity || [];
@@ -539,24 +587,27 @@ export default function DashboardScreen() {
     const days = activity.slice(-7);
     while (days.length < 7)
       days.unshift({
-        date: '',
+        date: "",
         tasksCompleted: 0,
         todosCompleted: 0,
         groceriesBought: 0,
         engaged: false,
       });
     return days.map((d, i) => {
-      const total = (d.tasksCompleted || 0) + (d.todosCompleted || 0) + (d.groceriesBought || 0);
+      const total =
+        (d.tasksCompleted || 0) +
+        (d.todosCompleted || 0) +
+        (d.groceriesBought || 0);
       const isToday = i === days.length - 1;
       return {
         done: !!d.engaged,
         isToday,
         total,
         label: d.date
-          ? new Date(d.date).toLocaleDateString('en-US', {
-              weekday: 'narrow',
+          ? new Date(d.date).toLocaleDateString("en-US", {
+              weekday: "narrow",
             })
-          : '',
+          : "",
       };
     });
   })();
@@ -564,16 +615,16 @@ export default function DashboardScreen() {
   const selDay = streakDays[streakIdx] || streakDays[6];
   const streakDetail = selDay?.isToday
     ? completedToday > 0
-      ? `${completedToday} task${completedToday > 1 ? 's' : ''} completed today. Keep it going.`
+      ? `${completedToday} task${completedToday > 1 ? "s" : ""} completed today. Keep it going.`
       : selDay.done
-        ? 'Streak kept alive today. Nice work.'
-        : 'Nothing yet today. A task, a check-in, or catching up with the family keeps it going.'
+        ? "Streak kept alive today. Nice work."
+        : "Nothing yet today. A task, a check-in, or catching up with the family keeps it going."
     : selDay?.total > 0
-      ? `${selDay.total} activit${selDay.total === 1 ? 'y' : 'ies'} completed this day.`
+      ? `${selDay.total} activit${selDay.total === 1 ? "y" : "ies"} completed this day.`
       : selDay?.done
-        ? 'The family stayed connected this day.'
-        : 'No activity recorded this day.';
-  const streakDetailMeta = selDay?.isToday ? 'TODAY' : selDay?.label || '';
+        ? "The family stayed connected this day."
+        : "No activity recorded this day.";
+  const streakDetailMeta = selDay?.isToday ? "TODAY" : selDay?.label || "";
   const bestStreak = data?.streak?.longest ?? data?.streak?.best ?? null;
 
   /* ── Harmony score ──
@@ -584,7 +635,11 @@ export default function DashboardScreen() {
      The displayed number and the bar's fill % are now always the same
      value, instead of two different formulas over the same input. */
   const weekTotal = activity.reduce(
-    (a, d) => a + (d.tasksCompleted || 0) + (d.todosCompleted || 0) + (d.groceriesBought || 0),
+    (a, d) =>
+      a +
+      (d.tasksCompleted || 0) +
+      (d.todosCompleted || 0) +
+      (d.groceriesBought || 0),
     0,
   );
   const weeklyPct = Math.min(100, Math.round(weekTotal * 5));
@@ -598,59 +653,81 @@ export default function DashboardScreen() {
       points: e.points,
     }))
     .slice(0, 3);
-  const topMemberName = data?.leaderboard?.[0]?.displayName || '';
+  const topMemberName = data?.leaderboard?.[0]?.displayName || "";
 
   const QUICK_ACTIONS = [
     {
-      icon: 'home-outline',
-      label: 'Home',
+      icon: "home-outline",
+      label: "Home",
       template: "I've reached home safe! 🏠",
     },
     {
-      icon: 'car-outline',
-      label: 'On My Way',
+      icon: "car-outline",
+      label: "On My Way",
       template: "I'm on my way now! 🚗",
     },
     {
-      icon: 'shield-checkmark-outline',
-      label: 'Safe',
+      icon: "shield-checkmark-outline",
+      label: "Safe",
       template: "Just checking in — I'm safe! ✅",
     },
     {
-      icon: 'cart-outline',
-      label: 'Groceries',
-      template: 'Heading out to grab groceries! 🛒',
+      icon: "cart-outline",
+      label: "Groceries",
+      template: "Heading out to grab groceries! 🛒",
     },
   ];
   const NUDGE_PRESETS = [
-    { icon: 'eye-outline', caption: 'Reminder', message: 'Just a reminder 👀' },
-    { icon: 'alarm-outline', caption: "Don't forget", message: "Don't forget!" },
-    { icon: 'checkmark-circle-outline', caption: 'Check it', message: 'Please check this' },
-    { icon: 'hand-left-outline', caption: 'Your turn', message: 'Can you take care of this?' },
-    { icon: 'flash-outline', caption: 'Hurry', message: 'Hurry up, please!' },
-    { icon: 'call-outline', caption: 'Call me', message: 'Can you call me back?' },
+    { icon: "eye-outline", caption: "Reminder", message: "Just a reminder 👀" },
+    {
+      icon: "alarm-outline",
+      caption: "Don't forget",
+      message: "Don't forget!",
+    },
+    {
+      icon: "checkmark-circle-outline",
+      caption: "Check it",
+      message: "Please check this",
+    },
+    {
+      icon: "hand-left-outline",
+      caption: "Your turn",
+      message: "Can you take care of this?",
+    },
+    { icon: "flash-outline", caption: "Hurry", message: "Hurry up, please!" },
+    {
+      icon: "call-outline",
+      caption: "Call me",
+      message: "Can you call me back?",
+    },
   ];
   const handleQuickNotify = (action) => {
     const q = QUICK_ACTIONS.find((x) => x.label === action);
     setPendingAction(q?.label || action);
-    setCustomMsg(q?.template || '');
+    setCustomMsg(q?.template || "");
     setSelMembers(new Set());
     setShowPicker(true);
   };
-  const canSend = selMembers.size > 0 && (customMsg.trim().length > 0 || !!pendingAction);
+  const canSend =
+    selMembers.size > 0 && (customMsg.trim().length > 0 || !!pendingAction);
   const handleSendNotify = async () => {
     const ids = Array.from(selMembers);
     if (!ids.length) return;
     const msg = customMsg.trim();
-    const action = pendingAction === 'Nudge' ? 'nudged you' : pendingAction || 'sent you a message';
+    const action =
+      pendingAction === "Nudge"
+        ? "nudged you"
+        : pendingAction || "sent you a message";
     setSending(true);
     setShowPicker(false);
     try {
       await dashboardApi.quickNotify(action, ids, msg || undefined);
     } catch (e) {
       showAlert(
-        'Error',
-        e?.response?.data?.message || e?.message || 'Could not send notification',
+        "Error",
+        e?.response?.data?.message ||
+          e?.message ||
+          "Could not send notification",
       );
     } finally {
       setSending(false);
@@ -659,11 +736,11 @@ export default function DashboardScreen() {
   const focusItems = pendingTasks.map((t) => ({
     title: t.title,
     meta: t.dueDate
-      ? new Date(t.dueDate).toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric',
+      ? new Date(t.dueDate).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
         })
-      : 'Anytime',
+      : "Anytime",
   }));
   if (loading) {
     return (
@@ -676,7 +753,12 @@ export default function DashboardScreen() {
         ]}
       >
         <StatusBar barStyle="light-content" backgroundColor={colors.navyDeep} />
-        <SvgXml xml={AMBIENT_SVG} width="100%" height="100%" style={styles.ambient} />
+        <SvgXml
+          xml={AMBIENT_SVG}
+          width="100%"
+          height="100%"
+          style={styles.ambient}
+        />
         <View style={styles.loadingWrap}>
           <ActivityIndicator color={GOLD} size="large" />
           <Text style={styles.loadingText}>Loading your home…</Text>
@@ -694,19 +776,23 @@ export default function DashboardScreen() {
     return {
       key: d.toDateString(),
       date: d,
-      label: d.toLocaleDateString('en-US', {
-        weekday: 'narrow',
+      label: d.toLocaleDateString("en-US", {
+        weekday: "narrow",
       }),
       num: d.getDate(),
-      bg: isToday ? GOLD : 'transparent',
+      bg: isToday ? GOLD : "transparent",
       color: isToday ? colors.navyDeep : colors.textOnDarkBody,
-      dot: events.some((e) => sameDay(new Date(e.startsAt), d)) ? GOLD : 'transparent',
+      dot: events.some((e) => sameDay(new Date(e.startsAt), d))
+        ? GOLD
+        : "transparent",
       isSelected,
     };
   });
   const selectedDayEvents = events
     .filter((e) => sameDay(new Date(e.startsAt), selectedDate))
-    .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
+    .sort(
+      (a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),
+    );
   return (
     <SpotlightTourProvider
       ref={tourRef}
@@ -716,70 +802,60 @@ export default function DashboardScreen() {
       overlayColor={colors.shadow}
       overlayOpacity={0.82}
     >
-    <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-
-      {/* ═══════ AMBIENT NAVY FIELD (behind everything) ═══════ */}
-      <SvgXml xml={AMBIENT_SVG} width="100%" height="100%" style={styles.ambient} />
-
-      <ScrollView
-        ref={scrollRef}
-        style={styles.scroll}
-        showsVerticalScrollIndicator={false}
-        onScroll={(e) => { scrollOffsetY.current = e.nativeEvent.contentOffset.y; }}
-        scrollEventThrottle={16}
-        contentContainerStyle={{
-          paddingBottom: dockHeight + 16,
-        }}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => {
-              setRefreshing(true);
-              load();
-              refreshFeed();
-            }}
-            tintColor={GOLD}
-          />
-        }
-      >
-        {/* Clears the status bar / notch now that the hero photo is gone. */}
-        <View
-          style={{
-            height: insets.top + 12,
-          }}
+      <View style={styles.root}>
+        <StatusBar
+          barStyle="light-content"
+          backgroundColor="transparent"
+          translucent
         />
 
-        {/* ═══════ HEADER ROW — avatar + bell.
+        {/* ═══════ AMBIENT NAVY FIELD (behind everything) ═══════ */}
+        <SvgXml
+          xml={AMBIENT_SVG}
+          width="100%"
+          height="100%"
+          style={styles.ambient}
+        />
+
+        <ScrollView
+          ref={scrollRef}
+          style={styles.scroll}
+          showsVerticalScrollIndicator={false}
+          onScroll={(e) => {
+            scrollOffsetY.current = e.nativeEvent.contentOffset.y;
+          }}
+          scrollEventThrottle={16}
+          contentContainerStyle={{
+            paddingBottom: dockHeight + 16,
+          }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true);
+                load();
+                refreshFeed();
+              }}
+              tintColor={GOLD}
+            />
+          }
+        >
+          {/* Clears the status bar / notch now that the hero photo is gone. */}
+          <View
+            style={{
+              height: insets.top + 12,
+            }}
+          />
+
+          {/* ═══════ HEADER ROW — avatar + bell.
               In normal flow (they used to be absolutely pinned over the hero
               photo). With the photo gone, pinning made them sit on top of the
               greeting, so they now occupy their own row instead. ═══════ */}
-        <View style={styles.headerRow}>
-          <TouchableOpacity
-            onPress={() => nav.navigate('MoreStack', { screen: 'EditProfile' })}
-            activeOpacity={0.8}
-            hitSlop={{
-              top: 8,
-              bottom: 8,
-              left: 8,
-              right: 8,
-            }}
-          >
-            <Avatar
-              url={user?.avatarUrl}
-              emoji={user?.avatarEmoji}
-              name={user?.name}
-              id={user?.id}
-              size={46}
-              style={styles.selfAvatarRing}
-            />
-          </TouchableOpacity>
-
-          <AttachStep index={0} style={{ alignSelf: 'center' }}>
+          <View style={styles.headerRow}>
             <TouchableOpacity
-              ref={bellRef}
-              style={styles.notifBtn}
-              onPress={() => nav.navigate('Notifications')}
+              onPress={() =>
+                nav.navigate("MoreStack", { screen: "EditProfile" })
+              }
               activeOpacity={0.8}
               hitSlop={{
                 top: 8,
@@ -788,241 +864,297 @@ export default function DashboardScreen() {
                 right: 8,
               }}
             >
-              <SvgXml xml={BELL_SVG} width={22} height={22} />
-              {unreadCount > 0 && (
-                <View style={styles.notifBadge}>
-                  <Text style={styles.notifBadgeText}>
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </Text>
-                </View>
-              )}
+              <Avatar
+                url={user?.avatarUrl}
+                emoji={user?.avatarEmoji}
+                name={user?.name}
+                id={user?.id}
+                size={46}
+                style={styles.selfAvatarRing}
+              />
             </TouchableOpacity>
-          </AttachStep>
-        </View>
 
-        {/* ═══════ GREETING (sits directly on the field) ═══════ */}
-        <View style={styles.greetBlock}>
-          <Text style={styles.greetDate}>{formatDate()}</Text>
-          <View style={styles.greetRow}>
-            <Text style={styles.greetTitle} numberOfLines={2}>
-              {getGreeting()} {user?.name?.split(' ')[0] || 'there'}
-            </Text>
-
-            {/* Member avatars — other household members only, not yourself */}
-            <View style={styles.avatarStack}>
-              {members.filter((m) => m.userId !== user?.id).slice(0, 5).map((m, i) => (
-                <View
-                  key={m.userId}
-                  style={[
-                    styles.avatarWrap,
-                    i > 0 && {
-                      marginLeft: -8,
-                    },
-                  ]}
-                >
-                  {m.avatarUrl ? (
-                    <Image
-                      source={{
-                        uri: m.avatarUrl,
-                      }}
-                      style={styles.avatarCircle}
-                    />
-                  ) : m.avatarEmoji ? (
-                    <View
-                      style={[
-                        styles.avatarCircle,
-                        {
-                          backgroundColor: withAlpha(colors.white, 0.1),
-                        },
-                      ]}
-                    >
-                      <Text style={styles.avatarEmoji}>{m.avatarEmoji}</Text>
-                    </View>
-                  ) : (
-                    <View
-                      style={[
-                        styles.avatarCircle,
-                        {
-                          backgroundColor: withAlpha(colors.white, 0.1),
-                        },
-                      ]}
-                    >
-                      <Text style={styles.avatarInitials}>
-                        {initials(m.displayName || m.name || '??')}
-                      </Text>
-                    </View>
-                  )}
-                  <View style={styles.onlineDot} />
-                </View>
-              ))}
-            </View>
-          </View>
-        </View>
-
-        {/* ═══════ BODY ═══════ */}
-        <View style={styles.body}>
-          {fetchError && (
-            <Card
-              style={{
-                alignItems: 'center',
-                gap: 10,
-                marginBottom: 20,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 13,
-                  color: colors.textOnDarkMuted,
-                }}
-              >
-                Couldn't load your dashboard
-              </Text>
+            <AttachStep index={0} style={{ alignSelf: "center" }}>
               <TouchableOpacity
-                style={styles.retryBtn}
-                onPress={() => {
-                  setLoading(true);
-                  load();
+                ref={bellRef}
+                style={styles.notifBtn}
+                onPress={() => nav.navigate("Notifications")}
+                activeOpacity={0.8}
+                hitSlop={{
+                  top: 8,
+                  bottom: 8,
+                  left: 8,
+                  right: 8,
                 }}
               >
-                <Text style={styles.retryText}>Tap to retry</Text>
-              </TouchableOpacity>
-            </Card>
-          )}
-
-          {!fetchError && data && (
-            <>
-              {/* ── Family Streak (hero) ── */}
-              <AttachStep index={1} fill>
-              <BlurView ref={streakRef} intensity={22} tint="dark" style={styles.streakCard}>
-                <CardSheen radius={26} tone="blue" />
-                <View style={styles.rowBetween}>
-                  <WidgetLabel>FAMILY STREAK</WidgetLabel>
-                  {bestStreak != null && (
-                    <View style={styles.bestChip}>
-                      <Text style={styles.bestChipText}>BEST {bestStreak}</Text>
-                    </View>
-                  )}
-                </View>
-
-                <View style={styles.streakBody}>
-                  <StreakRing value={data?.streak?.current ?? 0} progress={doneCount / 7} />
-                  <View style={styles.streakCopy}>
-                    <Text style={styles.streakHeadline}>
-                      {doneCount >= 7
-                        ? 'Perfect week — everyone showed up.'
-                        : `${7 - doneCount} more day${7 - doneCount === 1 ? '' : 's'} to a full week`}
+                <SvgXml xml={BELL_SVG} width={22} height={22} />
+                {unreadCount > 0 && (
+                  <View style={styles.notifBadge}>
+                    <Text style={styles.notifBadgeText}>
+                      {unreadCount > 9 ? "9+" : unreadCount}
                     </Text>
-                    <Text style={styles.streakSub}>
-                      {doneCount} of the last 7 days had activity.
-                    </Text>
-                    <View style={styles.progressTrack}>
-                      <LinearGradient
-                        colors={[colors.goldGlowDeep, GOLD]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={[
-                          styles.progressFill,
-                          {
-                            width: `${Math.round((doneCount / 7) * 100)}%`,
-                          },
-                        ]}
-                      />
-                    </View>
                   </View>
-                </View>
+                )}
+              </TouchableOpacity>
+            </AttachStep>
+          </View>
 
-                {/* 7 day pills */}
-                <View style={styles.pillRow}>
-                  {streakDays.map((d, i) => {
-                    const sel = i === streakIdx;
-                    return (
-                      <TouchableOpacity
-                        key={i}
-                        style={styles.pillCol}
-                        onPress={() => setStreakIdx(i)}
-                        activeOpacity={0.7}
-                      >
+          {/* ═══════ GREETING (sits directly on the field) ═══════ */}
+          <View style={styles.greetBlock}>
+            <Text style={styles.greetDate}>{formatDate()}</Text>
+            <View style={styles.greetRow}>
+              <Text style={styles.greetTitle} numberOfLines={2}>
+                {getGreeting()} {user?.name?.split(" ")[0] || "there"}
+              </Text>
+
+              {/* Member avatars — other household members only, not yourself */}
+              <View style={styles.avatarStack}>
+                {members
+                  .filter((m) => m.userId !== user?.id)
+                  .slice(0, 5)
+                  .map((m, i) => (
+                    <View
+                      key={m.userId}
+                      style={[
+                        styles.avatarWrap,
+                        i > 0 && {
+                          marginLeft: -8,
+                        },
+                      ]}
+                    >
+                      {m.avatarUrl ? (
+                        <Image
+                          source={{
+                            uri: m.avatarUrl,
+                          }}
+                          style={styles.avatarCircle}
+                        />
+                      ) : m.avatarEmoji ? (
                         <View
                           style={[
-                            styles.pill,
-                            d.done && styles.pillDone,
-                            sel && styles.pillSelected,
+                            styles.avatarCircle,
+                            {
+                              backgroundColor: withAlpha(colors.white, 0.1),
+                            },
                           ]}
                         >
-                          <Text style={[styles.pillGlyph, d.done && styles.pillGlyphDone]}>
-                            {d.done ? '✓' : '·'}
+                          <Text style={styles.avatarEmoji}>
+                            {m.avatarEmoji}
                           </Text>
                         </View>
-                        <Text style={[styles.pillLabel, sel && styles.pillLabelSel]}>
-                          {d.label || '·'}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
+                      ) : (
+                        <View
+                          style={[
+                            styles.avatarCircle,
+                            {
+                              backgroundColor: withAlpha(colors.white, 0.1),
+                            },
+                          ]}
+                        >
+                          <Text style={styles.avatarInitials}>
+                            {initials(m.displayName || m.name || "??")}
+                          </Text>
+                        </View>
+                      )}
+                      <View style={styles.onlineDot} />
+                    </View>
+                  ))}
+              </View>
+            </View>
+          </View>
 
-                <View style={styles.streakFooter}>
-                  <Text style={styles.streakDetail}>{streakDetail}</Text>
-                  {!!streakDetailMeta && (
-                    <Text style={styles.streakDetailMeta}>{streakDetailMeta}</Text>
-                  )}
-                </View>
-
-                <ContributorsStrip activity={recentActivity} />
-              </BlurView>
-              </AttachStep>
-
-              {/* ── Family Harmony Score ── */}
-              <TouchableOpacity
-                style={[
-                  styles.card,
-                  {
-                    borderRadius: 22,
-                  },
-                ]}
-                onPress={() => nav.navigate('TasksStack')}
-                activeOpacity={0.7}
+          {/* ═══════ BODY ═══════ */}
+          <View style={styles.body}>
+            {fetchError && (
+              <Card
+                style={{
+                  alignItems: "center",
+                  gap: 10,
+                  marginBottom: 20,
+                }}
               >
-                <CardSheen radius={22} />
-                <View style={styles.rowBetween}>
-                  <WidgetLabel>FAMILY HARMONY SCORE</WidgetLabel>
-                  <Text style={styles.greenDelta}>▲ +{activitiesThisWeek} this week</Text>
-                </View>
-                <View style={styles.scoreRow}>
-                  <Text style={styles.scoreNum}>{harmonyScore}</Text>
-                  <Text style={styles.scoreMeta}>weekly progress {weeklyPct}%</Text>
-                </View>
-                <View style={styles.progressTrack}>
-                  <LinearGradient
-                    colors={[colors.goldGlowDeep, GOLD]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={[
-                      styles.progressFill,
-                      {
-                        width: `${weeklyPct}%`,
-                      },
-                    ]}
-                  />
-                </View>
-                <Text style={styles.scoreCaption}>
-                  {activitiesThisWeek} family activities completed this week
+                <Text
+                  style={{
+                    fontSize: 13,
+                    color: colors.textOnDarkMuted,
+                  }}
+                >
+                  Couldn't load your dashboard
                 </Text>
-                {leaderboard.map((p, i) => (
-                  <View key={i} style={styles.lbRow}>
-                    <Text style={[styles.lbRank, i === 0 && styles.lbRankTop]}>
-                      {String(i + 1).padStart(2, '0')}
-                    </Text>
-                    <Text style={styles.lbName} numberOfLines={1}>
-                      {p.name}
-                    </Text>
-                    <Text style={styles.lbPts}>{p.points} pts</Text>
-                  </View>
-                ))}
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.retryBtn}
+                  onPress={() => {
+                    setLoading(true);
+                    load();
+                  }}
+                >
+                  <Text style={styles.retryText}>Tap to retry</Text>
+                </TouchableOpacity>
+              </Card>
+            )}
 
-              {/* ── Today's Focus ── */}
-              {/*<Card style={{ marginBottom: 20 }}>
+            {!fetchError && data && (
+              <>
+                {/* ── Family Streak (hero) ── */}
+                <AttachStep index={1} fill>
+                  <BlurView
+                    ref={streakRef}
+                    intensity={22}
+                    tint="dark"
+                    style={styles.streakCard}
+                  >
+                    <CardSheen radius={26} tone="blue" />
+                    <View style={styles.rowBetween}>
+                      <WidgetLabel>FAMILY STREAK</WidgetLabel>
+                      {bestStreak != null && (
+                        <View style={styles.bestChip}>
+                          <Text style={styles.bestChipText}>
+                            BEST {bestStreak}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+
+                    <View style={styles.streakBody}>
+                      <StreakRing
+                        value={data?.streak?.current ?? 0}
+                        progress={doneCount / 7}
+                      />
+                      <View style={styles.streakCopy}>
+                        <Text style={styles.streakHeadline}>
+                          {doneCount >= 7
+                            ? "Perfect week — everyone showed up."
+                            : `${7 - doneCount} more day${7 - doneCount === 1 ? "" : "s"} to a full week`}
+                        </Text>
+                        <Text style={styles.streakSub}>
+                          {doneCount} of the last 7 days had activity.
+                        </Text>
+                        <View style={styles.progressTrack}>
+                          <LinearGradient
+                            colors={[colors.goldGlowDeep, GOLD]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={[
+                              styles.progressFill,
+                              {
+                                width: `${Math.round((doneCount / 7) * 100)}%`,
+                              },
+                            ]}
+                          />
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* 7 day pills */}
+                    <View style={styles.pillRow}>
+                      {streakDays.map((d, i) => {
+                        const sel = i === streakIdx;
+                        return (
+                          <TouchableOpacity
+                            key={i}
+                            style={styles.pillCol}
+                            onPress={() => setStreakIdx(i)}
+                            activeOpacity={0.7}
+                          >
+                            <View
+                              style={[
+                                styles.pill,
+                                d.done && styles.pillDone,
+                                sel && styles.pillSelected,
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.pillGlyph,
+                                  d.done && styles.pillGlyphDone,
+                                ]}
+                              >
+                                {d.done ? "✓" : "·"}
+                              </Text>
+                            </View>
+                            <Text
+                              style={[
+                                styles.pillLabel,
+                                sel && styles.pillLabelSel,
+                              ]}
+                            >
+                              {d.label || "·"}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+
+                    <View style={styles.streakFooter}>
+                      <Text style={styles.streakDetail}>{streakDetail}</Text>
+                      {!!streakDetailMeta && (
+                        <Text style={styles.streakDetailMeta}>
+                          {streakDetailMeta}
+                        </Text>
+                      )}
+                    </View>
+
+                    <ContributorsStrip activity={recentActivity} />
+                  </BlurView>
+                </AttachStep>
+
+                {/* ── Family Harmony Score ── */}
+                <TouchableOpacity
+                  style={[
+                    styles.card,
+                    {
+                      borderRadius: 22,
+                    },
+                  ]}
+                  onPress={() => nav.navigate("TasksStack")}
+                  activeOpacity={0.7}
+                >
+                  <CardSheen radius={22} />
+                  <View style={styles.rowBetween}>
+                    <WidgetLabel>FAMILY HARMONY SCORE</WidgetLabel>
+                    <Text style={styles.greenDelta}>
+                      ▲ +{activitiesThisWeek} this week
+                    </Text>
+                  </View>
+                  <View style={styles.scoreRow}>
+                    <Text style={styles.scoreNum}>{harmonyScore}</Text>
+                    <Text style={styles.scoreMeta}>
+                      weekly progress {weeklyPct}%
+                    </Text>
+                  </View>
+                  <View style={styles.progressTrack}>
+                    <LinearGradient
+                      colors={[colors.goldGlowDeep, GOLD]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={[
+                        styles.progressFill,
+                        {
+                          width: `${weeklyPct}%`,
+                        },
+                      ]}
+                    />
+                  </View>
+                  <Text style={styles.scoreCaption}>
+                    {activitiesThisWeek} family activities completed this week
+                  </Text>
+                  {leaderboard.map((p, i) => (
+                    <View key={i} style={styles.lbRow}>
+                      <Text
+                        style={[styles.lbRank, i === 0 && styles.lbRankTop]}
+                      >
+                        {String(i + 1).padStart(2, "0")}
+                      </Text>
+                      <Text style={styles.lbName} numberOfLines={1}>
+                        {p.name}
+                      </Text>
+                      <Text style={styles.lbPts}>{p.points} pts</Text>
+                    </View>
+                  ))}
+                </TouchableOpacity>
+
+                {/* ── Today's Focus ── */}
+                {/*<Card style={{ marginBottom: 20 }}>
                 <WidgetLabel
                   style={{
                     marginBottom: 14,
@@ -1049,158 +1181,196 @@ export default function DashboardScreen() {
                 )}
               </Card>*/}
 
-              {/* ── Calendar ── */}
-              <AttachStep index={2} fill>
-              <TouchableOpacity
-                ref={calendarRef}
-                style={[
-                  styles.card,
-                  {
-                    borderRadius: 22,
-                    padding: 20,
-                  },
-                ]}
-                onPress={() =>
-                  nav.navigate('MoreStack', {
-                    screen: 'Calendar',
-                  })
-                }
-                activeOpacity={0.7}
-              >
-                <CardSheen radius={22} />
-                <View style={styles.rowBetween}>
-                  <WidgetLabel>CALENDAR</WidgetLabel>
-                  <View style={styles.calControls}>
-                    <TouchableOpacity
-                      onPress={() =>
-                        setWeekAnchor((p) => {
-                          const n = new Date(p);
-                          n.setDate(n.getDate() - 7);
-                          return n;
-                        })
-                      }
-                      hitSlop={{
-                        top: 6,
-                        bottom: 6,
-                        left: 6,
-                        right: 6,
-                      }}
-                    >
-                      <Text style={styles.calArrow}>‹</Text>
-                    </TouchableOpacity>
-                    <Text style={styles.calMonth}>
-                      {weekAnchor.toLocaleDateString('en-US', {
-                        month: 'long',
-                        year: 'numeric',
-                      })}
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() =>
-                        setWeekAnchor((p) => {
-                          const n = new Date(p);
-                          n.setDate(n.getDate() + 7);
-                          return n;
-                        })
-                      }
-                      hitSlop={{
-                        top: 6,
-                        bottom: 6,
-                        left: 6,
-                        right: 6,
-                      }}
-                    >
-                      <Text style={styles.calArrow}>›</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-                <View style={styles.weekStrip}>
-                  {weekStrip.map((w) => (
-                    <TouchableOpacity
-                      key={w.key}
-                      style={styles.weekCol}
-                      onPress={() => setSelectedDate(w.date)}
-                      activeOpacity={0.6}
-                    >
-                      <Text style={styles.weekLabel}>{w.label}</Text>
-                      <View
-                        style={[
-                          styles.weekDay,
-                          {
-                            backgroundColor: w.bg,
-                          },
-                          w.isSelected && styles.weekDaySelected,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.weekNum,
-                            {
-                              color: w.color,
-                            },
-                          ]}
-                        >
-                          {w.num}
-                        </Text>
-                      </View>
-                      <View
-                        style={[
-                          styles.weekDot,
-                          {
-                            backgroundColor: w.dot,
-                          },
-                        ]}
-                      />
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                <View style={styles.calDivider} />
-                {events.length === 0 ? (
-                  <Text style={styles.calMeta}>No events yet — add one in the Calendar</Text>
-                ) : selectedDayEvents.length === 0 ? (
-                  <Text style={styles.calMeta}>No events this day — tap a date to switch</Text>
-                ) : (
-                  selectedDayEvents.slice(0, 3).map((e) => (
-                    <View key={e.id} style={styles.calEventRow}>
-                      <View style={styles.calEventDot} />
-                      <Text style={styles.calEvent} numberOfLines={1}>
-                        {e.title}
-                      </Text>
-                      <Text style={styles.calEventTime}>{timeHM(e.startsAt)}</Text>
-                    </View>
-                  ))
-                )}
-              </TouchableOpacity>
-              </AttachStep>
-
-              {/* ── Tasks + Balance two-up ── */}
-              <View style={styles.twoUp}>
-                <AttachStep index={3} fill style={{ flex: 1 }}>
-                <TouchableOpacity
-                  ref={tasksRef}
-                  style={styles.halfCard}
-                  onPress={() => nav.navigate('TasksStack')}
-                  activeOpacity={0.7}
-                >
-                  <CardSheen radius={20} />
-                  <WidgetLabel
-                    style={{
-                      marginBottom: 12,
-                    }}
+                {/* ── Calendar ── */}
+                <AttachStep index={2} fill>
+                  <TouchableOpacity
+                    ref={calendarRef}
+                    style={[
+                      styles.card,
+                      {
+                        borderRadius: 22,
+                        padding: 20,
+                      },
+                    ]}
+                    onPress={() =>
+                      nav.navigate("MoreStack", {
+                        screen: "Calendar",
+                      })
+                    }
+                    activeOpacity={0.7}
                   >
-                    TASKS
-                  </WidgetLabel>
-                  <Text style={styles.halfNum}>{data.tasks.pending}</Text>
-                  <Text style={styles.halfMeta}>
-                    {data.tasks.pending === 0 ? 'all clear' : 'due today'}
-                    {data.tasks.overdue > 0 ? ` · ${data.tasks.overdue} overdue` : ''}
-                  </Text>
-                </TouchableOpacity>
+                    <CardSheen radius={22} />
+                    <View style={styles.rowBetween}>
+                      <WidgetLabel>CALENDAR</WidgetLabel>
+                      <View style={styles.calControls}>
+                        <TouchableOpacity
+                          onPress={() =>
+                            setWeekAnchor((p) => {
+                              const n = new Date(p);
+                              n.setDate(n.getDate() - 7);
+                              return n;
+                            })
+                          }
+                          hitSlop={{
+                            top: 6,
+                            bottom: 6,
+                            left: 6,
+                            right: 6,
+                          }}
+                        >
+                          <Text style={styles.calArrow}>‹</Text>
+                        </TouchableOpacity>
+                        <Text style={styles.calMonth}>
+                          {weekAnchor.toLocaleDateString("en-US", {
+                            month: "long",
+                            year: "numeric",
+                          })}
+                        </Text>
+                        <TouchableOpacity
+                          onPress={() =>
+                            setWeekAnchor((p) => {
+                              const n = new Date(p);
+                              n.setDate(n.getDate() + 7);
+                              return n;
+                            })
+                          }
+                          hitSlop={{
+                            top: 6,
+                            bottom: 6,
+                            left: 6,
+                            right: 6,
+                          }}
+                        >
+                          <Text style={styles.calArrow}>›</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                    <View style={styles.weekStrip}>
+                      {weekStrip.map((w) => (
+                        <TouchableOpacity
+                          key={w.key}
+                          style={styles.weekCol}
+                          onPress={() => setSelectedDate(w.date)}
+                          activeOpacity={0.6}
+                        >
+                          <Text style={styles.weekLabel}>{w.label}</Text>
+                          <View
+                            style={[
+                              styles.weekDay,
+                              {
+                                backgroundColor: w.bg,
+                              },
+                              w.isSelected && styles.weekDaySelected,
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.weekNum,
+                                {
+                                  color: w.color,
+                                },
+                              ]}
+                            >
+                              {w.num}
+                            </Text>
+                          </View>
+                          <View
+                            style={[
+                              styles.weekDot,
+                              {
+                                backgroundColor: w.dot,
+                              },
+                            ]}
+                          />
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                    <View style={styles.calDivider} />
+                    {events.length === 0 ? (
+                      <Text style={styles.calMeta}>
+                        No events yet — add one in the Calendar
+                      </Text>
+                    ) : selectedDayEvents.length === 0 ? (
+                      <Text style={styles.calMeta}>
+                        No events this day — tap a date to switch
+                      </Text>
+                    ) : (
+                      selectedDayEvents.slice(0, 3).map((e) => (
+                        <View key={e.id} style={styles.calEventRow}>
+                          <View style={styles.calEventDot} />
+                          <Text style={styles.calEvent} numberOfLines={1}>
+                            {e.title}
+                          </Text>
+                          <Text style={styles.calEventTime}>
+                            {timeHM(e.startsAt)}
+                          </Text>
+                        </View>
+                      ))
+                    )}
+                  </TouchableOpacity>
                 </AttachStep>
+
+                {/* ── Tasks + Balance two-up ── */}
+                <View style={styles.twoUp}>
+                  <AttachStep index={3} fill style={{ flex: 1 }}>
+                    <TouchableOpacity
+                      ref={tasksRef}
+                      style={styles.halfCard}
+                      onPress={() => nav.navigate("TasksStack")}
+                      activeOpacity={0.7}
+                    >
+                      <CardSheen radius={20} />
+                      <WidgetLabel
+                        style={{
+                          marginBottom: 12,
+                        }}
+                      >
+                        TASKS
+                      </WidgetLabel>
+                      <Text style={styles.halfNum}>{data.tasks.pending}</Text>
+                      <Text style={styles.halfMeta}>
+                        {data.tasks.pending === 0 ? "all clear" : "due today"}
+                        {data.tasks.overdue > 0
+                          ? ` · ${data.tasks.overdue} overdue`
+                          : ""}
+                      </Text>
+                    </TouchableOpacity>
+                  </AttachStep>
+                  <TouchableOpacity
+                    style={styles.halfCard}
+                    onPress={() =>
+                      nav.navigate("MoreStack", {
+                        screen: "ExpenseList",
+                      })
+                    }
+                    activeOpacity={0.7}
+                  >
+                    <CardSheen radius={20} />
+                    <WidgetLabel
+                      style={{
+                        marginBottom: 12,
+                      }}
+                    >
+                      BALANCE
+                    </WidgetLabel>
+                    <Text
+                      style={[styles.halfNum, styles.balanceNum]}
+                      numberOfLines={1}
+                    >
+                      {oweText || "Settled up"}
+                    </Text>
+                    <Text style={styles.halfMeta} numberOfLines={1}>
+                      {oweName || (oweText ? "" : "nothing owed")}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* ── Grocery ── */}
                 <TouchableOpacity
-                  style={styles.halfCard}
+                  style={styles.card20}
                   onPress={() =>
-                    nav.navigate('MoreStack', {
-                      screen: 'ExpenseList',
+                    nav.navigate("MoreStack", {
+                      screen: "GroceryList",
                     })
                   }
                   activeOpacity={0.7}
@@ -1211,160 +1381,141 @@ export default function DashboardScreen() {
                       marginBottom: 12,
                     }}
                   >
-                    BALANCE
+                    GROCERY
                   </WidgetLabel>
-                  <Text style={[styles.halfNum, styles.balanceNum]} numberOfLines={1}>
-                    {oweText || 'Settled up'}
+                  <Text style={styles.halfNum}>
+                    {data.groceries.pending} left
                   </Text>
-                  <Text style={styles.halfMeta} numberOfLines={1}>
-                    {oweName || (oweText ? '' : 'nothing owed')}
+                  <Text style={styles.halfMeta}>
+                    {data.groceries.pending > 0
+                      ? `${data.groceries.pending} item${data.groceries.pending > 1 ? "s" : ""} on the list`
+                      : "list is clear"}
                   </Text>
                 </TouchableOpacity>
-              </View>
 
-              {/* ── Grocery ── */}
-              <TouchableOpacity
-                style={styles.card20}
-                onPress={() =>
-                  nav.navigate('MoreStack', {
-                    screen: 'GroceryList',
-                  })
-                }
-                activeOpacity={0.7}
-              >
-                <CardSheen radius={20} />
-                <WidgetLabel
-                  style={{
-                    marginBottom: 12,
-                  }}
-                >
-                  GROCERY
-                </WidgetLabel>
-                <Text style={styles.halfNum}>{data.groceries.pending} left</Text>
-                <Text style={styles.halfMeta}>
-                  {data.groceries.pending > 0
-                    ? `${data.groceries.pending} item${data.groceries.pending > 1 ? 's' : ''} on the list`
-                    : 'list is clear'}
-                </Text>
-              </TouchableOpacity>
-
-              {/* ── Feed + Nudge two-up ── */}
-              <View style={styles.twoUp}>
-                <TouchableOpacity
-                  style={styles.feedCard}
-                  onPress={() => nav.navigate('PhotoGallery')}
-                  activeOpacity={0.85}
-                >
-                  {feedPhotos.length > 0 ? (
-                    <>
-                      {feedSlots[0] ? (
-                        <Animated.Image
-                          source={{ uri: feedSlots[0] }}
-                          style={[styles.feedImage, { opacity: feedFadeInverse }]}
-                          resizeMode="cover"
-                        />
-                      ) : null}
-                      {feedSlots[1] ? (
-                        <Animated.Image
-                          source={{ uri: feedSlots[1] }}
-                          style={[styles.feedImage, { opacity: feedFade }]}
-                          resizeMode="cover"
-                        />
-                      ) : null}
-                    </>
-                  ) : (
-                    <View style={[styles.feedImage, styles.feedPlaceholder]}>
-                      <Text
-                        style={{
-                          fontSize: 26,
-                          opacity: 0.5,
-                        }}
-                      >
-                        📸
+                {/* ── Feed + Nudge two-up ── */}
+                <View style={styles.twoUp}>
+                  <TouchableOpacity
+                    style={styles.feedCard}
+                    onPress={() => nav.navigate("PhotoGallery")}
+                    activeOpacity={0.85}
+                  >
+                    {feedPhotos.length > 0 ? (
+                      <>
+                        {feedSlots[0] ? (
+                          <Animated.Image
+                            source={{ uri: feedSlots[0] }}
+                            style={[
+                              styles.feedImage,
+                              { opacity: feedFadeInverse },
+                            ]}
+                            resizeMode="cover"
+                          />
+                        ) : null}
+                        {feedSlots[1] ? (
+                          <Animated.Image
+                            source={{ uri: feedSlots[1] }}
+                            style={[styles.feedImage, { opacity: feedFade }]}
+                            resizeMode="cover"
+                          />
+                        ) : null}
+                      </>
+                    ) : (
+                      <View style={[styles.feedImage, styles.feedPlaceholder]}>
+                        <Text
+                          style={{
+                            fontSize: 26,
+                            opacity: 0.5,
+                          }}
+                        >
+                          📸
+                        </Text>
+                        <Text style={styles.feedCaption} numberOfLines={1}>
+                          Share a moment
+                        </Text>
+                      </View>
+                    )}
+                    {feedPhotos.length > 0 ? (
+                      <LinearGradient
+                        colors={[
+                          withAlpha(colors.navyDark, 0),
+                          withAlpha(colors.navyDark, 0.45),
+                        ]}
+                        style={styles.feedGradient}
+                        pointerEvents="none"
+                      />
+                    ) : null}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.card,
+                      styles.nudgeCard,
+                      {
+                        borderRadius: 20,
+                      },
+                    ]}
+                    onPress={() => handleQuickNotify("Nudge")}
+                    activeOpacity={0.7}
+                  >
+                    <CardSheen radius={20} />
+                    <WidgetLabel>NUDGE</WidgetLabel>
+                    <View
+                      style={{
+                        marginTop: 10,
+                      }}
+                    >
+                      <Text style={styles.nudgeCardTitle} numberOfLines={1}>
+                        Send a quick reminder
                       </Text>
-                      <Text style={styles.feedCaption} numberOfLines={1}>
-                        Share a moment
+                      <Text style={styles.nudgeCardMeta} numberOfLines={1}>
+                        Tap to nudge someone
                       </Text>
                     </View>
-                  )}
-                  {feedPhotos.length > 0 ? (
-                    <LinearGradient
-                      colors={[withAlpha(colors.navyDark, 0), withAlpha(colors.navyDark, 0.45)]}
-                      style={styles.feedGradient}
-                      pointerEvents="none"
-                    />
-                  ) : null}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.card,
-                    styles.nudgeCard,
-                    {
-                      borderRadius: 20,
-                    },
-                  ]}
-                  onPress={() => handleQuickNotify('Nudge')}
-                  activeOpacity={0.7}
-                >
-                  <CardSheen radius={20} />
-                  <WidgetLabel>NUDGE</WidgetLabel>
-                  <View
-                    style={{
-                      marginTop: 10,
-                    }}
-                  >
-                    <Text style={styles.nudgeCardTitle} numberOfLines={1}>
-                      Send a quick reminder
-                    </Text>
-                    <Text style={styles.nudgeCardMeta} numberOfLines={1}>
-                      Tap to nudge someone
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              </View>
-
-              {/* ── Quick Actions ── */}
-              <AttachStep index={4} fill>
-              <View ref={quickActionsRef} collapsable={false}>
-              <Card
-                radius={20}
-                style={{
-                  paddingVertical: 18,
-                  paddingHorizontal: 16,
-                  marginBottom: 20,
-                }}
-              >
-                <WidgetLabel
-                  style={{
-                    marginBottom: 14,
-                    marginHorizontal: 2,
-                  }}
-                >
-                  QUICK ACTIONS
-                </WidgetLabel>
-                <View style={styles.qaRow}>
-                  {QUICK_ACTIONS.map((q, i) => (
-                    <TouchableOpacity
-                      key={i}
-                      style={styles.qaItem}
-                      onPress={() => handleQuickNotify(q.label)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={styles.qaGlyph}>
-                        <Ionicons name={q.icon} size={20} color={GOLD} />
-                      </View>
-                      <Text style={styles.qaLabel} numberOfLines={1}>
-                        {q.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+                  </TouchableOpacity>
                 </View>
-              </Card>
-              </View>
-              </AttachStep>
 
-              {/* ── Family Activity ── */}
-              {/* <TouchableOpacity
+                {/* ── Quick Actions ── */}
+                <AttachStep index={4} fill>
+                  <View ref={quickActionsRef} collapsable={false}>
+                    <Card
+                      radius={20}
+                      style={{
+                        paddingVertical: 18,
+                        paddingHorizontal: 16,
+                        marginBottom: 20,
+                      }}
+                    >
+                      <WidgetLabel
+                        style={{
+                          marginBottom: 14,
+                          marginHorizontal: 2,
+                        }}
+                      >
+                        QUICK ACTIONS
+                      </WidgetLabel>
+                      <View style={styles.qaRow}>
+                        {QUICK_ACTIONS.map((q, i) => (
+                          <TouchableOpacity
+                            key={i}
+                            style={styles.qaItem}
+                            onPress={() => handleQuickNotify(q.label)}
+                            activeOpacity={0.7}
+                          >
+                            <View style={styles.qaGlyph}>
+                              <Ionicons name={q.icon} size={20} color={GOLD} />
+                            </View>
+                            <Text style={styles.qaLabel} numberOfLines={1}>
+                              {q.label}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </Card>
+                  </View>
+                </AttachStep>
+
+                {/* ── Family Activity ── */}
+                {/* <TouchableOpacity
                 style={[
                   styles.card,
                   {
@@ -1434,232 +1585,251 @@ export default function DashboardScreen() {
                 )}
               </TouchableOpacity> */}
 
-              {/* ── Vault · LOCKED ── */}
-              <AttachStep index={5} fill>
-              <TouchableOpacity
-                ref={vaultRef}
-                style={styles.vaultCard}
-                onPress={() =>
-                  nav.navigate('MoreStack', {
-                    screen: 'Vault',
-                  })
-                }
-                activeOpacity={0.85}
-              >
-                <CardSheen radius={20} tone="gold" />
-                <View
-                  style={{
-                    flex: 1,
-                  }}
-                >
-                  <Text style={styles.vaultLabel}>VAULT · LOCKED</Text>
-                  <Text style={styles.vaultTitle} numberOfLines={1}>
-                    {latestDoc || 'No documents yet'}
-                  </Text>
-                </View>
-                <Text style={styles.vaultTime}>{latestDocTime || ''}</Text>
-              </TouchableOpacity>
-              </AttachStep>
-
-              {/* ── This Week ── */}
-              <Card radius={20} style={{ padding: 20, marginBottom: 20 }}>
-                <WidgetLabel
-                  style={{
-                    marginBottom: 10,
-                  }}
-                >
-                  THIS WEEK
-                </WidgetLabel>
-                <Text style={styles.insightsText}>
-                  Family completed {activitiesThisWeek} activit
-                  {activitiesThisWeek === 1 ? 'y' : 'ies'} this week
-                  {topMemberName ? `. ${topMemberName.split(' ')[0]} was the most active.` : ''}
-                </Text>
-              </Card>
-            </>
-          )}
-        </View>
-      </ScrollView>
-
-      {/* ── Quick notify modal ── */}
-      <Modal
-        visible={showPicker}
-        animationType="slide"
-        transparent
-        statusBarTranslucent
-        onRequestClose={() => setShowPicker(false)}
-        navigationBarTranslucent
-      >
-        {/* The overlay itself is the avoider — no extra nesting, and the
-            bottom sheet rises with the keyboard instead of sitting under it. */}
-        <KeyboardAvoider style={mo.overlay}>
-          <View
-            style={[
-              mo.sheet,
-              {
-                paddingBottom: insets.bottom + spacing.lg,
-              },
-            ]}
-          >
-            <View style={mo.handle} />
-            <Text style={mo.title}>{pendingAction === 'Nudge' ? 'Send a Nudge' : 'Quick Notify'}</Text>
-
-            <ScrollView
-              style={mo.body}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-            >
-              {/* Quick messages — Nudge flow only */}
-              {pendingAction === 'Nudge' && (
-                <>
-                  <Text style={mo.nudgeSectionLabel}>QUICK MESSAGES</Text>
-                  <View style={mo.presetGrid}>
-                    {NUDGE_PRESETS.map((preset) => {
-                      const active = customMsg === preset.message;
-                      return (
-                        <TouchableOpacity
-                          key={preset.message}
-                          style={mo.presetItem}
-                          onPress={() => setCustomMsg(preset.message)}
-                          activeOpacity={0.7}
-                        >
-                          <View style={[mo.presetGlyph, active && mo.presetGlyphActive]}>
-                            <Ionicons
-                              name={preset.icon}
-                              size={22}
-                              color={active ? colors.navyDeep : GOLD}
-                            />
-                          </View>
-                          <Text
-                            style={[mo.presetLabel, active && mo.presetLabelActive]}
-                            numberOfLines={1}
-                          >
-                            {preset.caption}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                </>
-              )}
-
-              {/* Custom message */}
-              <TextInput
-                style={mo.input}
-                value={customMsg}
-                onChangeText={setCustomMsg}
-                placeholder="Type a custom message…"
-                placeholderTextColor={colors.textOnDarkDim}
-                multiline
-                maxLength={500}
-              />
-
-              {/* Recipients */}
-              <TouchableOpacity
-                style={mo.allRow}
-                onPress={() => {
-                  const o = members.filter((m) => m.userId !== user?.id);
-                  selMembers.size === o.length
-                    ? setSelMembers(new Set())
-                    : setSelMembers(new Set(o.map((m) => m.userId)));
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={mo.allText}>Notify All</Text>
-                {(() => {
-                  const allSelected =
-                    selMembers.size > 0 &&
-                    selMembers.size === members.filter((m) => m.userId !== user?.id).length;
-                  return (
-                    <View style={[mo.cb, allSelected && mo.cbOn]}>
-                      {allSelected && <CheckIcon size={10} color={colors.navyDeep} />}
-                    </View>
-                  );
-                })()}
-              </TouchableOpacity>
-              {members
-                .filter((m) => m.userId !== user?.id)
-                .map((m) => {
-                  const checked = selMembers.has(m.userId);
-                  return (
-                    <TouchableOpacity
-                      key={m.userId}
-                      style={[mo.mRow, checked && mo.mRowSel]}
-                      onPress={() => {
-                        const n = new Set(selMembers);
-                        checked ? n.delete(m.userId) : n.add(m.userId);
-                        setSelMembers(n);
+                {/* ── Vault · LOCKED ── */}
+                <AttachStep index={5} fill>
+                  <TouchableOpacity
+                    ref={vaultRef}
+                    style={styles.vaultCard}
+                    onPress={() =>
+                      nav.navigate("MoreStack", {
+                        screen: "Vault",
+                      })
+                    }
+                    activeOpacity={0.85}
+                  >
+                    <CardSheen radius={20} tone="gold" />
+                    <View
+                      style={{
+                        flex: 1,
                       }}
-                      activeOpacity={0.7}
                     >
-                      <View
-                        style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          gap: 12,
-                        }}
-                      >
-                        <Avatar
-                          url={m.avatarUrl}
-                          emoji={m.avatarEmoji}
-                          name={m.displayName || m.name || m.email || '??'}
-                          id={m.userId}
-                          size={36}
-                        />
-                        <Text style={mo.mName}>{m.displayName || m.name || m.email}</Text>
-                      </View>
-                      <View style={[mo.cb, checked && mo.cbOn]}>
-                        {checked && <CheckIcon size={10} color={colors.navyDeep} />}
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-            </ScrollView>
+                      <Text style={styles.vaultLabel}>VAULT · LOCKED</Text>
+                      <Text style={styles.vaultTitle} numberOfLines={1}>
+                        {latestDoc || "No documents yet"}
+                      </Text>
+                    </View>
+                    <Text style={styles.vaultTime}>{latestDocTime || ""}</Text>
+                  </TouchableOpacity>
+                </AttachStep>
 
-            <View style={mo.actions}>
-              <TouchableOpacity
-                style={mo.cancelBtn}
-                onPress={() => setShowPicker(false)}
-                activeOpacity={0.7}
-              >
-                <Text style={mo.cancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[mo.sendBtn, !canSend && mo.sendBtnDisabled]}
-                onPress={handleSendNotify}
-                disabled={!canSend || sending}
-                activeOpacity={0.7}
-              >
-                {sending ? (
-                  <ActivityIndicator size="small" color={colors.navyDeep} />
-                ) : (
-                  <Text style={mo.sendText}>Notify ({selMembers.size})</Text>
-                )}
-              </TouchableOpacity>
-            </View>
+                {/* ── This Week ── */}
+                <Card radius={20} style={{ padding: 20, marginBottom: 20 }}>
+                  <WidgetLabel
+                    style={{
+                      marginBottom: 10,
+                    }}
+                  >
+                    THIS WEEK
+                  </WidgetLabel>
+                  <Text style={styles.insightsText}>
+                    Family completed {activitiesThisWeek} activit
+                    {activitiesThisWeek === 1 ? "y" : "ies"} this week
+                    {topMemberName
+                      ? `. ${topMemberName.split(" ")[0]} was the most active.`
+                      : ""}
+                  </Text>
+                </Card>
+              </>
+            )}
           </View>
-        </KeyboardAvoider>
-      </Modal>
+        </ScrollView>
 
-      {showConfetti && (
-        <ConfettiCannon
-          count={150}
-          origin={{ x: Dimensions.get('window').width / 2, y: -20 }}
-          fallSpeed={5500}
-          fadeOut
-          explosionSpeed={450}
-          colors={[GOLD, colors.goldWarm, colors.white, colors.navyBase]}
-          onAnimationEnd={() => setShowConfetti(false)}
+        {/* ── Quick notify modal ── */}
+        <Modal
+          visible={showPicker}
+          animationType="slide"
+          transparent
+          statusBarTranslucent
+          onRequestClose={() => setShowPicker(false)}
+          navigationBarTranslucent
+        >
+          {/* The overlay itself is the avoider — no extra nesting, and the
+            bottom sheet rises with the keyboard instead of sitting under it. */}
+          <KeyboardAvoider style={mo.overlay}>
+            <View
+              style={[
+                mo.sheet,
+                {
+                  paddingBottom: insets.bottom + spacing.lg,
+                },
+              ]}
+            >
+              <View style={mo.handle} />
+              <Text style={mo.title}>
+                {pendingAction === "Nudge" ? "Send a Nudge" : "Quick Notify"}
+              </Text>
+
+              <ScrollView
+                style={mo.body}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                {/* Quick messages — Nudge flow only */}
+                {pendingAction === "Nudge" && (
+                  <>
+                    <Text style={mo.nudgeSectionLabel}>QUICK MESSAGES</Text>
+                    <View style={mo.presetGrid}>
+                      {NUDGE_PRESETS.map((preset) => {
+                        const active = customMsg === preset.message;
+                        return (
+                          <TouchableOpacity
+                            key={preset.message}
+                            style={mo.presetItem}
+                            onPress={() => setCustomMsg(preset.message)}
+                            activeOpacity={0.7}
+                          >
+                            <View
+                              style={[
+                                mo.presetGlyph,
+                                active && mo.presetGlyphActive,
+                              ]}
+                            >
+                              <Ionicons
+                                name={preset.icon}
+                                size={22}
+                                color={active ? colors.navyDeep : GOLD}
+                              />
+                            </View>
+                            <Text
+                              style={[
+                                mo.presetLabel,
+                                active && mo.presetLabelActive,
+                              ]}
+                              numberOfLines={1}
+                            >
+                              {preset.caption}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </>
+                )}
+
+                {/* Custom message */}
+                <TextInput
+                  style={mo.input}
+                  value={customMsg}
+                  onChangeText={setCustomMsg}
+                  placeholder="Type a custom message…"
+                  placeholderTextColor={colors.textOnDarkDim}
+                  multiline
+                  maxLength={500}
+                />
+
+                {/* Recipients */}
+                <TouchableOpacity
+                  style={mo.allRow}
+                  onPress={() => {
+                    const o = members.filter((m) => m.userId !== user?.id);
+                    selMembers.size === o.length
+                      ? setSelMembers(new Set())
+                      : setSelMembers(new Set(o.map((m) => m.userId)));
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={mo.allText}>Notify All</Text>
+                  {(() => {
+                    const allSelected =
+                      selMembers.size > 0 &&
+                      selMembers.size ===
+                        members.filter((m) => m.userId !== user?.id).length;
+                    return (
+                      <View style={[mo.cb, allSelected && mo.cbOn]}>
+                        {allSelected && (
+                          <CheckIcon size={10} color={colors.navyDeep} />
+                        )}
+                      </View>
+                    );
+                  })()}
+                </TouchableOpacity>
+                {members
+                  .filter((m) => m.userId !== user?.id)
+                  .map((m) => {
+                    const checked = selMembers.has(m.userId);
+                    return (
+                      <TouchableOpacity
+                        key={m.userId}
+                        style={[mo.mRow, checked && mo.mRowSel]}
+                        onPress={() => {
+                          const n = new Set(selMembers);
+                          checked ? n.delete(m.userId) : n.add(m.userId);
+                          setSelMembers(n);
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 12,
+                          }}
+                        >
+                          <Avatar
+                            url={m.avatarUrl}
+                            emoji={m.avatarEmoji}
+                            name={m.displayName || m.name || m.email || "??"}
+                            id={m.userId}
+                            size={36}
+                          />
+                          <Text style={mo.mName}>
+                            {m.displayName || m.name || m.email}
+                          </Text>
+                        </View>
+                        <View style={[mo.cb, checked && mo.cbOn]}>
+                          {checked && (
+                            <CheckIcon size={10} color={colors.navyDeep} />
+                          )}
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+              </ScrollView>
+
+              <View style={mo.actions}>
+                <TouchableOpacity
+                  style={mo.cancelBtn}
+                  onPress={() => setShowPicker(false)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={mo.cancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[mo.sendBtn, !canSend && mo.sendBtnDisabled]}
+                  onPress={handleSendNotify}
+                  disabled={!canSend || sending}
+                  activeOpacity={0.7}
+                >
+                  {sending ? (
+                    <ActivityIndicator size="small" color={colors.navyDeep} />
+                  ) : (
+                    <Text style={mo.sendText}>Notify ({selMembers.size})</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </KeyboardAvoider>
+        </Modal>
+
+        {showConfetti && (
+          <ConfettiCannon
+            count={150}
+            origin={{ x: Dimensions.get("window").width / 2, y: -20 }}
+            fallSpeed={5500}
+            fadeOut
+            explosionSpeed={450}
+            colors={[GOLD, colors.goldWarm, colors.white, colors.navyBase]}
+            onAnimationEnd={() => setShowConfetti(false)}
+          />
+        )}
+
+        <DailyWelcomeOverlay
+          visible={dailyWelcome.visible}
+          name={user?.name}
+          quoteIndex={dailyWelcome.quoteIndex}
+          onDismiss={handleDailyWelcomeDismiss}
         />
-      )}
-
-      <DailyWelcomeOverlay
-        visible={dailyWelcome.visible}
-        name={user?.name}
-        quoteIndex={dailyWelcome.quoteIndex}
-        onDismiss={handleDailyWelcomeDismiss}
-      />
-    </View>
+      </View>
     </SpotlightTourProvider>
   );
 }
@@ -1669,8 +1839,8 @@ function CheckIcon({ size = 10, color = colors.navyDeep }) {
       style={{
         width: size,
         height: size,
-        alignItems: 'center',
-        justifyContent: 'center',
+        alignItems: "center",
+        justifyContent: "center",
       }}
     >
       <View
@@ -1682,7 +1852,7 @@ function CheckIcon({ size = 10, color = colors.navyDeep }) {
           borderColor: color,
           transform: [
             {
-              rotate: '-45deg',
+              rotate: "-45deg",
             },
           ],
           marginTop: -2,
@@ -1714,9 +1884,9 @@ const styles = StyleSheet.create({
   },
   /* Header row holding the avatar + bell, above the greeting. */
   headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 24,
     paddingBottom: 14,
   },
@@ -1727,12 +1897,12 @@ const styles = StyleSheet.create({
     backgroundColor: withAlpha(colors.white, 0.1),
     borderWidth: 1,
     borderColor: GLASS_BORDER,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
   },
   notifBadge: {
-    position: 'absolute',
+    position: "absolute",
     top: -2,
     right: -2,
     minWidth: 17,
@@ -1742,12 +1912,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.dangerOnDark,
     borderWidth: 1.5,
     borderColor: colors.navyBase,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   notifBadgeText: {
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: "700",
     fontFamily: fonts.bodySemiBold,
     color: colors.white,
     lineHeight: 12,
@@ -1758,11 +1928,12 @@ const styles = StyleSheet.create({
   },
   loadingWrap: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     gap: 12,
   },
   loadingText: {
+    fontFamily: fonts.body,
     fontSize: 13,
     color: colors.textOnDarkMuted,
   },
@@ -1800,9 +1971,9 @@ const styles = StyleSheet.create({
   },
   widgetLabel: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: "600",
     letterSpacing: 0.5,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: fonts.bodySemiBold,
   },
   /* Greeting */
   greetBlock: {
@@ -1810,54 +1981,60 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   greetDate: {
+    fontFamily: fonts.body,
     fontSize: 15,
     letterSpacing: 0.3,
     color: colors.textOnDarkFaint,
     marginBottom: 6,
   },
   greetRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
   },
   greetTitle: {
     flex: 1,
-    fontSize: 24,
-    lineHeight: 29,
-    fontWeight: '700',
+    // Caveat — a deliberate, Dashboard-greeting-only exception to the
+    // Nunito Sans system (loaded separately in useAppFonts.js, not part of
+    // the `fonts.*` token map on purpose — this is the one place it's used
+    // anywhere in the app). Size bumped and tracking loosened from the
+    // previous Nunito value: a handwritten script reads visually smaller
+    // than a geometric sans at the same pixel size, and negative
+    // letterSpacing tightens/breaks a connected cursive face's letterforms.
+    fontSize: 30,
+    lineHeight: 36,
+    fontWeight: "500",
     color: colors.textOnDark,
-    letterSpacing: -0.4,
-    fontFamily: 'PlusJakartaSans_700Bold',
+    letterSpacing: 0,
+    fontFamily: "Caveat_500Medium",
   },
   avatarStack: {
-    flexDirection: 'row',
-  
+    flexDirection: "row",
   },
   avatarWrap: {
-    position: 'relative',
+    position: "relative",
   },
   avatarCircle: {
-  
     width: 32,
     height: 32,
     borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 2,
     borderColor: withAlpha(colors.navyDeep, 0.9),
-  
   },
   avatarInitials: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.textOnDarkBody,
   },
   avatarEmoji: {
     fontSize: 15,
   },
   onlineDot: {
-    position: 'absolute',
+    position: "absolute",
     bottom: -1,
     right: -1,
     width: 9,
@@ -1879,20 +2056,21 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   retryText: {
+    fontFamily: fonts.bodyBold,
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: "700",
     color: colors.navyDeep,
   },
   rowBetween: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: 4,
   },
   /* ── Streak hero ── */
   streakCard: {
     borderRadius: 26,
-    overflow: 'hidden',
+    overflow: "hidden",
     padding: 20,
     marginBottom: 20,
     backgroundColor: GLASS_FILL_LIFT,
@@ -1909,13 +2087,13 @@ const styles = StyleSheet.create({
   },
   bestChipText: {
     fontSize: 10,
-    fontWeight: '500',
+    fontWeight: "500",
     color: GOLD,
     fontFamily: fonts.mono,
   },
   streakBody: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 18,
     marginTop: 12,
     marginBottom: 18,
@@ -1923,25 +2101,26 @@ const styles = StyleSheet.create({
   ringWrap: {
     width: 92,
     height: 92,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   ringInner: {
     ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   ringNum: {
     fontSize: 30,
-    fontWeight: '800',
+    fontWeight: "800",
     color: colors.textOnDark,
     letterSpacing: -0.6,
-    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    fontFamily: fonts.display,
   },
   ringUnit: {
+    fontFamily: fonts.bodyMedium,
     fontSize: 9,
     letterSpacing: 1,
-    fontWeight: '500',
+    fontWeight: "500",
     color: colors.textOnDarkMuted,
     marginTop: 2,
   },
@@ -1951,33 +2130,34 @@ const styles = StyleSheet.create({
   streakHeadline: {
     fontSize: 15,
     lineHeight: 20,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.textOnDark,
     marginBottom: 6,
-    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontFamily: fonts.bodySemiBold,
   },
   streakSub: {
+    fontFamily: fonts.body,
     fontSize: 12,
     lineHeight: 18,
     color: colors.textOnDarkMuted,
     marginBottom: 12,
   },
   pillRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 6,
     marginBottom: 14,
   },
   pillCol: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
     gap: 7,
   },
   pill: {
-    width: '100%',
+    width: "100%",
     height: 44,
     borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: withAlpha(colors.white, 0.06),
     borderWidth: 1,
     borderColor: GLASS_BORDER_LIFT,
@@ -1991,31 +2171,33 @@ const styles = StyleSheet.create({
   },
   pillGlyph: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: "700",
     color: colors.textOnDarkFaint,
-    fontFamily: 'PlusJakartaSans_700Bold',
+    fontFamily: "PlusJakartaSans_700Bold",
   },
   pillGlyphDone: {
     color: colors.goldGlowPale,
   },
   pillLabel: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.textOnDarkFaint,
   },
   pillLabelSel: {
     color: GOLD,
   },
   streakFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     gap: 12,
     borderTopWidth: 1,
     borderTopColor: withAlpha(colors.white, 0.08),
     paddingTop: 12,
   },
   streakDetail: {
+    fontFamily: fonts.body,
     flex: 1,
     fontSize: 12,
     lineHeight: 17,
@@ -2023,30 +2205,32 @@ const styles = StyleSheet.create({
   },
   streakDetailMeta: {
     fontSize: 11,
-    fontWeight: '500',
+    fontWeight: "500",
     color: GOLD,
     fontFamily: fonts.mono,
   },
   /* ── Harmony ── */
   greenDelta: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.successOnDark,
   },
   scoreRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
+    flexDirection: "row",
+    alignItems: "baseline",
     gap: 10,
     marginBottom: 8,
   },
   scoreNum: {
     fontSize: 40,
-    fontWeight: '800',
+    fontWeight: "800",
     color: colors.textOnDark,
     letterSpacing: -0.8,
-    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    fontFamily: fonts.display,
   },
   scoreMeta: {
+    fontFamily: fonts.body,
     fontSize: 13,
     color: colors.textOnDarkMuted,
   },
@@ -2055,21 +2239,22 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: withAlpha(colors.white, 0.1),
     marginBottom: 8,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   progressFill: {
-    height: '100%',
+    height: "100%",
     borderRadius: 3,
   },
   scoreCaption: {
+    fontFamily: fonts.body,
     fontSize: 12,
     lineHeight: 17,
     color: colors.textOnDarkMuted,
     marginBottom: 14,
   },
   lbRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
     paddingVertical: 8,
     borderTopWidth: 1,
@@ -2078,7 +2263,7 @@ const styles = StyleSheet.create({
   lbRank: {
     width: 20,
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.textOnDarkLabel,
     fontFamily: fonts.mono,
   },
@@ -2086,27 +2271,29 @@ const styles = StyleSheet.create({
     color: GOLD,
   },
   lbName: {
+    fontFamily: fonts.bodyMedium,
     flex: 1,
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
     color: colors.textOnDarkBody,
   },
   lbPts: {
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: "500",
     color: colors.textOnDarkMuted,
     fontFamily: fonts.mono,
   },
   emptyText: {
+    fontFamily: fonts.body,
     fontSize: 13,
     color: colors.textOnDarkMuted,
     paddingVertical: 6,
   },
   /* ── Focus ── */
   focusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingVertical: 11,
   },
   focusRowBorder: {
@@ -2116,46 +2303,50 @@ const styles = StyleSheet.create({
   focusTitle: {
     flex: 1,
     fontSize: 15,
-    fontWeight: '500',
+    fontWeight: "500",
     color: colors.textOnDarkSoft,
-    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontFamily: fonts.bodySemiBold,
     marginRight: 10,
   },
   focusMeta: {
+    fontFamily: fonts.body,
     fontSize: 13,
     color: colors.textOnDarkMuted,
   },
   /* ── Calendar ── */
   calMonth: {
+    fontFamily: fonts.bodyMedium,
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: "500",
     color: colors.textOnDarkMuted,
   },
   weekStrip: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginBottom: 14,
     marginTop: 16,
   },
   weekCol: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
     gap: 5,
   },
   weekLabel: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.textOnDarkDim,
   },
   weekDay: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   weekNum: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   weekDot: {
     width: 4,
@@ -2169,22 +2360,23 @@ const styles = StyleSheet.create({
   },
   calEvent: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: "700",
     color: colors.textOnDarkSoft,
-    fontFamily: 'PlusJakartaSans_700Bold',
+    fontFamily: fonts.bodyBold,
   },
   calMeta: {
+    fontFamily: fonts.body,
     fontSize: 12,
     color: colors.textOnDarkMuted,
   },
   calControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   calArrow: {
     fontSize: 20,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.textOnDarkBody,
     lineHeight: 22,
   },
@@ -2193,8 +2385,8 @@ const styles = StyleSheet.create({
     borderColor: GOLD,
   },
   calEventRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     paddingVertical: 4,
   },
@@ -2205,13 +2397,14 @@ const styles = StyleSheet.create({
     backgroundColor: GOLD,
   },
   calEventTime: {
+    fontFamily: fonts.body,
     fontSize: 12,
     color: colors.textOnDarkDim,
-    marginLeft: 'auto',
+    marginLeft: "auto",
   },
   /* ── Two-up ── */
   twoUp: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 14,
     marginBottom: 20,
   },
@@ -2233,24 +2426,25 @@ const styles = StyleSheet.create({
   },
   halfNum: {
     fontSize: 24,
-    fontWeight: '700',
+    fontWeight: "700",
     color: colors.textOnDark,
     marginBottom: 5,
-    fontFamily: 'PlusJakartaSans_700Bold',
+    fontFamily: fonts.bodyBold,
   },
   balanceNum: {
     color: colors.dangerOnDark,
     fontSize: 20,
   },
   halfMeta: {
+    fontFamily: fonts.body,
     fontSize: 12,
     color: colors.textOnDarkMuted,
   },
   feedCard: {
     flex: 1.2,
-    position: 'relative',
+    position: "relative",
     borderRadius: 20,
-    overflow: 'hidden',
+    overflow: "hidden",
     height: 130,
     borderWidth: 1,
     borderColor: GLASS_BORDER,
@@ -2261,8 +2455,8 @@ const styles = StyleSheet.create({
   },
   feedPlaceholder: {
     backgroundColor: colors.navySurface,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   feedGradient: {
     ...StyleSheet.absoluteFillObject,
@@ -2270,34 +2464,35 @@ const styles = StyleSheet.create({
   feedCaption: {
     marginTop: 6,
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.white,
-    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontFamily: fonts.bodySemiBold,
   },
   nudgeCard: {
     padding: 18,
     marginBottom: 0,
     flex: 1,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
   },
   nudgeCardTitle: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: "700",
     color: colors.textOnDarkSoft,
     marginBottom: 4,
-    fontFamily: 'PlusJakartaSans_700Bold',
+    fontFamily: fonts.bodyBold,
   },
   nudgeCardMeta: {
+    fontFamily: fonts.body,
     fontSize: 12,
     color: colors.textOnDarkMuted,
   },
   /* ── Quick actions ── */
   qaRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   qaItem: {
-    alignItems: 'center',
+    alignItems: "center",
     gap: 8,
     flex: 1,
   },
@@ -2306,19 +2501,20 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 22,
     backgroundColor: withAlpha(GOLD, 0.16),
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   qaLabel: {
+    fontFamily: fonts.bodyMedium,
     fontSize: 10,
-    fontWeight: '500',
+    fontWeight: "500",
     color: colors.textOnDarkMuted,
-    textAlign: 'center',
+    textAlign: "center",
   },
   /* ── Activity ── */
   actRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
     paddingVertical: 10,
     borderTopWidth: 1,
@@ -2329,28 +2525,31 @@ const styles = StyleSheet.create({
     height: 30,
     borderRadius: 15,
     backgroundColor: withAlpha(colors.white, 0.09),
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   actAvatarText: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.textOnDarkBody,
   },
   actText: {
+    fontFamily: fonts.body,
     flex: 1,
     fontSize: 13,
     color: colors.textOnDarkBody,
   },
   actTime: {
+    fontFamily: fonts.body,
     fontSize: 11,
     color: colors.textOnDarkDim,
   },
   /* ── Vault (gold-tinted glass) ── */
   vaultCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     gap: 12,
     borderRadius: 20,
     padding: 18,
@@ -2369,30 +2568,30 @@ const styles = StyleSheet.create({
   },
   vaultLabel: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: "600",
     letterSpacing: 0.5,
     color: colors.goldGlowDim,
     marginBottom: 8,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: fonts.bodySemiBold,
   },
   vaultTitle: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.textOnDark,
-    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontFamily: fonts.bodySemiBold,
   },
   vaultTime: {
     fontSize: 11,
-    fontWeight: '500',
+    fontWeight: "500",
     color: GOLD,
     fontFamily: fonts.mono,
   },
   insightsText: {
     fontSize: 15,
     lineHeight: 22,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.textOnDarkSoft,
-    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontFamily: fonts.bodySemiBold,
   },
 });
 
@@ -2402,7 +2601,7 @@ const mo = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: withAlpha(colors.navyDark, 0.7),
-    justifyContent: 'flex-end',
+    justifyContent: "flex-end",
   },
   sheet: {
     backgroundColor: colors.navyBase,
@@ -2412,19 +2611,19 @@ const mo = StyleSheet.create({
     borderColor: GLASS_BORDER,
     paddingTop: spacing.sm,
     paddingHorizontal: spacing.xxl,
-    maxHeight: '85%',
+    maxHeight: "85%",
   },
   handle: {
     width: 40,
     height: 4,
     borderRadius: 2,
     backgroundColor: withAlpha(colors.white, 0.18),
-    alignSelf: 'center',
+    alignSelf: "center",
     marginBottom: spacing.xxl,
   },
   title: {
     fontSize: 20,
-    fontWeight: '800',
+    fontWeight: "800",
     fontFamily: fonts.display,
     color: colors.textOnDark,
     marginBottom: spacing.lg,
@@ -2434,14 +2633,14 @@ const mo = StyleSheet.create({
   },
   // Preset nudge message icons
   presetGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: spacing.md,
     marginBottom: spacing.lg,
   },
   presetItem: {
-    width: '30%',
-    alignItems: 'center',
+    width: "30%",
+    alignItems: "center",
     gap: 6,
   },
   presetGlyph: {
@@ -2449,10 +2648,10 @@ const mo = StyleSheet.create({
     height: 48,
     borderRadius: 24,
     backgroundColor: withAlpha(GOLD, 0.16),
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
-    borderColor: 'transparent',
+    borderColor: "transparent",
   },
   presetGlyphActive: {
     backgroundColor: colors.goldGlow,
@@ -2460,10 +2659,10 @@ const mo = StyleSheet.create({
   },
   presetLabel: {
     fontSize: 10.5,
-    fontWeight: '600',
+    fontWeight: "600",
     fontFamily: fonts.bodySemiBold,
     color: colors.textOnDarkMuted,
-    textAlign: 'center',
+    textAlign: "center",
   },
   presetLabelActive: {
     color: GOLD,
@@ -2480,28 +2679,28 @@ const mo = StyleSheet.create({
     fontSize: 14,
     fontFamily: fonts.body,
     color: colors.textOnDark,
-    textAlignVertical: 'top',
+    textAlignVertical: "top",
     marginBottom: spacing.lg,
   },
   // Recipients
   allRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingVertical: spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: GLASS_BORDER,
   },
   allText: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: "700",
     fontFamily: fonts.displayBold,
     color: colors.textOnDark,
   },
   mRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingVertical: 14,
     paddingHorizontal: 4,
     borderBottomWidth: 1,
@@ -2512,7 +2711,7 @@ const mo = StyleSheet.create({
   },
   mName: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: "600",
     fontFamily: fonts.bodySemiBold,
     color: colors.textOnDarkBody,
   },
@@ -2522,9 +2721,9 @@ const mo = StyleSheet.create({
     borderRadius: radius.pill,
     borderWidth: 2,
     borderColor: withAlpha(colors.white, 0.2),
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'transparent',
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "transparent",
   },
   cbOn: {
     backgroundColor: colors.goldGlow,
@@ -2532,7 +2731,7 @@ const mo = StyleSheet.create({
   },
   nudgeSectionLabel: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: "700",
     fontFamily: fonts.bodySemiBold,
     color: colors.textFaint,
     letterSpacing: 0.6,
@@ -2540,7 +2739,7 @@ const mo = StyleSheet.create({
   },
   // Footer actions
   actions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: spacing.md,
     marginTop: spacing.xxl,
   },
@@ -2549,11 +2748,11 @@ const mo = StyleSheet.create({
     paddingVertical: 15,
     borderRadius: radius.md,
     backgroundColor: withAlpha(colors.white, 0.07),
-    alignItems: 'center',
+    alignItems: "center",
   },
   cancelText: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: "700",
     fontFamily: fonts.bodySemiBold,
     color: colors.textOnDarkMuted,
   },
@@ -2562,14 +2761,14 @@ const mo = StyleSheet.create({
     paddingVertical: 15,
     borderRadius: radius.md,
     backgroundColor: colors.goldGlow,
-    alignItems: 'center',
+    alignItems: "center",
   },
   sendBtnDisabled: {
     opacity: 0.35,
   },
   sendText: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: "700",
     fontFamily: fonts.displayBold,
     color: colors.navyDeep,
   },

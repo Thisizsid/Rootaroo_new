@@ -332,6 +332,7 @@ const styles = StyleSheet.create({
     borderTopColor: colors.goldWarm,
   },
   verifyText: {
+    fontFamily: fonts.bodyMedium,
     fontSize: 15,
     fontWeight: '500',
     color: colors.textSecondaryWarm,
@@ -408,14 +409,17 @@ const styles = StyleSheet.create({
     minHeight: 22,
   },
   resendCooldown: {
+    fontFamily: fonts.body,
     fontSize: 13.5,
     color: colors.textSecondaryWarm,
   },
   resendCooldownNum: {
+    fontFamily: fonts.bodySemiBold,
     fontWeight: '600',
     color: colors.textPrimary,
   },
   resendLink: {
+    fontFamily: fonts.bodyBold,
     fontSize: 13.5,
     fontWeight: '700',
     color: colors.textPrimary,
@@ -449,6 +453,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   changeText: {
+    fontFamily: fonts.bodyMedium,
     fontSize: 13,
     color: colors.textSecondaryWarm,
     fontWeight: '500',

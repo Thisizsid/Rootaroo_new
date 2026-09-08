@@ -15,7 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import { chatApi } from '../shared/api/chat';
 import { householdApi } from '../shared/api/household';
 import { useAuthStore } from '../shared/store/authStore';
-import { colors, radius, spacing, withAlpha } from '../shared/theme';
+import { colors, fonts, radius, spacing, withAlpha } from '../shared/theme';
 import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
 const AVATAR_COLORS = [colors.gold, colors.avatarTan, colors.avatarLilac, colors.avatarSage, colors.avatarSky];
 function initials(name) {
@@ -448,11 +448,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
+    fontFamily: fonts.bodyBold,
     fontSize: 17,
     fontWeight: '700',
     color: colors.ink,
   },
   headerSubtitle: {
+    fontFamily: fonts.body,
     fontSize: 12,
     color: colors.textMuted,
     marginTop: 2,
@@ -461,6 +463,7 @@ const styles = StyleSheet.create({
     width: 32,
   },
   sectionLabel: {
+    fontFamily: fonts.bodyBold,
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 1,
@@ -470,6 +473,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.sm,
   },
   adminHint: {
+    fontFamily: fonts.body,
     fontSize: 12,
     color: colors.textSecondary,
     paddingHorizontal: spacing.lg,
@@ -501,6 +505,7 @@ const styles = StyleSheet.create({
     lineHeight: 26,
   },
   addMemberLabel: {
+    fontFamily: fonts.bodySemiBold,
     flex: 1,
     fontSize: 15,
     fontWeight: '600',
@@ -536,6 +541,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   modalTitle: {
+    fontFamily: fonts.bodyBold,
     fontSize: 18,
     fontWeight: '700',
     color: colors.ink,
@@ -543,6 +549,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   modalSubtitle: {
+    fontFamily: fonts.body,
     fontSize: 13,
     color: colors.textSecondary,
     textAlign: 'center',
@@ -568,6 +575,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.lg,
   },
   modalEmptyTitle: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 15,
     fontWeight: '600',
     color: colors.ink,
@@ -575,6 +583,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   modalEmptyText: {
+    fontFamily: fonts.body,
     fontSize: 13,
     color: colors.textSecondary,
     textAlign: 'center',
@@ -585,6 +594,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   modalCancelBtnText: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 14,
     fontWeight: '600',
     color: colors.textSecondary,
@@ -615,6 +625,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
   },
   avatarText: {
+    fontFamily: fonts.bodyBold,
     fontSize: 15,
     fontWeight: '700',
     color: colors.onAccent,
@@ -628,6 +639,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   rowName: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 15,
     fontWeight: '600',
     color: colors.ink,
@@ -640,12 +652,14 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   adminBadgeText: {
+    fontFamily: fonts.bodyBold,
     fontSize: 10,
     fontWeight: '700',
     color: colors.goldDeep,
     letterSpacing: 0.5,
   },
   rowSub: {
+    fontFamily: fonts.body,
     fontSize: 12,
     color: colors.textMuted,
     marginTop: 2,
@@ -659,6 +673,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   addBtnText: {
+    fontFamily: fonts.bodyBold,
     fontSize: 13,
     fontWeight: '700',
     color: colors.onAccent,
@@ -674,6 +689,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   removeBtnText: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 13,
     fontWeight: '600',
     color: colors.danger,
@@ -688,6 +704,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   selfBadgeText: {
+    fontFamily: fonts.bodyBold,
     fontSize: 12,
     fontWeight: '700',
     color: colors.goldDeep,
@@ -697,6 +714,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: {
+    fontFamily: fonts.body,
     fontSize: 14,
     color: colors.textSecondary,
   },

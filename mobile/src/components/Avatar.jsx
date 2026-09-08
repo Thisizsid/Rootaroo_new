@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
 import apiClient from '../shared/api/client';
-import { colors } from '../shared/theme';
+import { colors, fonts } from '../shared/theme';
 
 const AVATAR_FALLBACKS = [colors.avatarBronze, colors.avatarMoss, colors.avatarSlate, colors.avatarMauve, colors.legacyGold];
 
@@ -76,6 +76,7 @@ const styles = StyleSheet.create({
   },
   avatarInitials: {
     fontWeight: '700',
+    fontFamily: fonts.bodyBold,
     color: colors.onAccent,
   },
 });

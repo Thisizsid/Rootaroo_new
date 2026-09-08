@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { expenseApi } from '../shared/api/expense';
-import { colors, radius, withAlpha } from '../shared/theme';
+import { colors, fonts, radius, withAlpha } from '../shared/theme';
 import Avatar from '../components/Avatar';
 
 function formatMoneyCompact(n) {
@@ -168,11 +168,13 @@ const styles = StyleSheet.create({
     marginRight: 2,
   },
   backText: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 15,
     fontWeight: '600',
     color: colors.legacyGold,
   },
   headerTitle: {
+    fontFamily: fonts.bodyBold,
     fontSize: 17,
     fontWeight: '700',
     color: colors.ink,
@@ -185,6 +187,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   errorText: {
+    fontFamily: fonts.bodyMedium,
     color: colors.dangerBright,
     fontSize: 13,
     textAlign: 'center',
@@ -206,6 +209,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   name: {
+    fontFamily: fonts.bodySemiBold,
     flex: 1,
     fontSize: 15,
     fontWeight: '600',
@@ -215,10 +219,12 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   amount: {
+    fontFamily: fonts.display,
     fontSize: 17,
     fontWeight: '800',
   },
   status: {
+    fontFamily: fonts.body,
     fontSize: 12,
     color: colors.textMuted,
     marginTop: 2,
@@ -235,12 +241,14 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   emptyTitle: {
+    fontFamily: fonts.bodyBold,
     fontSize: 18,
     fontWeight: '700',
     color: colors.ink,
     marginBottom: 6,
   },
   emptySubtitle: {
+    fontFamily: fonts.body,
     fontSize: 14,
     color: colors.textMuted,
     textAlign: 'center',

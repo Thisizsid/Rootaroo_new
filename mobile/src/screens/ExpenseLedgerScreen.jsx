@@ -366,16 +366,19 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   backText: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 15,
     fontWeight: '600',
     color: GOLD,
   },
   headerTitle: {
+    fontFamily: fonts.bodyBold,
     fontSize: 17,
     fontWeight: '700',
     color: colors.ink,
   },
   customSettleText: {
+    fontFamily: fonts.bodySemiBold,
     color: GOLD,
     fontWeight: '600',
     fontSize: 15,
@@ -388,6 +391,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   errorText: {
+    fontFamily: fonts.bodyMedium,
     color: colors.dangerOnDark,
     fontSize: 13,
     textAlign: 'center',
@@ -398,6 +402,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   summaryText: {
+    fontFamily: fonts.bodyBold,
     fontSize: 12,
     fontWeight: '700',
     color: colors.textOnDarkLabel,
@@ -423,6 +428,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   userName: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 11,
     fontWeight: '600',
     color: colors.ink,
@@ -442,6 +448,7 @@ const styles = StyleSheet.create({
     color: GOLD,
   },
   settleLink: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 12,
     fontWeight: '600',
     color: GOLD,
@@ -458,12 +465,14 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   emptyTitle: {
+    fontFamily: fonts.bodyBold,
     fontSize: 18,
     fontWeight: '700',
     color: colors.ink,
     marginBottom: 6,
   },
   emptySubtitle: {
+    fontFamily: fonts.body,
     fontSize: 14,
     color: colors.textOnDarkMuted,
     textAlign: 'center',
@@ -493,6 +502,7 @@ const styles = StyleSheet.create({
     borderBottomColor: withAlpha(colors.white, 0.08),
   },
   modalTitle: {
+    fontFamily: fonts.bodyBold,
     fontSize: 17,
     fontWeight: '700',
     color: colors.ink,
@@ -505,6 +515,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   fieldLabel: {
+    fontFamily: fonts.bodyBold,
     fontSize: 12,
     fontWeight: '700',
     color: colors.textOnDarkLabel,
@@ -533,6 +544,7 @@ const styles = StyleSheet.create({
     borderColor: GOLD,
   },
   memberOptionText: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 11,
     fontWeight: '600',
     color: colors.textOnDarkMuted,
@@ -562,6 +574,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   saveButtonText: {
+    fontFamily: fonts.bodyBold,
     color: colors.navyDeep,
     fontSize: 15,
     fontWeight: '700',
