@@ -52,10 +52,13 @@ export const env = {
     bundleId: process.env.APPLE_BUNDLE_ID || 'com.rootaroo.app',
   },
 
-  sns: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
-    region: process.env.AWS_REGION || 'us-east-1',
+  // Twilio (phone OTP delivery — login/signup with phone number). Left
+  // blank falls back to logging the code in development (see
+  // modules/auth/service.ts's issuePhoneOtp), same pattern as SMTP/FCM.
+  twilio: {
+    accountSid: process.env.TWILIO_ACCOUNT_SID || '',
+    authToken: process.env.TWILIO_AUTH_TOKEN || '',
+    fromNumber: process.env.TWILIO_PHONE_NUMBER || '',
   },
 
   s3: {
