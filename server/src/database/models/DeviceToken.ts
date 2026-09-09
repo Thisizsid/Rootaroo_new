@@ -22,8 +22,12 @@ DeviceToken.init(
       allowNull: false,
       field: 'user_id',
     },
+    // VARCHAR, not TEXT — real device push tokens (FCM/Expo) are well
+    // under this length, and the unique index below requires an
+    // indexable column type (MySQL rejects a key on TEXT/BLOB without an
+    // explicit prefix length).
     token: {
-      type: DataTypes.TEXT,
+      type: DataTypes.STRING(500),
       allowNull: false,
     },
     platform: {

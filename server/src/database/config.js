@@ -40,6 +40,9 @@ module.exports = {
     dialect: 'mysql',
     ...socketOptions,
     logging: false,
+    migrationStorageTableName: 'sequelize_meta',
+    seederStorage: 'sequelize',
+    seederStorageTableName: 'sequelize_seeders',
     pool: {
       max: 25,
       min: 5,
