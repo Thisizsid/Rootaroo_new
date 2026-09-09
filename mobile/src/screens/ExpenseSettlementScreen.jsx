@@ -11,7 +11,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { showAlert } from '../shared/services/themedAlert';
 import { expenseApi } from '../shared/api/expense';
-import { colors, radius, withAlpha } from '../shared/theme';
+import { colors, fonts, radius, withAlpha } from '../shared/theme';
 import Avatar from '../components/Avatar';
 function formatCurrency(amount) {
   return new Intl.NumberFormat('en-US', {
@@ -200,16 +200,19 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   backText: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 15,
     fontWeight: '600',
     color: colors.legacyGold,
   },
   headerTitle: {
+    fontFamily: fonts.bodyBold,
     fontSize: 17,
     fontWeight: '700',
     color: colors.ink,
   },
   countText: {
+    fontFamily: fonts.bodyBold,
     fontSize: 13,
     fontWeight: '700',
     color: withAlpha(colors.legacyNavy, 0.35),
@@ -256,6 +259,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   userName: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 12,
     fontWeight: '600',
     color: colors.ink,
@@ -266,6 +270,7 @@ const styles = StyleSheet.create({
     fontWeight: '300',
   },
   amount: {
+    fontFamily: fonts.display,
     fontSize: 16,
     fontWeight: '800',
     color: colors.legacyGold,
@@ -277,6 +282,7 @@ const styles = StyleSheet.create({
     borderTopColor: withAlpha(colors.legacyNavy, 0.05),
   },
   dateText: {
+    fontFamily: fonts.body,
     fontSize: 11,
     color: withAlpha(colors.legacyNavy, 0.35),
   },
@@ -292,12 +298,14 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   emptyTitle: {
+    fontFamily: fonts.bodyBold,
     fontSize: 18,
     fontWeight: '700',
     color: colors.ink,
     marginBottom: 6,
   },
   emptySubtitle: {
+    fontFamily: fonts.body,
     fontSize: 14,
     color: withAlpha(colors.legacyNavy, 0.5),
     textAlign: 'center',

@@ -886,12 +886,14 @@ const styles = StyleSheet.create({
   },
   // Empty state
   emptyTitle: {
+    fontFamily: fonts.bodyBold,
     fontSize: 20,
     fontWeight: '700',
     color: colors.ink,
     marginBottom: 8,
   },
   emptyDesc: {
+    fontFamily: fonts.body,
     fontSize: 14,
     color: colors.textMuted,
     textAlign: 'center',

@@ -302,6 +302,7 @@ const styles = StyleSheet.create({
     height: 19,
   },
   socialBtnText: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 14,
     fontWeight: '600',
     color: colors.textPrimary,
@@ -333,6 +334,7 @@ const styles = StyleSheet.create({
     backgroundColor: withAlpha(colors.textPrimary, 0.12),
   },
   dividerText: {
+    fontFamily: fonts.body,
     fontSize: 11,
     color: colors.textSecondaryWarm,
   },
@@ -356,6 +358,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   forgotText: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 13,
     fontWeight: '600',
     color: colors.avatarNavy,
@@ -396,6 +399,7 @@ const styles = StyleSheet.create({
     paddingLeft: 8,
   },
   eyeText: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 12.5,
     fontWeight: '600',
     color: colors.goldWarmDark,
@@ -426,10 +430,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   linkMuted: {
+    fontFamily: fonts.body,
     fontSize: 13,
     color: colors.textSecondaryWarm,
   },
   linkBold: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 13,
     fontWeight: '600',
     color: colors.textPrimary,

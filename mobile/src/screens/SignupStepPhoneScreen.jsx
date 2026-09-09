@@ -228,6 +228,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   code: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 13,
     fontWeight: '600',
     color: colors.textPrimary,
@@ -260,11 +261,13 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   modalTitle: {
+    fontFamily: fonts.bodyBold,
     fontSize: 16,
     fontWeight: '700',
     color: colors.textPrimary,
   },
   modalDone: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 14,
     fontWeight: '600',
     color: colors.goldWarm,
@@ -289,11 +292,13 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   rowName: {
+    fontFamily: fonts.body,
     flex: 1,
     fontSize: 14,
     color: colors.textPrimary,
   },
   rowCode: {
+    fontFamily: fonts.body,
     fontSize: 13,
     color: colors.textSecondaryWarm,
   },

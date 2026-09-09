@@ -353,6 +353,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   subtitle: {
+    fontFamily: fonts.body,
     fontSize: 14.5,
     color: colors.textSecondaryWarm,
     lineHeight: 21,
@@ -408,6 +409,7 @@ const styles = StyleSheet.create({
     paddingLeft: 8,
   },
   eyeText: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 12.5,
     fontWeight: '600',
     color: colors.goldWarmDark,
@@ -446,10 +448,12 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   resendText: {
+    fontFamily: fonts.body,
     fontSize: 13,
     color: colors.textSecondaryWarm,
   },
   resendLink: {
+    fontFamily: fonts.bodySemiBold,
     fontWeight: '600',
     color: colors.goldWarmDark,
   },
@@ -479,6 +483,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   backToSignInText: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 14,
     fontWeight: '600',
     color: colors.goldWarmDark,

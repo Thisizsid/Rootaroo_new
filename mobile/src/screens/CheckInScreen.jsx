@@ -1590,6 +1590,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   nativePlacePinLabel: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 9,
     fontWeight: '600',
     color: colors.ink,
@@ -1627,6 +1628,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   nativeFocusLabelText: {
+    fontFamily: fonts.bodySemiBold,
     color: colors.onAccent,
     fontWeight: '600',
     fontSize: 12,
@@ -2237,6 +2239,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   pickEmptyText: {
+    fontFamily: fonts.body,
     fontSize: 13,
     lineHeight: 19,
     color: colors.textSecondary,
@@ -2277,6 +2280,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   pickRoleText: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 10.5,
     fontWeight: '600',
     color: colors.textSecondary,
@@ -2340,6 +2344,7 @@ const styles = StyleSheet.create({
     color: colors.goldDeep,
   },
   fieldLabel: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 11,
     fontWeight: '600',
     color: colors.textSecondary,
