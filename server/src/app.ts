@@ -31,6 +31,15 @@ import logger from './shared/utils/logger';
 
 const app = express();
 
+// Railway (and most cloud hosts) sit the app behind their own reverse
+// proxy, which sets X-Forwarded-For. Without this, Express's default
+// (trust proxy: false) makes express-rate-limit's IP-based key generator
+// throw ERR_ERL_UNEXPECTED_X_FORWARDED_FOR on every request instead of
+// rate-limiting by real client IP. `1` trusts exactly one hop — matches
+// Railway's single reverse-proxy topology, not an arbitrary chain of
+// caller-supplied headers.
+app.set('trust proxy', 1);
+
 // ── Security Middleware ──
 app.use(helmet());
 app.use(cors({
