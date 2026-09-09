@@ -28,6 +28,10 @@ export const env = {
   redis: {
     host: process.env.REDIS_HOST || 'localhost',
     port: parseInt(process.env.REDIS_PORT || '6379', 10),
+    // Optional — local dev Redis has no auth; managed providers (e.g.
+    // Railway) require one. undefined (not '') so ioredis skips AUTH
+    // entirely when unset, rather than sending an empty-string password.
+    password: process.env.REDIS_PASSWORD || undefined,
   },
 
   jwt: {

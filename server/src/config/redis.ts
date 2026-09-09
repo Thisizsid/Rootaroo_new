@@ -4,6 +4,7 @@ import { env } from './env';
 const redis = new Redis({
   host: env.redis.host,
   port: env.redis.port,
+  password: env.redis.password,
   // Keep retrying forever with capped backoff — Redis is used for
   // best-effort caching/rate-limiting, not a hard dependency. Returning
   // `null` here (give up permanently) makes the client transition to a
