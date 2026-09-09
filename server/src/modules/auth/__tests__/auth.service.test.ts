@@ -2,7 +2,7 @@ import { register, updateProfile, googleAuth, appleAuth, sendVerification, verif
 import { env } from '../../../config/env';
 
 jest.mock('nodemailer', () => ({ createTransport: jest.fn() }));
-jest.mock('../../../shared/utils/sns', () => ({ sendSms: jest.fn() }));
+jest.mock('../../../shared/utils/sms', () => ({ sendSms: jest.fn() }));
 jest.mock('jose', () => ({
   createRemoteJWKSet: jest.fn(() => ({})),
   jwtVerify: jest.fn(),
@@ -17,7 +17,7 @@ jest.mock('../../../database/models', () => ({
 }));
 
 import * as models from '../../../database/models';
-import { sendSms } from '../../../shared/utils/sns';
+import { sendSms } from '../../../shared/utils/sms';
 import { jwtVerify } from 'jose';
 import { hashOtpCode } from '../../../shared/utils/otp';
 
@@ -540,9 +540,12 @@ describe('Auth Service — Account Deletion', () => {
   });
 });
 
-describe('Auth Service — Phone OTP (app-owned code, delivered via AWS SNS)', () => {
+describe('Auth Service — Phone OTP (app-owned code, delivered via Twilio)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    env.twilio.accountSid = 'ACtest';
+    env.twilio.authToken = 'test-auth-token';
+    env.twilio.fromNumber = '+15005550006';
     (models.PhoneVerification.update as jest.Mock).mockResolvedValue([0]);
     (models.PhoneVerification.create as jest.Mock).mockResolvedValue({ id: 'pv1' });
   });
@@ -628,6 +631,16 @@ describe('Auth Service — Phone OTP (app-owned code, delivered via AWS SNS)', (
 
       await expect(sendPhoneOtp({ phone: '+15552222222' }, 'u1'))
         .rejects.toThrow('Phone does not match your account');
+    });
+
+    it('should fall back to a dev-mode logged code instead of calling Twilio when unconfigured', async () => {
+      env.twilio.accountSid = '';
+      (models.User.findByPk as jest.Mock).mockResolvedValue(fakePhoneUser());
+
+      const code = await sendPhoneOtp({ phone: '+15551234567' }, 'u1');
+
+      expect(code).toMatch(/^\d{6}$/);
+      expect(sendSms).not.toHaveBeenCalled();
     });
   });
 

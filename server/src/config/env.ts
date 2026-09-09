@@ -52,10 +52,13 @@ export const env = {
     bundleId: process.env.APPLE_BUNDLE_ID || 'com.rootaroo.app',
   },
 
-  sns: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
-    region: process.env.AWS_REGION || 'us-east-1',
+  // Twilio (phone OTP delivery — login/signup with phone number). Left
+  // blank falls back to logging the code in development (see
+  // modules/auth/service.ts's issuePhoneOtp), same pattern as SMTP/FCM.
+  twilio: {
+    accountSid: process.env.TWILIO_ACCOUNT_SID || '',
+    authToken: process.env.TWILIO_AUTH_TOKEN || '',
+    fromNumber: process.env.TWILIO_PHONE_NUMBER || '',
   },
 
   s3: {
@@ -104,8 +107,10 @@ export const env = {
 if (env.nodeEnv === 'production') {
   const missing = [
     !process.env.JWT_ACCESS_SECRET && 'JWT_ACCESS_SECRET',
+    !process.env.JWT_REFRESH_SECRET && 'JWT_REFRESH_SECRET',
     !process.env.S3_ACCESS_KEY_ID && 'S3_ACCESS_KEY_ID',
     !process.env.S3_SECRET_ACCESS_KEY && 'S3_SECRET_ACCESS_KEY',
+    !process.env.S3_BUCKET && 'S3_BUCKET',
     !process.env.CALENDAR_TOKEN_KEK && 'CALENDAR_TOKEN_KEK',
     // FCM is legitimately optional to have off — only required once deliberately enabled.
     process.env.FCM_ENABLED === 'true' && !process.env.FCM_PROJECT_ID && 'FCM_PROJECT_ID',

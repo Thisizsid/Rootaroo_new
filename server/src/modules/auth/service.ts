@@ -7,7 +7,7 @@ import { env } from '../../config/env';
 import { User, RefreshToken, EmailVerification, PasswordReset, PhoneVerification } from '../../database/models';
 import { getMailer } from '../../shared/utils/mailer';
 import { getSignedUrl } from '../../shared/utils/s3';
-import { sendSms } from '../../shared/utils/sns';
+import { sendSms } from '../../shared/utils/sms';
 import { jwtVerify, createRemoteJWKSet } from 'jose';
 import { hashOtpCode, MAX_OTP_ATTEMPTS } from '../../shared/utils/otp';
 import { UnauthorizedError, ConflictError, NotFoundError, AppError } from '../../shared/utils/errors';
@@ -667,12 +667,12 @@ async function issuePhoneOtp(phone: string, userId: string | null): Promise<stri
     expiresAt: new Date(Date.now() + 15 * 60 * 1000),
   });
 
-  if (!env.sns.accessKeyId) {
+  if (!env.twilio.accountSid || !env.twilio.authToken || !env.twilio.fromNumber) {
     if (env.nodeEnv !== 'production') {
       console.warn(`[DEV] Phone OTP for ${normalized}: ${code}`);
       return code;
     }
-    console.error(`AWS SNS is not configured — unable to deliver phone OTP for ${normalized}`);
+    console.error(`Twilio is not configured — unable to deliver phone OTP for ${normalized}`);
     return undefined;
   }
 
