@@ -13,7 +13,7 @@ import {
 import { showAlert } from '../shared/services/themedAlert';
 import { useAuthStore } from '../shared/store/authStore';
 import { authApi } from '../shared/api/auth';
-import { colors, withAlpha } from '../shared/theme';
+import { colors, fonts, withAlpha } from '../shared/theme';
 import { KeyboardAvoider, keyboardScrollProps } from '../shared/components/KeyboardAware';
 import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
 export default function AccountDeletionScreen({ navigation }) {
@@ -212,6 +212,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   heading: {
+    fontFamily: fonts.bodyBold,
     fontSize: 20,
     fontWeight: '700',
     color: colors.legacyNavy,
@@ -219,6 +220,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   doneTitle: {
+    fontFamily: fonts.bodyBold,
     fontSize: 22,
     fontWeight: '700',
     color: colors.legacyNavy,
@@ -226,6 +228,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   doneSub: {
+    fontFamily: fonts.body,
     fontSize: 13,
     color: withAlpha(colors.legacyNavy, 0.4),
     textAlign: 'center',
@@ -233,6 +236,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   warning: {
+    fontFamily: fonts.body,
     fontSize: 13,
     color: withAlpha(colors.legacyNavy, 0.5),
     textAlign: 'center',
@@ -241,6 +245,7 @@ const styles = StyleSheet.create({
     maxWidth: 300,
   },
   label: {
+    fontFamily: fonts.bodySemiBold,
     width: '100%',
     fontSize: 10,
     fontWeight: '600',
@@ -278,6 +283,7 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   primaryText: {
+    fontFamily: fonts.bodyBold,
     fontSize: 14,
     fontWeight: '700',
     color: colors.legacyNavySoft,
@@ -293,6 +299,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   dangerText: {
+    fontFamily: fonts.bodyBold,
     fontSize: 14,
     fontWeight: '700',
     color: colors.onAccent,
@@ -302,11 +309,13 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   linkDanger: {
+    fontFamily: fonts.bodyMedium,
     fontSize: 12,
     fontWeight: '500',
     color: colors.dangerStrong,
   },
   cancelText: {
+    fontFamily: fonts.bodyMedium,
     fontSize: 12,
     fontWeight: '500',
     color: withAlpha(colors.legacyNavy, 0.3),

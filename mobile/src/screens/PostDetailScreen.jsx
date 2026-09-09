@@ -16,7 +16,7 @@ import { showAlert } from '../shared/services/themedAlert';
 import PostCard from '../shared/components/PostCard';
 import { feedApi } from '../shared/api/feed';
 import { useAuthStore } from '../shared/store/authStore';
-import { colors, withAlpha } from '../shared/theme';
+import { colors, fonts, withAlpha } from '../shared/theme';
 import Avatar from '../components/Avatar';
 import { KEYBOARD_BEHAVIOR } from '../shared/components/KeyboardAware';
 import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
@@ -336,6 +336,7 @@ const styles = StyleSheet.create({
     width: 30,
   },
   topBrand: {
+    fontFamily: fonts.display,
     fontSize: 15,
     fontWeight: '800',
     color: colors.legacyNavy,
@@ -345,6 +346,7 @@ const styles = StyleSheet.create({
     color: colors.legacyGold,
   },
   topRight: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 13,
     fontWeight: '600',
     color: withAlpha(colors.legacyNavy, 0.45),
@@ -361,6 +363,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.canvasPaper,
   },
   errorText: {
+    fontFamily: fonts.bodySemiBold,
     color: colors.legacyNavy,
     fontSize: 15,
     fontWeight: '600',
@@ -383,6 +386,7 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   commentsHeader: {
+    fontFamily: fonts.display,
     fontSize: 16,
     fontWeight: '800',
     color: colors.legacyNavy,
@@ -395,6 +399,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyCommentsText: {
+    fontFamily: fonts.body,
     fontSize: 14,
     color: withAlpha(colors.legacyNavy, 0.4),
   },
@@ -412,17 +417,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   commentAuthor: {
+    fontFamily: fonts.bodyBold,
     fontSize: 13,
     fontWeight: '700',
     color: colors.legacyNavy,
   },
   commentBody: {
+    fontFamily: fonts.body,
     fontSize: 14,
     color: colors.legacyNavy,
     lineHeight: 20,
     marginTop: 2,
   },
   commentTime: {
+    fontFamily: fonts.body,
     fontSize: 11,
     color: withAlpha(colors.legacyNavy, 0.38),
     marginTop: 4,
@@ -458,6 +466,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   postButtonText: {
+    fontFamily: fonts.bodyBold,
     fontSize: 14,
     fontWeight: '700',
     color: colors.onAccent,

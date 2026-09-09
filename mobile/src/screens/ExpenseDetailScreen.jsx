@@ -659,6 +659,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.canvas,
   },
   missing: {
+    fontFamily: fonts.body,
     textAlign: 'center',
     marginTop: 40,
     fontSize: 15,

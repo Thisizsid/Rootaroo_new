@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { showAlert } from '../services/themedAlert';
 import { Video, ResizeMode } from 'expo-av';
-import { colors, withAlpha } from '../theme';
+import { colors, fonts, withAlpha } from '../theme';
 import Avatar, { resolveUrl } from '../../components/Avatar';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -319,7 +319,7 @@ const PostCard = memo(function PostCard({
                     <Image source={{ uri }} style={styles.viewerMedia} resizeMode="contain" />
                   )
                 ) : (
-                  <Text style={{ color: colors.onAccent }}>Unavailable</Text>
+                  <Text style={{ color: colors.onAccent, fontFamily: fonts.body }}>Unavailable</Text>
                 )}
               </View>
             );
@@ -357,18 +357,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   authorName: {
+    fontFamily: fonts.bodyBold,
     fontSize: 14,
     fontWeight: '700',
     color: colors.ink,
     flexShrink: 1,
   },
   feelingInline: {
+    fontFamily: fonts.body,
     fontSize: 13,
     color: withAlpha(colors.ink, 0.45),
     marginLeft: 4,
     flexShrink: 1,
   },
   timestamp: {
+    fontFamily: fonts.body,
     fontSize: 12,
     color: withAlpha(colors.ink, 0.38),
     marginTop: 1,
@@ -380,6 +383,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   pinText: {
+    fontFamily: fonts.bodyBold,
     fontSize: 10,
     fontWeight: '700',
     color: colors.legacyGoldDark,
@@ -406,6 +410,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   mediaMissingText: {
+    fontFamily: fonts.bodySemiBold,
     color: withAlpha(colors.white, 0.4),
     fontWeight: '600',
   },
@@ -435,6 +440,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   countBadgeText: {
+    fontFamily: fonts.bodyBold,
     color: colors.onAccent,
     fontSize: 11,
     fontWeight: '700',
@@ -461,6 +467,7 @@ const styles = StyleSheet.create({
     padding: 2,
   },
   actionCount: {
+    fontFamily: fonts.bodyBold,
     fontSize: 13,
     fontWeight: '700',
     color: colors.ink,
@@ -473,6 +480,7 @@ const styles = StyleSheet.create({
   },
 
   captionSolo: {
+    fontFamily: fonts.display,
     paddingHorizontal: 22,
     paddingBottom: 4,
     fontSize: 16,
@@ -485,6 +493,7 @@ const styles = StyleSheet.create({
     paddingTop: 6,
   },
   caption: {
+    fontFamily: fonts.display,
     fontSize: 16,
     fontWeight: '800',
     lineHeight: 20,
@@ -512,11 +521,13 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   activityBadgeText: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 12,
     fontWeight: '600',
     color: colors.legacyGoldDark,
   },
   subHeaderText: {
+    fontFamily: fonts.body,
     fontSize: 12,
     color: withAlpha(colors.ink, 0.45),
   },

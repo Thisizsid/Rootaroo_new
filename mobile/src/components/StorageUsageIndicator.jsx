@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { formatFileSize } from '../shared/utils/format';
-import { colors, withAlpha } from '../shared/theme';
+import { colors, fonts, withAlpha } from '../shared/theme';
 
 export default function StorageUsageIndicator({
   usedBytes,
@@ -43,6 +43,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: withAlpha(colors.legacyNavy, 0.5),
     fontWeight: '500',
+    fontFamily: fonts.bodyMedium,
     marginRight: 8,
   },
   progressBar: {
@@ -63,6 +64,7 @@ const styles = StyleSheet.create({
   text: {
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: fonts.bodySemiBold,
     color: colors.legacyGold,
     marginLeft: 8,
   },

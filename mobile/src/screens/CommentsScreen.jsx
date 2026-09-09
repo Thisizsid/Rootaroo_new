@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { SvgXml } from 'react-native-svg';
 import { feedApi } from '../shared/api/feed';
-import { colors, radius, withAlpha } from '../shared/theme';
+import { colors, fonts, radius, withAlpha } from '../shared/theme';
 import { KeyboardAvoider } from '../shared/components/KeyboardAware';
 const INK = colors.ink;
 const MUTED = colors.textMuted;
@@ -534,7 +534,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: INK,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: fonts.bodySemiBold,
   },
   titleRow: {
     height: 56,
@@ -547,7 +547,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
     color: INK,
-    fontFamily: 'PlusJakartaSans_700Bold',
+    fontFamily: fonts.bodyBold,
     flex: 1,
   },
   cancelReply: {
@@ -560,7 +560,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: GLYPH_FG,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: fonts.bodySemiBold,
   },
   avoider: {
     flex: 1,
@@ -582,7 +582,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 14,
     color: MUTED,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: fonts.body,
   },
   commentRow: {
     flexDirection: 'row',
@@ -621,7 +621,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: GLYPH_FG,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: fonts.bodySemiBold,
   },
   commentBody: {
     flex: 1,
@@ -635,7 +635,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: INK,
-    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontFamily: fonts.bodySemiBold,
     flexShrink: 1,
   },
   badge: {
@@ -647,12 +647,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     overflow: 'hidden',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: fonts.bodyBold,
   },
   time: {
     fontSize: 12,
     color: MUTED,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: fonts.body,
   },
   dotsBtn: {
     marginLeft: 'auto',
@@ -661,14 +661,14 @@ const styles = StyleSheet.create({
   replyToText: {
     fontSize: 11,
     color: MUTED,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: fonts.body,
     marginTop: 2,
   },
   text: {
     fontSize: 14,
     lineHeight: 19.6,
     color: INK,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: fonts.body,
     marginTop: 3,
   },
   commentActions: {
@@ -686,7 +686,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: GLYPH_FG,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: fonts.bodySemiBold,
   },
   actionChipActive: {
     color: GOLD,
@@ -694,7 +694,7 @@ const styles = StyleSheet.create({
   reactionSummary: {
     fontSize: 12,
     color: MUTED,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: fonts.body,
   },
   repliesBlock: {
     marginTop: 12,
@@ -711,7 +711,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     color: GLYPH_FG,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: fonts.bodyMedium,
   },
   replyBannerX: {
     fontSize: 16,
@@ -741,7 +741,7 @@ const styles = StyleSheet.create({
   input: {
     fontSize: 14,
     color: INK,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: fonts.body,
     padding: 0,
     margin: 0,
   },
@@ -787,6 +787,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: colors.dangerVivid,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: fonts.bodyMedium,
   },
 });

@@ -266,6 +266,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   avatarText: {
+    fontFamily: fonts.bodyBold,
     fontSize: 12,
     fontWeight: '700',
     color: colors.textOnDarkBody,

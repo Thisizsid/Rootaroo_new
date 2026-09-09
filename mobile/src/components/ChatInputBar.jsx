@@ -325,6 +325,7 @@ const styles = StyleSheet.create({
     color: colors.ink,
   },
   recordingHint: {
+    fontFamily: fonts.body,
     flex: 1,
     fontSize: 14,
     color: colors.textMuted,

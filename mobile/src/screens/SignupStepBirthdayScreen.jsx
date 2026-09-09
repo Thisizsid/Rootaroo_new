@@ -308,6 +308,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   wheelItemText: {
+    fontFamily: fonts.body,
     fontSize: 15,
     color: colors.placeholderWarm,
   },

@@ -237,10 +237,12 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   cooldownText: {
+    fontFamily: fonts.body,
     fontSize: 13,
     color: colors.textSecondaryWarm,
   },
   cooldownNum: {
+    fontFamily: fonts.bodySemiBold,
     fontWeight: '600',
     color: colors.labelWarm,
   },

@@ -27,7 +27,7 @@ import apiClient from '../shared/api/client';
 import * as ImagePicker from 'expo-image-picker';
 import { useFeedStore } from '../shared/store/feedStore';
 import { useAuthStore } from '../shared/store/authStore';
-import { colors, radius, withAlpha } from '../shared/theme';
+import { colors, fonts, radius, withAlpha } from '../shared/theme';
 import { KEYBOARD_BEHAVIOR } from '../shared/components/KeyboardAware';
 const MAX_CHARS = 10000;
 const MAX_MEDIA = 10;
@@ -854,7 +854,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: colors.ink,
-    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontFamily: fonts.bodySemiBold,
   },
   titleCentered: {
     textAlign: 'center',
@@ -900,13 +900,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: colors.inkMuted,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: fonts.bodySemiBold,
   },
   userInfoName: {
     fontSize: 14,
     fontWeight: '600',
     color: colors.ink,
-    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontFamily: fonts.bodySemiBold,
   },
   moodPill: {
     flexDirection: 'row',
@@ -920,6 +920,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   moodPillText: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 12,
     fontWeight: '600',
     color: colors.legacyGoldDark,
@@ -946,7 +947,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22.5,
     color: colors.ink,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: fonts.body,
     paddingVertical: 0,
     minHeight: 120,
   },
@@ -959,6 +960,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   activityPillText: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 11,
     fontWeight: '600',
     color: colors.legacyGoldDark,
@@ -1013,16 +1015,19 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   uploadLabel: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 10,
     fontWeight: '600',
     color: colors.onAccent,
   },
   errorLabel: {
+    fontFamily: fonts.bodyBold,
     fontSize: 12,
     fontWeight: '700',
     color: colors.onAccent,
   },
   retryLabel: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 10,
     fontWeight: '600',
     color: colors.legacyGold,
@@ -1060,6 +1065,7 @@ const styles = StyleSheet.create({
     fontWeight: '300',
   },
   addMoreLabel: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 11,
     fontWeight: '600',
     color: withAlpha(colors.legacyNavy, 0.4),
@@ -1095,6 +1101,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   toolText: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 12,
     fontWeight: '600',
     color: withAlpha(colors.legacyNavy, 0.5),
@@ -1120,6 +1127,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 3,
   },
   toolBadgeCountText: {
+    fontFamily: fonts.bodyBold,
     fontSize: 9,
     fontWeight: '700',
     color: colors.legacyNavySoft,
@@ -1145,9 +1153,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: colors.shadow,
-    fontFamily: 'PlusJakartaSans_700Bold',
+    fontFamily: fonts.bodyBold,
   },
   chars: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 11,
     fontWeight: '600',
     color: withAlpha(colors.legacyNavy, 0.3),
@@ -1185,11 +1194,13 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   pickerSheetTitle: {
+    fontFamily: fonts.bodyBold,
     fontSize: 14,
     fontWeight: '700',
     color: colors.legacyNavy,
   },
   pickerSheetClose: {
+    fontFamily: fonts.bodyBold,
     fontSize: 14,
     fontWeight: '700',
     color: colors.legacyGold,
@@ -1224,6 +1235,7 @@ const styles = StyleSheet.create({
     backgroundColor: withAlpha(colors.legacyGold, 0.18),
   },
   pickerLabel: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 11,
     fontWeight: '600',
     color: withAlpha(colors.legacyNavy, 0.5),
@@ -1258,11 +1270,13 @@ const styles = StyleSheet.create({
     borderBottomColor: withAlpha(colors.legacyNavy, 0.1),
   },
   tagModalTitle: {
+    fontFamily: fonts.bodyBold,
     fontSize: 16,
     fontWeight: '700',
     color: colors.legacyNavy,
   },
   tagModalClose: {
+    fontFamily: fonts.bodyBold,
     fontSize: 15,
     fontWeight: '700',
     color: colors.legacyGold,
@@ -1277,6 +1291,7 @@ const styles = StyleSheet.create({
     borderBottomColor: withAlpha(colors.legacyNavy, 0.06),
   },
   tagRowName: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 15,
     fontWeight: '600',
     color: colors.legacyNavy,
@@ -1300,6 +1315,7 @@ const styles = StyleSheet.create({
     color: colors.legacyNavySoft,
   },
   tagEmpty: {
+    fontFamily: fonts.bodyMedium,
     textAlign: 'center',
     paddingVertical: 30,
     fontSize: 14,

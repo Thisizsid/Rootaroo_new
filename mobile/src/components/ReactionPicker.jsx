@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { colors } from '../shared/theme';
+import { colors, fonts } from '../shared/theme';
 
 const EMOJIS = ['👍', '❤️', '😂', '😲', '😢'];
 
@@ -48,6 +48,6 @@ const styles = StyleSheet.create({
     borderColor: colors.gold,
   },
   emoji: { fontSize: 14 },
-  count: { fontSize: 11, color: colors.grayMuted, fontWeight: '600' },
+  count: { fontSize: 11, color: colors.grayMuted, fontWeight: '600', fontFamily: fonts.bodySemiBold },
   countActive: { color: colors.gold },
 });
