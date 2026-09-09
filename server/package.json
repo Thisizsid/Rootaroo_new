@@ -4,7 +4,7 @@
   "description": "Rootaroo — Family-first mobile application backend",
   "main": "dist/index.js",
   "engines": {
-    "node": "20.x"
+    "node": ">=22"
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
