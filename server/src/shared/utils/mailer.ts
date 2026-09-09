@@ -20,6 +20,14 @@ export function getMailer(): Transporter | null {
       host: env.smtp.host,
       port: env.smtp.port,
       auth: env.smtp.user ? { user: env.smtp.user, pass: env.smtp.pass } : undefined,
+      // Some hosts (e.g. Railway) block or heavily delay outbound SMTP —
+      // without these, a blocked connection hangs on nodemailer's ~2min
+      // default, and callers that await sendMail() (e.g. register()) hang
+      // the whole HTTP request with it. Fail fast instead; callers already
+      // treat email delivery as best-effort.
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 10_000,
     });
     isConfigured = true;
   }

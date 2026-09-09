@@ -399,12 +399,21 @@ export async function sendVerification(userId: string): Promise<string | undefin
     return undefined;
   }
 
-  await transporter.sendMail({
-    from: env.smtp.from,
-    to: user.email,
-    subject: 'Verify your Rootaroo email',
-    text: `Your verification code is: ${code}\n\nThis code expires in 15 minutes.`,
-  });
+  // Best-effort — the account/tokens are already created above, so a
+  // transient SMTP failure (unreachable host, connection timeout) must not
+  // fail the whole registration and leave the caller unsure whether their
+  // account was created. The code is still stored in EmailVerification and
+  // can be resent via the existing resend endpoint.
+  try {
+    await transporter.sendMail({
+      from: env.smtp.from,
+      to: user.email,
+      subject: 'Verify your Rootaroo email',
+      text: `Your verification code is: ${code}\n\nThis code expires in 15 minutes.`,
+    });
+  } catch (error) {
+    console.error(`Failed to send email verification code to ${user.email}:`, error);
+  }
 
   return undefined;
 }
@@ -465,12 +474,19 @@ export async function forgotPassword(body: ForgotPasswordBody): Promise<void> {
     return;
   }
 
-  await transporter.sendMail({
-    from: env.smtp.from,
-    to: user.email,
-    subject: 'Reset your Rootaroo password',
-    text: `Your password reset code is: ${code}\n\nThis code expires in 15 minutes.`,
-  });
+  // Best-effort, same reasoning as sendVerification — and this function
+  // already always returns silently regardless of outcome (prevents email
+  // enumeration), so a delivery failure must not throw either.
+  try {
+    await transporter.sendMail({
+      from: env.smtp.from,
+      to: user.email,
+      subject: 'Reset your Rootaroo password',
+      text: `Your password reset code is: ${code}\n\nThis code expires in 15 minutes.`,
+    });
+  } catch (error) {
+    console.error(`Failed to send password reset code to ${user.email}:`, error);
+  }
 }
 
 // Looks up the most recent active reset request for the given email and
