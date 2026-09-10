@@ -79,13 +79,16 @@ export const env = {
     useSsl: process.env.S3_USE_SSL === 'true',
   },
 
-  smtp: {
-    host: process.env.SMTP_HOST || '',
-    port: parseInt(process.env.SMTP_PORT || '587', 10),
-    user: process.env.SMTP_USER || '',
-    pass: process.env.SMTP_PASS || '',
-    from: process.env.EMAIL_FROM || 'noreply@rootaroo.com',
+  // Resend (transactional email — verification codes, password resets,
+  // admin alerts). Gmail SMTP was replaced here: its port 587 is
+  // unreachable from Railway's network (connections just time out), and
+  // Resend is an HTTPS API, not subject to the same outbound-port
+  // restriction. Left blank falls back to logging the code in
+  // development, same pattern as Twilio/FCM.
+  resend: {
+    apiKey: process.env.RESEND_API_KEY || '',
   },
+  emailFrom: process.env.EMAIL_FROM || 'noreply@rootaroo.com',
 
   // Rootaroo's own support inbox — receives leave/delete household action
   // request alerts (shared/utils/mailer.ts's sendAdminAlertEmail).
@@ -116,6 +119,7 @@ if (env.nodeEnv === 'production') {
     !process.env.S3_SECRET_ACCESS_KEY && 'S3_SECRET_ACCESS_KEY',
     !process.env.S3_BUCKET && 'S3_BUCKET',
     !process.env.CALENDAR_TOKEN_KEK && 'CALENDAR_TOKEN_KEK',
+    !process.env.RESEND_API_KEY && 'RESEND_API_KEY',
     // FCM is legitimately optional to have off — only required once deliberately enabled.
     process.env.FCM_ENABLED === 'true' && !process.env.FCM_PROJECT_ID && 'FCM_PROJECT_ID',
     process.env.FCM_ENABLED === 'true' && !process.env.FCM_CREDENTIALS_BASE64 && 'FCM_CREDENTIALS_BASE64',

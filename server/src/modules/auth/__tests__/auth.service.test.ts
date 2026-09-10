@@ -1,7 +1,7 @@
 import { register, updateProfile, googleAuth, appleAuth, sendVerification, verifyEmail, forgotPassword, resetPassword, checkResetCode, scheduleDeletion, cancelDeletion, confirmDeletion, registerPhone, sendPhoneOtp, verifyPhoneOtp } from '../service';
 import { env } from '../../../config/env';
 
-jest.mock('nodemailer', () => ({ createTransport: jest.fn() }));
+jest.mock('../../../shared/utils/mailer', () => ({ sendEmail: jest.fn(), sendAdminAlertEmail: jest.fn() }));
 jest.mock('../../../shared/utils/sms', () => ({ sendSms: jest.fn() }));
 jest.mock('jose', () => ({
   createRemoteJWKSet: jest.fn(() => ({})),
@@ -17,6 +17,7 @@ jest.mock('../../../database/models', () => ({
 }));
 
 import * as models from '../../../database/models';
+import { sendEmail } from '../../../shared/utils/mailer';
 import { sendSms } from '../../../shared/utils/sms';
 import { jwtVerify } from 'jose';
 import { hashOtpCode } from '../../../shared/utils/otp';
@@ -293,10 +294,11 @@ describe('Auth Service — Apple OAuth', () => {
 });
 
 describe('Auth Service — Email Verification', () => {
-  beforeEach(() => { jest.clearAllMocks(); });
+  beforeEach(() => { jest.clearAllMocks(); env.resend.apiKey = ''; });
 
   describe('sendVerification', () => {
-    it('should generate a code, store it, and log it in dev mode', async () => {
+    it('should generate a code, store it, and log it in dev mode (Resend unconfigured)', async () => {
+      env.resend.apiKey = '';
       const user = fakeUser({ isVerified: false });
       (models.User.findByPk as jest.Mock).mockResolvedValue(user);
 
@@ -305,6 +307,21 @@ describe('Auth Service — Email Verification', () => {
       expect(models.EmailVerification.update).toHaveBeenCalled();
       expect(models.EmailVerification.create).toHaveBeenCalledWith(
         expect.objectContaining({ userId: user.id, token: expect.any(String) }),
+      );
+      expect(sendEmail).not.toHaveBeenCalled();
+    });
+
+    it('should send via Resend when configured', async () => {
+      env.resend.apiKey = 'test-key';
+      const user = fakeUser({ isVerified: false });
+      (models.User.findByPk as jest.Mock).mockResolvedValue(user);
+
+      await sendVerification(user.id);
+
+      expect(sendEmail).toHaveBeenCalledWith(
+        user.email,
+        'Verify your Rootaroo email',
+        expect.stringContaining('Your verification code is:'),
       );
     });
 
@@ -344,15 +361,30 @@ describe('Auth Service — Email Verification', () => {
 });
 
 describe('Auth Service — Password Reset', () => {
-  beforeEach(() => { jest.clearAllMocks(); });
+  beforeEach(() => { jest.clearAllMocks(); env.resend.apiKey = ''; });
 
   describe('forgotPassword', () => {
-    it('should generate a code, store it, and log it in dev mode', async () => {
+    it('should generate a code, store it, and log it in dev mode (Resend unconfigured)', async () => {
+      env.resend.apiKey = '';
       (models.User.findOne as jest.Mock).mockResolvedValue({ id: 'u1', email: 'test@user.com' });
       await forgotPassword({ email: 'test@user.com' });
       expect(models.PasswordReset.update).toHaveBeenCalled();
       expect(models.PasswordReset.create).toHaveBeenCalledWith(
         expect.objectContaining({ userId: 'u1', token: expect.any(String) }),
+      );
+      expect(sendEmail).not.toHaveBeenCalled();
+    });
+
+    it('should send via Resend when configured', async () => {
+      env.resend.apiKey = 'test-key';
+      (models.User.findOne as jest.Mock).mockResolvedValue({ id: 'u1', email: 'test@user.com' });
+
+      await forgotPassword({ email: 'test@user.com' });
+
+      expect(sendEmail).toHaveBeenCalledWith(
+        'test@user.com',
+        'Reset your Rootaroo password',
+        expect.stringContaining('Your password reset code is:'),
       );
     });
 

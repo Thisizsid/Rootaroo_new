@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Op } from 'sequelize';
 import { env } from '../../config/env';
 import { User, RefreshToken, EmailVerification, PasswordReset, PhoneVerification } from '../../database/models';
-import { getMailer } from '../../shared/utils/mailer';
+import { sendEmail } from '../../shared/utils/mailer';
 import { getSignedUrl } from '../../shared/utils/s3';
 import { sendSms } from '../../shared/utils/sms';
 import { jwtVerify, createRemoteJWKSet } from 'jose';
@@ -384,33 +384,29 @@ export async function sendVerification(userId: string): Promise<string | undefin
     expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 min
   });
 
-  // Send email using shared mailer singleton
-  const transporter = getMailer();
-
-  // If SMTP is not configured, return the code for dev-mode display only —
-  // never in production, where a missing SMTP config should be a delivery
+  // If Resend is not configured, return the code for dev-mode display only —
+  // never in production, where a missing Resend config should be a delivery
   // failure, not a JSON-response leak of a live verification code.
-  if (!transporter) {
+  if (!env.resend.apiKey) {
     if (env.nodeEnv !== 'production') {
       console.warn(`[DEV] Email verification code for ${user.email}: ${code}`);
       return code;
     }
-    console.error(`SMTP is not configured — unable to deliver email verification code for user ${userId}`);
+    console.error(`Resend is not configured — unable to deliver email verification code for user ${userId}`);
     return undefined;
   }
 
   // Best-effort — the account/tokens are already created above, so a
-  // transient SMTP failure (unreachable host, connection timeout) must not
-  // fail the whole registration and leave the caller unsure whether their
-  // account was created. The code is still stored in EmailVerification and
-  // can be resent via the existing resend endpoint.
+  // transient delivery failure must not fail the whole registration and
+  // leave the caller unsure whether their account was created. The code is
+  // still stored in EmailVerification and can be resent via the existing
+  // resend endpoint.
   try {
-    await transporter.sendMail({
-      from: env.smtp.from,
-      to: user.email,
-      subject: 'Verify your Rootaroo email',
-      text: `Your verification code is: ${code}\n\nThis code expires in 15 minutes.`,
-    });
+    await sendEmail(
+      user.email,
+      'Verify your Rootaroo email',
+      `Your verification code is: ${code}\n\nThis code expires in 15 minutes.`,
+    );
   } catch (error) {
     console.error(`Failed to send email verification code to ${user.email}:`, error);
   }
@@ -462,14 +458,11 @@ export async function forgotPassword(body: ForgotPasswordBody): Promise<void> {
     expiresAt: new Date(Date.now() + 15 * 60 * 1000),
   });
 
-  // Send email or dev-log using shared mailer singleton
-  const transporter = getMailer();
-
-  if (!transporter) {
+  if (!env.resend.apiKey) {
     if (env.nodeEnv !== 'production') {
       console.warn(`[DEV] Password reset code for ${user.email}: ${code}`);
     } else {
-      console.error(`SMTP is not configured — unable to deliver password reset code for user ${user.id}`);
+      console.error(`Resend is not configured — unable to deliver password reset code for user ${user.id}`);
     }
     return;
   }
@@ -478,12 +471,11 @@ export async function forgotPassword(body: ForgotPasswordBody): Promise<void> {
   // already always returns silently regardless of outcome (prevents email
   // enumeration), so a delivery failure must not throw either.
   try {
-    await transporter.sendMail({
-      from: env.smtp.from,
-      to: user.email,
-      subject: 'Reset your Rootaroo password',
-      text: `Your password reset code is: ${code}\n\nThis code expires in 15 minutes.`,
-    });
+    await sendEmail(
+      user.email,
+      'Reset your Rootaroo password',
+      `Your password reset code is: ${code}\n\nThis code expires in 15 minutes.`,
+    );
   } catch (error) {
     console.error(`Failed to send password reset code to ${user.email}:`, error);
   }
