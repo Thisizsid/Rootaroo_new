@@ -225,6 +225,37 @@ describe('Chat Service', () => {
       await expect(listMessages(userId, { conversationId: 'foreign-conv' })).rejects.toThrow(ForbiddenError);
       expect(ChatMessage.findAll).not.toHaveBeenCalled();
     });
+
+    it('should scope to the household "Everyone" conversation when conversationId is omitted, not every conversation in the household', async () => {
+      (Conversation.findOne as jest.Mock).mockResolvedValue({ id: 'everyone-conv-id', householdId, type: 'household' });
+      (ChatMessage.findAll as jest.Mock).mockResolvedValue([]);
+      (ChatReaction.findAll as jest.Mock).mockResolvedValue([]);
+
+      await listMessages(userId, {});
+
+      expect(Conversation.findOne).toHaveBeenCalledWith({ where: { householdId, type: 'household' } });
+      expect(ChatMessage.findAll).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ conversationId: 'everyone-conv-id' }) }),
+      );
+      // Must NOT fall back to filtering by householdId alone — that would
+      // match messages from every conversation, including private DMs the
+      // caller isn't a participant in (same class of bug as F-04, in this
+      // branch instead of the explicit-conversationId one).
+      const callArgs = (ChatMessage.findAll as jest.Mock).mock.calls[0][0];
+      expect(callArgs.where.householdId).toBeUndefined();
+    });
+
+    it('should return an empty list (not every household message) when no "Everyone" conversation exists yet', async () => {
+      (Conversation.findOne as jest.Mock).mockResolvedValue(null);
+      (ChatMessage.findAll as jest.Mock).mockResolvedValue([]);
+      (ChatReaction.findAll as jest.Mock).mockResolvedValue([]);
+
+      await listMessages(userId, {});
+
+      expect(ChatMessage.findAll).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ conversationId: null }) }),
+      );
+    });
   });
 
   // ── getMessageById ──

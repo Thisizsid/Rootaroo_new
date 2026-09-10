@@ -433,7 +433,18 @@ export async function listMessages(
     }
     where.conversationId = query.conversationId;
   } else {
-    where.householdId = householdId;
+    // Omitting conversationId is meant as a convenience for fetching the
+    // household-wide "Everyone" chat without the client needing to know
+    // its id ahead of time — NOT a way to browse every message in the
+    // household regardless of conversation. Filtering by householdId
+    // alone (the previous behavior) matched messages from every
+    // conversation, including private DMs/groups the caller isn't a
+    // participant in (same vulnerability class as F-04, just in this
+    // branch instead of the explicit-conversationId one above).
+    const householdConv = await Conversation.findOne({ where: { householdId, type: 'household' } });
+    // No household conversation created yet — nothing to return, not an
+    // error (conversationId: null matches zero rows, never a real message).
+    where.conversationId = householdConv ? householdConv.id : null;
   }
   if (query.cursor) {
     where.createdAt = { [Op.lt]: new Date(query.cursor) };
