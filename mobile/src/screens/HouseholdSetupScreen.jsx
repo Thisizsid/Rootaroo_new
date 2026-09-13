@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
 import { showAlert } from '../shared/services/themedAlert';
 import SignupWizardShell from '../shared/components/SignupWizardShell';
 import QrScannerModal from '../components/QrScannerModal';
+import { ensureCamera } from '../shared/permissions';
 import { useAuthStore } from '../shared/store/authStore';
 import { householdApi } from '../shared/api/household';
 import { navigateAfterHouseholdSetup } from '../shared/navigation/postAuthNavigation';
@@ -20,6 +21,13 @@ export default function HouseholdSetupScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [focusedField, setFocusedField] = useState(null);
   const [showScanner, setShowScanner] = useState(false);
+  // Camera is resolved BEFORE the scanner opens: the permission sheet is
+  // itself a Modal, and stacking one on top of the scanner's Modal is
+  // unreliable on Android. Gating here also means the scanner never opens
+  // onto a dead black screen.
+  const handleScanPress = useCallback(async () => {
+    if (await ensureCamera()) setShowScanner(true);
+  }, []);
   const handleScanned = (rawValue) => {
     setShowScanner(false);
     const match = JOIN_LINK_RE.exec((rawValue || '').trim());
@@ -154,7 +162,7 @@ export default function HouseholdSetupScreen({ navigation }) {
           />
           <TouchableOpacity
             style={styles.scanBtn}
-            onPress={() => setShowScanner(true)}
+            onPress={handleScanPress}
             activeOpacity={0.8}
           >
             <Text style={styles.scanBtnText}>Scan QR code instead</Text>

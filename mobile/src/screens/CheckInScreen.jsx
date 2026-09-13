@@ -26,6 +26,7 @@ import {
 } from '@maplibre/maplibre-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
+import { ensureLocation, hasPermission } from '../shared/permissions';
 import { checkInApi } from '../shared/api/checkin';
 import { pingApi } from '../shared/api/ping';
 import { placeApi } from '../shared/api/place';
@@ -230,8 +231,9 @@ export default function CheckInScreen({ navigation }) {
       });
       collapseTray();
       try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
+        // Incidental locate — the user tapped a pin, not a "find me" button,
+        // so a refusal must not interrupt with the permission sheet.
+        if (!(await ensureLocation({ silent: true }))) {
           setMyLocation(null);
           return;
         }
@@ -427,8 +429,9 @@ export default function CheckInScreen({ navigation }) {
           return;
         }
         try {
-          const { status } = await Location.requestForegroundPermissionsAsync();
-          if (status !== 'granted') return;
+          // Background tick — the sheet would surface while the user is
+          // somewhere else entirely.
+          if (!(await ensureLocation({ silent: true }))) return;
           const pos = await Location.getCurrentPositionAsync({
             accuracy: Location.Accuracy.Balanced,
           });
@@ -468,8 +471,9 @@ export default function CheckInScreen({ navigation }) {
         let lat = null;
         let lng = null;
         let place = null;
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === 'granted') {
+        // Accepting a ping is a deliberate "here's where I am", so explain a
+        // refusal — but still respond without coords if they decline.
+        if (await ensureLocation()) {
           const pos = await Location.getCurrentPositionAsync({
             accuracy: Location.Accuracy.Balanced,
           });
@@ -508,8 +512,8 @@ export default function CheckInScreen({ navigation }) {
       let shared = false;
 
       // Permission asked only when the user taps the button (FR-166).
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status === 'granted') {
+      // Declining still checks them in, just without a location attached.
+      if (await ensureLocation()) {
         const pos = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.Balanced,
         });
@@ -551,8 +555,7 @@ export default function CheckInScreen({ navigation }) {
   }, [checkingIn, geocode, load]);
   const handleLocateMe = useCallback(async () => {
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') return;
+      if (!(await ensureLocation())) return;
       const pos = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
@@ -588,16 +591,18 @@ export default function CheckInScreen({ navigation }) {
     setShowPlaceSheet(true);
   }, []);
   const handleUseCurrentLocationForPlace = useCallback(async () => {
+    // The place sheet is a Modal and so is the permission sheet; stacking one
+    // on the other is unreliable on Android. Drop this sheet while the gate
+    // runs and bring it straight back — the form lives in screen state
+    // (placeName/placeIcon/placeCoords), so nothing the user typed is lost.
+    if (!(await hasPermission('location'))) {
+      setShowPlaceSheet(false);
+      const allowed = await ensureLocation();
+      setShowPlaceSheet(true);
+      if (!allowed) return;
+    }
     setLocatingPlace(true);
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        showAlert(
-          'Location permission needed',
-          'Enable location access to save your current spot.',
-        );
-        return;
-      }
       const pos = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });

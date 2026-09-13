@@ -33,17 +33,29 @@
       "googleServicesFile": "./google-services.json"
     },
     "plugins": [
+      "./plugins/withAutofillHighlight",
       "expo-apple-authentication",
       "expo-secure-store",
-      "expo-image-picker",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Rootaroo uses your camera to take photos for posts, journal entries, and vault documents.",
+          "photosPermission": "Rootaroo uses your photo library so you can attach photos to posts, journal entries, and your profile."
+        }
+      ],
       "expo-notifications",
       "expo-file-system",
-      "expo-location",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Rootaroo uses your location when you check in or answer a household ping. It is never tracked in the background."
+        }
+      ],
       "expo-web-browser",
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow Rootaroo to use your camera to scan invite QR codes."
+          "cameraPermission": "Rootaroo uses your camera to scan household invite QR codes, take photos for posts and journal entries, and scan documents into your vault."
         }
       ],
       [

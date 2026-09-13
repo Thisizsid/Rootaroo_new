@@ -25,6 +25,8 @@ import { feedApi } from '../shared/api/feed';
 import { householdApi } from '../shared/api/household';
 import apiClient from '../shared/api/client';
 import * as ImagePicker from 'expo-image-picker';
+import { ensureCamera } from '../shared/permissions';
+import { showAlert } from '../shared/services/themedAlert';
 import { useFeedStore } from '../shared/store/feedStore';
 import { useAuthStore } from '../shared/store/authStore';
 import { colors, fonts, radius, withAlpha } from '../shared/theme';
@@ -225,7 +227,7 @@ export default function CreatePostScreen({ navigation, route }) {
       const room = MAX_MEDIA - media.length;
       const batch = assets.slice(0, Math.max(0, room));
       if (!batch.length) {
-        alert('Limit reached: You can attach up to ' + MAX_MEDIA + ' photos or videos.');
+        showAlert('Limit reached', `You can attach up to ${MAX_MEDIA} photos or videos.`);
         return;
       }
       const drafts = batch.map((asset, i) => ({
@@ -278,17 +280,12 @@ export default function CreatePostScreen({ navigation, route }) {
               : m,
           ),
         );
-        alert('Upload failed: ' + (e?.message || 'Could not upload media'));
+        showAlert('Upload failed', e?.message || 'Could not upload media.');
       }
     },
     [media.length],
   );
   const pickFromLibrary = useCallback(async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      alert('Permission needed: Allow photo library access to attach media.');
-      return;
-    }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images', 'videos'],
       allowsMultipleSelection: true,
@@ -300,11 +297,7 @@ export default function CreatePostScreen({ navigation, route }) {
     await uploadAssets(result.assets);
   }, [uploadAssets]);
   const takePhoto = useCallback(async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') {
-      alert('Permission needed: Allow camera access to take a photo.');
-      return;
-    }
+    if (!(await ensureCamera())) return;
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ['images'],
       quality: 0.85,
@@ -341,7 +334,7 @@ export default function CreatePostScreen({ navigation, route }) {
       prependPost(newPost);
       onClose();
     } catch (e) {
-      alert('Error: ' + (e?.message || 'Failed to create post'));
+      showAlert('Could not create post', e?.message || 'Something went wrong. Try again.');
     } finally {
       setPosting(false);
     }

@@ -26,6 +26,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { File, Paths } from 'expo-file-system';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
+import { ensureCamera } from '../shared/permissions';
 import { vaultApi } from '../shared/api/vault';
 import { useVaultStore } from '../shared/store/vaultStore';
 import { useAuthStore } from '../shared/store/authStore';
@@ -284,11 +285,7 @@ export default function VaultUploadScreen({ navigation }) {
   };
   const handleTakePhoto = async () => {
     try {
-      const perm = await ImagePicker.requestCameraPermissionsAsync();
-      if (!perm.granted) {
-        showAlert('Permission needed', 'Camera access is required to take a photo.');
-        return;
-      }
+      if (!(await ensureCamera())) return;
       const result = await ImagePicker.launchCameraAsync({
         quality: 0.8,
       });

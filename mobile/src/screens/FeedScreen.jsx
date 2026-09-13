@@ -18,6 +18,7 @@ import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { SvgXml } from 'react-native-svg';
+import { showAlert } from '../shared/services/themedAlert';
 import { feedApi } from '../shared/api/feed';
 import { householdApi } from '../shared/api/household';
 import { useFeedStore } from '../shared/store/feedStore';
@@ -209,7 +210,7 @@ export default function FeedScreen() {
         setCommentDrafts((prev) => ({ ...prev, [postId]: '' }));
         incrementCommentCount(postId);
       } catch (e) {
-        alert('Could not post comment: ' + (e?.message || 'Try again'));
+        showAlert('Could not post comment', e?.message || 'Try again.');
       } finally {
         setCommentSending((prev) => ({ ...prev, [postId]: false }));
       }
@@ -222,13 +223,13 @@ export default function FeedScreen() {
         await feedApi.delete(postId);
         removePost(postId);
       } catch (e) {
-        alert('Could not delete post: ' + (e?.message || 'Try again'));
+        showAlert('Could not delete post', e?.message || 'Try again.');
       }
     },
     [removePost],
   );
   const handleReportPost = useCallback((postId) => {
-    alert('Post reported. Thank you for keeping the community safe.');
+    showAlert('Post reported', 'Thank you for keeping the community safe.');
   }, []);
   const openPostMenu = useCallback((post, x, y) => {
     setMenuPost(post);

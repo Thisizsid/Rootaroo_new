@@ -305,7 +305,10 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.18,
     shadowRadius: 5,
-    elevation: 2,
+    // No `elevation` here: Android's elevation shadow is drawn behind the
+    // view, so with this translucent backgroundColor it shows through as a
+    // black pill instead of a subtle lift. The shadow* props above already
+    // render on Android under Fabric, and in the intended gold.
   },
   wheelItemText: {
     fontFamily: fonts.body,

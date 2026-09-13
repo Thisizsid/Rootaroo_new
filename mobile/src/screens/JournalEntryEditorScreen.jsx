@@ -14,6 +14,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { ensureCamera } from '../shared/permissions';
 import { format, parseISO } from 'date-fns';
 import { colors, fonts, radius, spacing, withAlpha } from '../shared/theme';
 import { journalApi } from '../shared/api/journal';
@@ -185,19 +186,9 @@ export default function JournalEntryEditorScreen({ navigation, route }) {
   const handleAttach = useCallback(
     async (action) => {
       const wantsCamera = action === 'camera';
-      const permission = wantsCamera
-        ? await ImagePicker.requestCameraPermissionsAsync()
-        : await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (permission.status !== 'granted') {
-        showAlert(
-          'Permission needed',
-          wantsCamera
-            ? 'Allow camera access to add a photo to this entry.'
-            : 'Allow photo library access to attach a photo to this entry.',
-          [{ text: 'OK' }],
-        );
-        return;
-      }
+      // Only the camera needs a permission here — the library branch goes
+      // through the system photo picker, which requires none.
+      if (wantsCamera && !(await ensureCamera())) return;
       const result = wantsCamera
         ? await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.85 })
         : await ImagePicker.launchImageLibraryAsync({

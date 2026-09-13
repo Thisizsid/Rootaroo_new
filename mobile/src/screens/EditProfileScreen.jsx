@@ -108,11 +108,6 @@ export default function EditProfileScreen({ navigation }) {
   }, []);
   const pickCoverPhoto = useCallback(async () => {
     if (!householdId) return;
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      showAlert('Permission needed', 'Allow access to your photo library.');
-      return;
-    }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,
@@ -163,11 +158,6 @@ export default function EditProfileScreen({ navigation }) {
     showAlert('Cover photo', undefined, options);
   }, [coverPhotoUrl, pickCoverPhoto, removeCoverPhoto]);
   const pickAvatar = useCallback(async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      showAlert('Permission needed', 'Allow access to your photo library.');
-      return;
-    }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,

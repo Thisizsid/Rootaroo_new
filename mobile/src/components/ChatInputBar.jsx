@@ -12,6 +12,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { showAlert } from '../shared/services/themedAlert';
+import { ensureMicrophone } from '../shared/permissions';
 import ThreadedReplyPreview from './ThreadedReplyPreview';
 import { chatApi } from '../shared/api/chat';
 import { colors, fonts, radius } from '../shared/theme';
@@ -123,11 +124,7 @@ export default function ChatInputBar({ onSend, onSendVoice, onSendImage, replyTo
 
   const startRecording = async () => {
     try {
-      const { status } = await Audio.requestPermissionsAsync();
-      if (status !== 'granted') {
-        showAlert('Microphone access needed', 'Enable microphone access to record voice messages.');
-        return;
-      }
+      if (!(await ensureMicrophone())) return;
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,

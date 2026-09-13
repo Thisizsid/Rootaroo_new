@@ -58,11 +58,6 @@ export default function SignupStepAvatarScreen({ navigation }) {
     });
   }, [user?.avatarUrl]);
   const pickPhoto = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      showAlert('Permission needed', 'Allow photo library access.');
-      return;
-    }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,
