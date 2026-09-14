@@ -9,8 +9,8 @@ import {
   KeyboardAvoidingView,
   StatusBar,
   ActivityIndicator,
-  Image,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { showAlert } from '../shared/services/themedAlert';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -293,7 +293,11 @@ export default function EditProfileScreen({ navigation }) {
         <View style={styles.coverContainer}>
           <View style={styles.coverBanner}>
             {coverPhotoUrl ? (
-              <Image source={{ uri: coverPhotoUrl }} style={styles.coverImage} />
+              <Image
+                source={{ uri: coverPhotoUrl, cacheKey: householdId }}
+                style={styles.coverImage}
+                cachePolicy="disk"
+              />
             ) : (
               <View style={styles.coverPlaceholder}>
                 <Text style={styles.coverPlaceholderText}>Add a cover photo</Text>

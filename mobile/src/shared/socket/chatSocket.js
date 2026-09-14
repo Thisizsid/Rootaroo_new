@@ -35,12 +35,15 @@ export function registerChatSocket() {
     useChatStore.getState().patchReactions(data.messageId, data.reactions);
   });
 
-  // FR-149: Typing indicator
-  socket.on('typing_start', (data) => {
+  // FR-149: Typing indicator — event names must match what the server
+  // actually emits (server/src/socket/chatSocket.ts broadcasts
+  // 'chat:typing'/'chat:stop-typing', not 'typing_start'/'typing_stop' —
+  // this mismatch meant received typing indicators were silently dropped).
+  socket.on('chat:typing', (data) => {
     useChatStore.getState().addTypingUser(data);
   });
 
-  socket.on('typing_stop', (data) => {
+  socket.on('chat:stop-typing', (data) => {
     useChatStore.getState().removeTypingUser(data.userId);
   });
 }
@@ -54,6 +57,6 @@ export function unregisterChatSocket() {
   socket.off('message_edited');
   socket.off('reaction_added');
   socket.off('reaction_removed');
-  socket.off('typing_start');
-  socket.off('typing_stop');
+  socket.off('chat:typing');
+  socket.off('chat:stop-typing');
 }

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing, PanResponder, Dimensions, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing, PanResponder, Dimensions } from 'react-native';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, fonts, radius, withAlpha } from '../theme';
 
@@ -173,7 +174,14 @@ export default function ContributorsStrip({ activity }) {
 
                     <View style={styles.avatarWrap}>
                       {a.avatarUrl ? (
-                        <Image source={{ uri: a.avatarUrl }} style={[styles.avatar, { borderColor: kindStyle.accent }]} />
+                        <Image
+                          // avatarUrl is a presigned S3 link that changes on
+                          // every fetch — key by the member name as a stable
+                          // proxy (no per-item id is available in this shape).
+                          source={{ uri: a.avatarUrl, cacheKey: a.displayName || String(i) }}
+                          style={[styles.avatar, { borderColor: kindStyle.accent }]}
+                          cachePolicy="disk"
+                        />
                       ) : (
                         <View style={[styles.avatar, { borderColor: kindStyle.accent, backgroundColor: withAlpha(colors.white, 0.08) }]}>
                           <Text style={styles.avatarText}>{a.avatarEmoji || initials(a.displayName)}</Text>

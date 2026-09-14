@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, StatusBar, TouchableOpacity, Image, Platform } from 'react-native';
+import { View, Text, StyleSheet, StatusBar, TouchableOpacity, Image, Platform, ActivityIndicator } from 'react-native';
 import Svg, { Path, Rect } from 'react-native-svg';
 import { colors, fonts, radius } from '../shared/theme';
 import {
@@ -104,8 +104,14 @@ export default function ChooseMethodScreen({ navigation }) {
             onPress={() => googleSignIn()}
             disabled={googleLoading}
           >
-            <GoogleChip />
-            <Text style={styles.methodTextLight}>Continue with Google</Text>
+            {googleLoading ? (
+              <ActivityIndicator color={colors.ink} size="small" />
+            ) : (
+              <>
+                <GoogleChip />
+                <Text style={styles.methodTextLight}>Continue with Google</Text>
+              </>
+            )}
           </TouchableOpacity>
 
           {Platform.OS === 'ios' && (

@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../../shared/middleware/auth';
 import * as authService from './service';
 import { uploadBuffer } from '../../shared/utils/s3';
+import { resizeImageBuffer } from '../../shared/utils/image';
 import type { AuthResponse, AuthTokens } from './types';
 
 export async function register(req: Request, res: Response, next: NextFunction) {
@@ -131,7 +132,11 @@ export async function uploadAvatarCtrl(req: Request, res: Response, next: NextFu
       res.status(400).json({ success: false, error: 'No file uploaded.' });
       return;
     }
-    const result = await uploadBuffer(file.buffer, 'avatars', file.mimetype, file.originalname.split('.').pop());
+    // Avatars are only ever shown small (32-46px circles) — resize down so
+    // mobile clients don't download a full-resolution original for a tiny
+    // thumbnail.
+    const resized = await resizeImageBuffer(file.buffer, { width: 256 });
+    const result = await uploadBuffer(resized, 'avatars', 'image/jpeg', 'jpg');
     const user = await authService.updateProfile(auth.user!.userId, { avatarUrl: result.key });
     res.status(200).json({ success: true, data: { avatarUrl: user.avatarUrl, user } });
   } catch (e) { next(e); }

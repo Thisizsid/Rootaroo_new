@@ -61,6 +61,9 @@ export default function HouseholdSettingsScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
+  const [oneTimeInvite, setOneTimeInvite] = useState(null);
+  const [generatingInvite, setGeneratingInvite] = useState(false);
+  const [oneTimeCodeCopied, setOneTimeCodeCopied] = useState(false);
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [selectedMember, setSelectedMember] = useState(null);
   const [selectedRole, setSelectedRole] = useState('member');
@@ -71,6 +74,7 @@ export default function HouseholdSettingsScreen({ navigation }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const currentUserRole = myRole || user?.role || 'member';
   const isAdmin = currentUserRole === 'admin';
+  const isChild = currentUserRole === 'child';
   const joinLink = inviteCode ? `rootaru://join?code=${inviteCode}` : null;
   const load = useCallback(async () => {
     if (!householdId) {
@@ -111,6 +115,38 @@ export default function HouseholdSettingsScreen({ navigation }) {
     try {
       await Share.share({
         message: `Join our household on Rootaroo! Use invite code: ${inviteCode}`,
+      });
+    } catch {
+      /* dismissed */
+    }
+  };
+  // Non-admin members (not children — server blocks them) can't see the
+  // household's permanent invite code, but can generate their own one-time,
+  // 7-day-expiring one instead — safer than exposing a standing, reusable
+  // credential to everyone, and doesn't require the admin to hand it out.
+  const handleGenerateInvite = async () => {
+    if (!householdId) return;
+    setGeneratingInvite(true);
+    try {
+      const invite = await householdApi.generateInvite(householdId);
+      setOneTimeInvite(invite);
+    } catch (e) {
+      showAlert('Error', e?.response?.data?.error || 'Failed to generate invite.');
+    } finally {
+      setGeneratingInvite(false);
+    }
+  };
+  const handleCopyOneTimeInvite = async () => {
+    if (!oneTimeInvite) return;
+    await Clipboard.setStringAsync(oneTimeInvite.code);
+    setOneTimeCodeCopied(true);
+    setTimeout(() => setOneTimeCodeCopied(false), 2000);
+  };
+  const handleShareOneTimeInvite = async () => {
+    if (!oneTimeInvite) return;
+    try {
+      await Share.share({
+        message: `Join our household on Rootaroo! Use invite code: ${oneTimeInvite.code}`,
       });
     } catch {
       /* dismissed */
@@ -354,39 +390,122 @@ export default function HouseholdSettingsScreen({ navigation }) {
           })}
         </View>
 
-        {/* ── Invite section: QR + code, one permanent code for the whole household ── */}
-        <Text style={styles.sectionLabel}>Invite to household</Text>
-        <View style={styles.inviteCard}>
-          <View style={styles.inviteQrWrap}>
-            {joinLink ? (
-              <QRCodeSvg value={joinLink} size={132} color={colors.ink} backgroundColor={colors.surface} />
-            ) : (
-              <ActivityIndicator color={colors.gold} />
-            )}
-          </View>
-          <Text style={styles.inviteHint}>Anyone can scan this to join instantly</Text>
-          <View style={styles.inviteCodeBox}>
-            <Text style={styles.inviteCode}>{inviteCode || '--------'}</Text>
-          </View>
-          <View style={styles.inviteActions}>
-            <TouchableOpacity
-              style={styles.invitePillBtn}
-              onPress={handleCopyInvite}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.invitePillBtnText}>{codeCopied ? 'Copied!' : 'Copy code'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.invitePillBtn, styles.invitePillBtnOutline]}
-              onPress={handleShareInvite}
-              activeOpacity={0.85}
-            >
-              <Text style={[styles.invitePillBtnText, styles.invitePillBtnOutlineText]}>
-                Share
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+        {/* ── Invite section: QR + code, one permanent code for the whole household ──
+            Admin-only — the server never sends inviteCode to non-admins (F-05
+            privacy fix), so joinLink can never become truthy for them. Without
+            this gate, the QR area rendered a permanent fake spinner instead of
+            an actual QR code for every non-admin member. */}
+        {isAdmin && (
+          <>
+            <Text style={styles.sectionLabel}>Invite to household</Text>
+            <View style={styles.inviteCard}>
+              <View style={styles.inviteQrWrap}>
+                {joinLink ? (
+                  <QRCodeSvg value={joinLink} size={132} color={colors.ink} backgroundColor={colors.surface} />
+                ) : (
+                  <ActivityIndicator color={colors.gold} />
+                )}
+              </View>
+              <Text style={styles.inviteHint}>Anyone can scan this to join instantly</Text>
+              <View style={styles.inviteCodeBox}>
+                <Text style={styles.inviteCode}>{inviteCode || '--------'}</Text>
+              </View>
+              <View style={styles.inviteActions}>
+                <TouchableOpacity
+                  style={styles.invitePillBtn}
+                  onPress={handleCopyInvite}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.invitePillBtnText}>{codeCopied ? 'Copied!' : 'Copy code'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.invitePillBtn, styles.invitePillBtnOutline]}
+                  onPress={handleShareInvite}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.invitePillBtnText, styles.invitePillBtnOutlineText]}>
+                    Share
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </>
+        )}
+
+        {/* ── Invite section for non-admin members: a one-time, 7-day-expiring
+            code (generateInvitation) instead of the household's permanent
+            one — safer to hand every member than a standing, reusable
+            credential. Children can't invite at all (server-enforced). */}
+        {!isAdmin && !isChild && (
+          <>
+            <Text style={styles.sectionLabel}>Invite to household</Text>
+            <View style={styles.inviteCard}>
+              {oneTimeInvite ? (
+                <>
+                  <View style={styles.inviteQrWrap}>
+                    <QRCodeSvg value={oneTimeInvite.shareLink} size={132} color={colors.ink} backgroundColor={colors.surface} />
+                  </View>
+                  <Text style={styles.inviteHint}>
+                    One-time code — expires{' '}
+                    {new Date(oneTimeInvite.expiresAt).toLocaleDateString('en-US', {
+                      month: 'long',
+                      day: 'numeric',
+                    })}
+                  </Text>
+                  <View style={styles.inviteCodeBox}>
+                    <Text style={styles.inviteCode}>{oneTimeInvite.code}</Text>
+                  </View>
+                  <View style={styles.inviteActions}>
+                    <TouchableOpacity
+                      style={styles.invitePillBtn}
+                      onPress={handleCopyOneTimeInvite}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={styles.invitePillBtnText}>{oneTimeCodeCopied ? 'Copied!' : 'Copy code'}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.invitePillBtn, styles.invitePillBtnOutline]}
+                      onPress={handleShareOneTimeInvite}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={[styles.invitePillBtnText, styles.invitePillBtnOutlineText]}>
+                        Share
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                  <TouchableOpacity
+                    onPress={handleGenerateInvite}
+                    disabled={generatingInvite}
+                    activeOpacity={0.7}
+                    style={{ marginTop: 14 }}
+                  >
+                    <Text style={styles.inviteHint}>
+                      {generatingInvite ? 'Generating…' : 'Generate a new code'}
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.inviteHint}>
+                    Generate a one-time invite code to bring someone new into the household.
+                  </Text>
+                  <TouchableOpacity
+                    style={[styles.invitePillBtn, generatingInvite && styles.saveBtnLoading, { marginTop: 14 }]}
+                    onPress={handleGenerateInvite}
+                    disabled={generatingInvite}
+                    activeOpacity={0.85}
+                  >
+                    {generatingInvite ? (
+                      <ActivityIndicator color={colors.onAccent} />
+                    ) : (
+                      <Text style={styles.invitePillBtnText}>Generate invite code</Text>
+                    )}
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          </>
+        )}
 
         {/* ── Danger zone ── */}
         <View style={styles.dangerCard}>

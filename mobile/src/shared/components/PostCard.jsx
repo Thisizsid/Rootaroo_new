@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Image,
   Dimensions,
   Pressable,
   ScrollView,
@@ -12,6 +11,7 @@ import {
   StatusBar,
   Share,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { showAlert } from '../services/themedAlert';
 import { Video, ResizeMode } from 'expo-av';
 import { colors, fonts, withAlpha } from '../theme';
@@ -123,7 +123,14 @@ function MediaCarousel({ media, onItemPress }) {
                     useNativeControls={false}
                   />
                 ) : (
-                  <Image source={{ uri }} style={styles.mediaFill} resizeMode="cover" />
+                  <Image
+                    // thumbnailUrl/mediaUrl are presigned S3 links that
+                    // change on every fetch — key by the stable item id.
+                    source={{ uri, cacheKey: item.id }}
+                    style={styles.mediaFill}
+                    contentFit="cover"
+                    cachePolicy="disk"
+                  />
                 )
               ) : (
                 <View style={styles.mediaMissing}>
@@ -316,7 +323,12 @@ const PostCard = memo(function PostCard({
                   isVideo ? (
                     <Video source={{ uri }} style={styles.viewerMedia} resizeMode={ResizeMode.CONTAIN} shouldPlay useNativeControls />
                   ) : (
-                    <Image source={{ uri }} style={styles.viewerMedia} resizeMode="contain" />
+                    <Image
+                      source={{ uri, cacheKey: viewerMedia.id }}
+                      style={styles.viewerMedia}
+                      contentFit="contain"
+                      cachePolicy="disk"
+                    />
                   )
                 ) : (
                   <Text style={{ color: colors.onAccent, fontFamily: fonts.body }}>Unavailable</Text>

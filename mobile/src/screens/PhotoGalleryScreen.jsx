@@ -3,14 +3,15 @@ import {
   View,
   Text,
   StyleSheet,
-  Image,
   FlatList,
   TouchableOpacity,
   Dimensions,
   Modal,
   Pressable,
   RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -45,6 +46,27 @@ export default function PhotoGalleryScreen() {
   const householdId = useAuthStore((s) => s.householdId);
   const [householdName, setHouseholdName] = useState('');
 
+  // Dashboard kicks off its own feed refresh on every focus, right before
+  // the user can tap through here — if that fetch is still in flight when
+  // this screen mounts, wait for it instead of rendering the stale post
+  // list with (possibly near-expired) signed image URLs that would hang
+  // for several seconds until the in-flight fetch resolves and re-renders
+  // this screen anyway. Only gates the initial mount, never later
+  // pagination (`fetchMore`) loading toggles.
+  const [waitingOnFreshFetch, setWaitingOnFreshFetch] = useState(
+    () => useFeedStore.getState().loading,
+  );
+  useEffect(() => {
+    if (!waitingOnFreshFetch) return undefined;
+    const unsubscribe = useFeedStore.subscribe((state) => {
+      if (!state.loading) {
+        setWaitingOnFreshFetch(false);
+        unsubscribe();
+      }
+    });
+    return unsubscribe;
+  }, [waitingOnFreshFetch]);
+
   useEffect(() => {
     if (!householdId) return undefined;
     let cancelled = false;
@@ -69,7 +91,12 @@ export default function PhotoGalleryScreen() {
         activeOpacity={0.85}
         onPress={() => setViewerIndex(index)}
       >
-        <Image source={{ uri: item.uri }} style={styles.tileImage} resizeMode="cover" />
+        <Image
+          source={{ uri: item.uri, cacheKey: item.id }}
+          style={styles.tileImage}
+          contentFit="cover"
+          cachePolicy="disk"
+        />
       </TouchableOpacity>
     ),
     [],
@@ -92,37 +119,43 @@ export default function PhotoGalleryScreen() {
         <View style={styles.backBtn} />
       </View>
 
-      <FlatList
-        data={photos}
-        keyExtractor={(item) => String(item.id)}
-        renderItem={renderItem}
-        numColumns={COLUMNS}
-        contentContainerStyle={[
-          styles.grid,
-          { paddingBottom: insets.bottom + 24 },
-          photos.length === 0 && styles.gridEmpty,
-        ]}
-        showsVerticalScrollIndicator={false}
-        onEndReachedThreshold={0.5}
-        onEndReached={() => {
-          if (hasMore) fetchMore();
-        }}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={refresh}
-            tintColor={colors.goldDeep}
-          />
-        }
-        ListEmptyComponent={
-          <EmptyState
-            icon={<Text style={styles.emptyEmoji}>📸</Text>}
-            title="No photos yet"
-            subtitle="Photos shared to the Feed show up here."
-            dark
-          />
-        }
-      />
+      {waitingOnFreshFetch ? (
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator size="large" color={colors.goldDeep} />
+        </View>
+      ) : (
+        <FlatList
+          data={photos}
+          keyExtractor={(item) => String(item.id)}
+          renderItem={renderItem}
+          numColumns={COLUMNS}
+          contentContainerStyle={[
+            styles.grid,
+            { paddingBottom: insets.bottom + 24 },
+            photos.length === 0 && styles.gridEmpty,
+          ]}
+          showsVerticalScrollIndicator={false}
+          onEndReachedThreshold={0.5}
+          onEndReached={() => {
+            if (hasMore) fetchMore();
+          }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={refresh}
+              tintColor={colors.goldDeep}
+            />
+          }
+          ListEmptyComponent={
+            <EmptyState
+              icon={<Text style={styles.emptyEmoji}>📸</Text>}
+              title="No photos yet"
+              subtitle="Photos shared to the Feed show up here."
+              dark
+            />
+          }
+        />
+      )}
 
       <Modal
         visible={viewerIndex !== null}
@@ -133,9 +166,10 @@ export default function PhotoGalleryScreen() {
         <Pressable style={styles.viewer} onPress={() => setViewerIndex(null)}>
           {viewerIndex !== null && photos[viewerIndex] ? (
             <Image
-              source={{ uri: photos[viewerIndex].uri }}
+              source={{ uri: photos[viewerIndex].uri, cacheKey: photos[viewerIndex].id }}
               style={styles.viewerImage}
-              resizeMode="contain"
+              contentFit="contain"
+              cachePolicy="disk"
             />
           ) : null}
         </Pressable>
@@ -148,6 +182,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.canvas,
+  },
+  loadingWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   header: {
     flexDirection: 'row',

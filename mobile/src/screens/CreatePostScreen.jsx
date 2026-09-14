@@ -329,10 +329,12 @@ export default function CreatePostScreen({ navigation, route }) {
       };
       if (readyMedia.length > 0) {
         body.media = readyMedia.map((m) => ({
-          // `fileName` is the S3 key — must be sent, not `url` (a signed
-          // preview URL that expires and would go stale if persisted).
+          // `fileName`/`thumbnailFileName` are S3 keys — must be sent, not
+          // `url`/`thumbnailUrl` (signed preview URLs that expire and would
+          // go stale if persisted).
           mediaUrl: m.uploaded.fileName,
           mediaType: m.kind,
+          thumbnailUrl: m.uploaded.thumbnailFileName || undefined,
           fileSizeBytes: m.uploaded.size,
         }));
         body.mediaType = readyMedia[0].kind;

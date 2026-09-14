@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../../shared/middleware/auth';
 import { uploadBuffer } from '../../shared/utils/s3';
+import { resizeImageBuffer } from '../../shared/utils/image';
 import * as householdService from './service';
 
 function getUserId(req: Request): string {
@@ -84,7 +85,9 @@ export async function uploadCoverPhoto(req: Request, res: Response, next: NextFu
       res.status(400).json({ success: false, error: 'No file uploaded.' });
       return;
     }
-    const result = await uploadBuffer(file.buffer, 'household-covers', file.mimetype, file.originalname.split('.').pop());
+    // Cover photos are shown as a banner, not full-resolution — cap width.
+    const resized = await resizeImageBuffer(file.buffer, { width: 1080 });
+    const result = await uploadBuffer(resized, 'household-covers', 'image/jpeg', 'jpg');
     const household = await householdService.updateCoverPhoto(getUserId(req), req.params.id, result.key);
     res.status(200).json({ success: true, data: household });
   } catch (e) { next(e); }

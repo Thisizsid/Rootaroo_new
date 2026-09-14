@@ -6,17 +6,6 @@ export const env = {
   nodeEnv: process.env.NODE_ENV || 'development',
   port: parseInt(process.env.PORT || '3000', 10),
 
-  fcm: {
-    enabled: process.env.FCM_ENABLED === 'true',
-    projectId: process.env.FCM_PROJECT_ID || '',
-    // Base64-encoded Google credentials JSON — either a real Firebase
-    // service-account key, or (interim, while service-account key
-    // creation is blocked by an org policy) impersonated Application
-    // Default Credentials from `gcloud auth application-default login
-    // --impersonate-service-account=...`. See shared/utils/fcm.ts.
-    credentialsBase64: process.env.FCM_CREDENTIALS_BASE64 || '',
-  },
-
   db: {
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT || '3306', 10),
@@ -120,9 +109,6 @@ if (env.nodeEnv === 'production') {
     !process.env.S3_BUCKET && 'S3_BUCKET',
     !process.env.CALENDAR_TOKEN_KEK && 'CALENDAR_TOKEN_KEK',
     !process.env.RESEND_API_KEY && 'RESEND_API_KEY',
-    // FCM is legitimately optional to have off — only required once deliberately enabled.
-    process.env.FCM_ENABLED === 'true' && !process.env.FCM_PROJECT_ID && 'FCM_PROJECT_ID',
-    process.env.FCM_ENABLED === 'true' && !process.env.FCM_CREDENTIALS_BASE64 && 'FCM_CREDENTIALS_BASE64',
   ].filter(Boolean);
 
   if (missing.length > 0) {

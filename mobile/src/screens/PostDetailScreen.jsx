@@ -123,7 +123,7 @@ export default function PostDetailScreen({ navigation, route }) {
           >
             <Text style={styles.backArrow}>←</Text>
           </TouchableOpacity>
-          <Text style={styles.topBrand}>
+          <Text style={styles.topBrand} numberOfLines={1} ellipsizeMode="tail">
             ROOTAROO<Text style={styles.topBrandDot}>.</Text>
           </Text>
           <Text style={styles.topRight}>Feed Detail</Text>
@@ -150,7 +150,7 @@ export default function PostDetailScreen({ navigation, route }) {
           >
             <Text style={styles.backArrow}>←</Text>
           </TouchableOpacity>
-          <Text style={styles.topBrand}>
+          <Text style={styles.topBrand} numberOfLines={1} ellipsizeMode="tail">
             ROOTAROO<Text style={styles.topBrandDot}>.</Text>
           </Text>
           <Text style={styles.topRight}>Feed Detail</Text>
@@ -183,7 +183,7 @@ export default function PostDetailScreen({ navigation, route }) {
         >
           <Text style={styles.backArrow}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.topBrand}>
+        <Text style={styles.topBrand} numberOfLines={1} ellipsizeMode="tail">
           ROOTAROO<Text style={styles.topBrandDot}>.</Text>
         </Text>
         <Text style={styles.topRight}>Feed Detail</Text>
@@ -336,6 +336,8 @@ const styles = StyleSheet.create({
     width: 30,
   },
   topBrand: {
+    flex: 1,
+    textAlign: 'center',
     fontFamily: fonts.display,
     fontSize: 15,
     fontWeight: '800',

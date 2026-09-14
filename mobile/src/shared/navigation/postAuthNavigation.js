@@ -24,15 +24,17 @@ export async function resolvePostAuthNavigation(
   await loadMyHousehold();
   const householdId = useAuthStore.getState().householdId;
 
-  // Returning user with household = setup done
+  // Returning user with household = setup done. Persisting this progress
+  // record is local bookkeeping only — nothing downstream needs it before
+  // the user can see Home, so don't make them wait on the SecureStore write.
   if (householdId) {
-    await saveSignupProgress({
+    saveSignupProgress({
       authMethod,
       step: 'done',
       draft: {},
       email: resp.user.email,
       setupComplete: true,
-    });
+    }).catch(() => {});
     useAuthStore.getState().completeSetup();
     return 'home';
   }
@@ -59,7 +61,7 @@ export async function resolvePostAuthNavigation(
     },
     setupComplete: false,
   };
-  await saveSignupProgress(progress);
+  saveSignupProgress(progress).catch(() => {});
   useAuthStore.getState().setSignupProgress(progress);
   navigation.replace('SignupStepName');
   return 'wizard';

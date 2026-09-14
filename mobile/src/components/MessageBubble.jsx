@@ -4,8 +4,8 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Image,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { Audio } from 'expo-av';
 import { colors, fonts, radius } from '../shared/theme';
 import Avatar from './Avatar';
@@ -181,9 +181,12 @@ export default function MessageBubble({
               activeOpacity={0.8}
             >
               <Image
-                source={{ uri: message.mediaUrl }}
+                // mediaUrl is a presigned S3 link that changes on every
+                // fetch — key the cache by the stable message id instead.
+                source={{ uri: message.mediaUrl, cacheKey: message.id }}
                 style={styles.media}
-                resizeMode="cover"
+                contentFit="cover"
+                cachePolicy="disk"
               />
             </TouchableOpacity>
           )

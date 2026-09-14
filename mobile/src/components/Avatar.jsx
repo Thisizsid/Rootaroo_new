@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import apiClient from '../shared/api/client';
 import { colors, fonts } from '../shared/theme';
 
@@ -55,7 +56,14 @@ export default function Avatar({ url, emoji, name, id, size = 40, style }) {
       ]}
     >
       {resolved ? (
-        <Image source={{ uri: resolved }} style={{ width: size, height: size }} />
+        <Image
+          // Avatar URLs are presigned S3 links that change on every fetch —
+          // key the cache by the stable user id instead of the URI so
+          // repeat views hit the cache instead of re-downloading.
+          source={{ uri: resolved, cacheKey: id }}
+          style={{ width: size, height: size }}
+          cachePolicy="disk"
+        />
       ) : emoji ? (
         <Text style={{ fontSize: size * 0.48 }}>{emoji}</Text>
       ) : (

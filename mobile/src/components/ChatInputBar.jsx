@@ -14,7 +14,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { showAlert } from '../shared/services/themedAlert';
 import ThreadedReplyPreview from './ThreadedReplyPreview';
 import { chatApi } from '../shared/api/chat';
+import { getSocket } from '../shared/socket';
+import { useAuthStore } from '../shared/store/authStore';
 import { colors, fonts, radius } from '../shared/theme';
+
+function emitTyping(householdId, isTyping) {
+  const socket = getSocket();
+  if (!socket || !householdId) return;
+  socket.emit(isTyping ? 'chat:typing' : 'chat:stop-typing', { householdId });
+}
 
 function formatTimer(seconds) {
   const m = Math.floor(seconds / 60);
@@ -24,6 +32,7 @@ function formatTimer(seconds) {
 
 export default function ChatInputBar({ onSend, onSendVoice, onSendImage, replyTo, onDismissReply }) {
   const insets = useSafeAreaInsets();
+  const householdId = useAuthStore((s) => s.householdId);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const typingTimer = useRef(null);
@@ -43,15 +52,15 @@ export default function ChatInputBar({ onSend, onSendVoice, onSendImage, replyTo
       if (typingTimer.current) clearTimeout(typingTimer.current);
       if (typingStopped.current) {
         typingStopped.current = false;
-        chatApi.typing('start').catch(() => { });
+        emitTyping(householdId, true);
       }
 
       typingTimer.current = setTimeout(() => {
         typingStopped.current = true;
-        chatApi.typing('stop').catch(() => { });
+        emitTyping(householdId, false);
       }, 1500);
     },
-    []
+    [householdId]
   );
 
   useEffect(() => {
@@ -59,10 +68,10 @@ export default function ChatInputBar({ onSend, onSendVoice, onSendImage, replyTo
       if (typingTimer.current) clearTimeout(typingTimer.current);
       if (recordTimerRef.current) clearInterval(recordTimerRef.current);
       if (!typingStopped.current) {
-        chatApi.typing('stop').catch(() => { });
+        emitTyping(householdId, false);
       }
     };
-  }, []);
+  }, [householdId]);
 
   const handleSend = async () => {
     if (sending) return;
@@ -76,7 +85,7 @@ export default function ChatInputBar({ onSend, onSendVoice, onSendImage, replyTo
 
       if (!typingStopped.current) {
         typingStopped.current = true;
-        chatApi.typing('stop').catch(() => { });
+        emitTyping(householdId, false);
       }
     } finally {
       setSending(false);

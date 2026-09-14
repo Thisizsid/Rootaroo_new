@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  Image,
   TouchableOpacity,
   ScrollView,
   Dimensions,
@@ -13,6 +12,7 @@ import {
   TextInput,
   ActivityIndicator,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -328,18 +328,21 @@ export default function FeedScreen() {
                 }));
               }}
             >
-              {item.media.map((m, i) => (
-                <Image
-                  key={m.id || i}
-                  source={{
-                    uri: m.mediaUrl.startsWith('http')
-                      ? m.mediaUrl
-                      : `${getServerBase()}${m.mediaUrl}`,
-                  }}
-                  style={[styles.postImage, { width: SCREEN_WIDTH - 24 }]}
-                  resizeMode="cover"
-                />
-              ))}
+              {item.media.map((m, i) => {
+                const rawUri = m.thumbnailUrl || m.mediaUrl;
+                const uri = rawUri.startsWith('http') ? rawUri : `${getServerBase()}${rawUri}`;
+                return (
+                  <Image
+                    key={m.id || i}
+                    // mediaUrl/thumbnailUrl are presigned S3 links that
+                    // change on every fetch — key by the stable media id.
+                    source={{ uri, cacheKey: m.id }}
+                    style={[styles.postImage, { width: SCREEN_WIDTH - 24 }]}
+                    contentFit="cover"
+                    cachePolicy="disk"
+                  />
+                );
+              })}
             </ScrollView>
 
             {item.media.length > 1 && (
@@ -379,7 +382,11 @@ export default function FeedScreen() {
         <View style={media ? styles.postFooter : styles.postHeader}>
           <View style={styles.avatarCircle}>
             {avatar ? (
-              <Image source={avatar} style={styles.avatarImage} />
+              <Image
+                source={{ ...avatar, cacheKey: item.author?.id }}
+                style={styles.avatarImage}
+                cachePolicy="disk"
+              />
             ) : (
               <Text style={styles.avatarText}>{initialsOf(authorName)}</Text>
             )}

@@ -10,10 +10,9 @@ import {
   getUnreadCount,
 } from '../service';
 import * as models from '../../../database/models';
-import { env } from '../../../config/env';
-import { sendFCM } from '../../../shared/utils/fcm';
+import { sendExpoPush } from '../../../shared/utils/expoPush';
 
-jest.mock('../../../shared/utils/fcm', () => ({ sendFCM: jest.fn().mockResolvedValue(undefined) }));
+jest.mock('../../../shared/utils/expoPush', () => ({ sendExpoPush: jest.fn().mockResolvedValue(undefined) }));
 
 const userId = '550e8400-e29b-41d4-a716-446655440001';
 
@@ -34,10 +33,6 @@ jest.mock('../../../database/models', () => ({
     destroy: jest.fn(),
     findAll: jest.fn(),
   },
-}));
-
-jest.mock('../../../config/env', () => ({
-  env: { fcm: { enabled: false, serverKey: '', projectId: '' } },
 }));
 
 const modelsMock = models as jest.Mocked<typeof models>;
@@ -132,6 +127,7 @@ describe('Notification Service', () => {
   describe('sendToUser / getUnreadCount', () => {
     it('creates a history record when sending', async () => {
       (modelsMock.NotificationHistory.create as jest.Mock).mockResolvedValue({ id: '1' });
+      (modelsMock.DeviceToken.findAll as jest.Mock).mockResolvedValue([]);
 
       await sendToUser(userId, 'task_assigned', 'New Task', 'You got a task');
 
@@ -150,22 +146,17 @@ describe('Notification Service', () => {
 
   describe('sendToUser preference gating (F-08)', () => {
     beforeEach(() => {
-      (env as any).fcm.enabled = true;
       (modelsMock.NotificationHistory.create as jest.Mock).mockResolvedValue({ id: '1' });
       (modelsMock.DeviceToken.findAll as jest.Mock).mockResolvedValue([{ token: 'tok1' }]);
     });
 
-    afterEach(() => {
-      (env as any).fcm.enabled = false;
-    });
-
-    it('should still record history but skip the FCM push when the mapped preference is disabled', async () => {
+    it('should still record history but skip the push when the mapped preference is disabled', async () => {
       (modelsMock.NotificationPreference.findOne as jest.Mock).mockResolvedValue({ newPost: false });
 
       await sendToUser(userId, 'feed', 'New post', 'Someone posted');
 
       expect(modelsMock.NotificationHistory.create).toHaveBeenCalled();
-      expect(sendFCM).not.toHaveBeenCalled();
+      expect(sendExpoPush).not.toHaveBeenCalled();
     });
 
     it('should push when the mapped preference is enabled', async () => {
@@ -173,14 +164,14 @@ describe('Notification Service', () => {
 
       await sendToUser(userId, 'feed', 'New post', 'Someone posted');
 
-      expect(sendFCM).toHaveBeenCalled();
+      expect(sendExpoPush).toHaveBeenCalled();
     });
 
     it('should push for a type with no preference mapping (e.g. household deletion warnings)', async () => {
       await sendToUser(userId, 'household_deletion_scheduled', 'Deletion scheduled', 'body');
 
       expect(modelsMock.NotificationPreference.findOne).not.toHaveBeenCalled();
-      expect(sendFCM).toHaveBeenCalled();
+      expect(sendExpoPush).toHaveBeenCalled();
     });
   });
 });

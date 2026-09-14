@@ -31,6 +31,16 @@ export async function deleteObject(key: string): Promise<void> {
   await s3Client.send(new DeleteObjectCommand({ Bucket: S3_BUCKET, Key: key }));
 }
 
+/** Downloads an object's full bytes — used by the thumbnail backfill script. */
+export async function downloadObjectBuffer(key: string): Promise<Buffer> {
+  const result = await s3Client.send(new GetObjectCommand({ Bucket: S3_BUCKET, Key: key }));
+  const chunks: Buffer[] = [];
+  for await (const chunk of result.Body as AsyncIterable<Buffer>) {
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks);
+}
+
 /**
  * Turns a stored S3 key into a time-limited signed GET URL. Pass-through
  * null/undefined for unset fields, and pass through anything that's already

@@ -6,8 +6,7 @@ import {
   DeviceToken,
 } from '../../database/models';
 import { NotFoundError } from '../../shared/utils/errors';
-import { env } from '../../config/env';
-import { sendFCM } from '../../shared/utils/fcm';
+import { sendExpoPush } from '../../shared/utils/expoPush';
 import logger from '../../shared/utils/logger';
 import type {
   DeviceTokenBody,
@@ -213,8 +212,8 @@ export async function updatePreferences(
 
 /**
  * Send a push notification to a specific user.
- * Always creates a NotificationHistory record.
- * Only delivers via FCM when FCM_ENABLED is true.
+ * Always creates a NotificationHistory record, and delivers via Expo's
+ * push service unless `skipPush` is set or the user's preferences opt out.
  */
 export async function sendToUser(
   userId: string,
@@ -244,12 +243,12 @@ export async function sendToUser(
     if (prefs && prefs[prefField] === false) return;
   }
 
-  // Deliver via FCM if enabled (skip for self-actions — history only)
-  if (env.fcm.enabled && !options?.skipPush) {
+  // Deliver via push (skip for self-actions — history only)
+  if (!options?.skipPush) {
     const tokens = await getUserTokens(userId);
     if (tokens.length > 0) {
-      sendFCM(tokens, title, body || '', (data || {}) as Record<string, string>)
-        .catch((e: Error) => logger.error('[FCM] Delivery failed:', e.message));
+      sendExpoPush(tokens, title, body || '', (data || {}) as Record<string, string>)
+        .catch((e: Error) => logger.error('[ExpoPush] Delivery failed:', e.message));
     }
   }
 }

@@ -63,10 +63,6 @@ export const chatApi = {
     return res.data.data;
   },
 
-  typing: async (action) => {
-    await apiClient.post('/chat/typing', null, { params: { action } });
-  },
-
   uploadMedia: async (file) => {
     const formData = new FormData();
     formData.append('file', file);

@@ -6,9 +6,9 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Image,
   StatusBar,
 } from "react-native";
+import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -182,8 +182,9 @@ export default function JournalEntryDetailScreen({ navigation, route }) {
             {entry.media.map((item) => (
               <Image
                 key={item.id}
-                source={{ uri: item.thumbnailUrl || item.mediaUrl }}
+                source={{ uri: item.thumbnailUrl || item.mediaUrl, cacheKey: item.id }}
                 style={styles.mediaItem}
+                cachePolicy="disk"
               />
             ))}
           </View>

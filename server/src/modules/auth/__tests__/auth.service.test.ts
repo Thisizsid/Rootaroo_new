@@ -22,9 +22,6 @@ import { sendSms } from '../../../shared/utils/sms';
 import { jwtVerify } from 'jose';
 import { hashOtpCode } from '../../../shared/utils/otp';
 
-const mockFetch = jest.fn();
-global.fetch = mockFetch;
-
 const mockIdToken = ['e30', 'e30', 'e30'].join('.');
 const googleBody = { idToken: mockIdToken };
 
@@ -46,17 +43,15 @@ function fakeUser(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function setupGoogleApi(profileOverrides: Record<string, unknown> = {}) {
-  mockFetch.mockReset().mockResolvedValueOnce({
-    ok: true,
-    json: async () => ({
+function setupGoogleJwt(payloadOverrides: Record<string, unknown> = {}) {
+  (jwtVerify as jest.Mock).mockResolvedValue({
+    payload: {
       sub: 'google123',
       email: 'test@user.com',
       email_verified: 'true',
       name: 'Test User',
-      aud: env.google.clientId,
-      ...profileOverrides,
-    }),
+      ...payloadOverrides,
+    },
   });
 }
 
@@ -143,10 +138,10 @@ describe('Auth Service — Update Profile', () => {
 });
 
 describe('Auth Service — Google OAuth', () => {
-  beforeEach(() => { jest.clearAllMocks(); mockFetch.mockReset(); });
-  // ... existing google tests unchanged
+  beforeEach(() => { jest.clearAllMocks(); });
+
   it('should create a new user from Google profile and return tokens', async () => {
-    setupGoogleApi();
+    setupGoogleJwt();
     (models.User.findOne as jest.Mock).mockResolvedValue(null);
     (models.User.create as jest.Mock).mockResolvedValue(fakeUser());
     const result = await googleAuth(googleBody);
@@ -156,7 +151,7 @@ describe('Auth Service — Google OAuth', () => {
   });
 
   it('should link googleId to existing user found by email', async () => {
-    setupGoogleApi();
+    setupGoogleJwt();
     const user = fakeUser({ googleId: null, save: jest.fn().mockResolvedValue(undefined) });
     (models.User.findOne as jest.Mock).mockResolvedValue(user);
     const result = await googleAuth(googleBody);
@@ -166,25 +161,20 @@ describe('Auth Service — Google OAuth', () => {
   });
 
   it('should authenticate existing googleId user', async () => {
-    setupGoogleApi();
+    setupGoogleJwt();
     const user = fakeUser({ save: jest.fn().mockResolvedValue(undefined) });
     (models.User.findOne as jest.Mock).mockResolvedValue(user);
     await googleAuth(googleBody);
     expect(user.save).toHaveBeenCalled();
   });
 
-  it('should throw if ID token verification fails', async () => {
-    mockFetch.mockResolvedValueOnce({ ok: false, status: 400 });
+  it('should throw if ID token verification fails (bad signature, expired, or audience/issuer mismatch — all handled by jwtVerify itself)', async () => {
+    (jwtVerify as jest.Mock).mockRejectedValue(new Error('signature verification failed'));
     await expect(googleAuth(googleBody)).rejects.toThrow('Google ID token verification failed');
   });
 
-  it('should throw if the token audience does not match our client id', async () => {
-    setupGoogleApi({ aud: 'someone-elses-client-id.apps.googleusercontent.com' });
-    await expect(googleAuth(googleBody)).rejects.toThrow('was not issued for this app');
-  });
-
   it('should reject linking into an existing email-matched account when Google reports the email unverified', async () => {
-    setupGoogleApi({ email_verified: 'false' });
+    setupGoogleJwt({ email_verified: 'false' });
     const user = fakeUser({ googleId: null, save: jest.fn().mockResolvedValue(undefined) });
     (models.User.findOne as jest.Mock).mockResolvedValue(user);
 
@@ -194,7 +184,7 @@ describe('Auth Service — Google OAuth', () => {
   });
 
   it('should reject creating a new account when Google reports the email unverified', async () => {
-    setupGoogleApi({ email_verified: 'false' });
+    setupGoogleJwt({ email_verified: 'false' });
     (models.User.findOne as jest.Mock).mockResolvedValue(null);
 
     await expect(googleAuth(googleBody)).rejects.toThrow('not verified');

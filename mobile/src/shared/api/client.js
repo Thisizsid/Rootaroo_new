@@ -104,7 +104,12 @@ apiClient.interceptors.response.use(
           useAuthStore.getState().logout();
           return Promise.reject(error);
         }
-        const { data } = await axios.post(`${BASE_URL}/auth/refresh`, { refreshToken });
+        // Explicit timeout — this bypasses `apiClient` (it can't carry an
+        // Authorization header that's mid-refresh), so it doesn't get
+        // `apiClient`'s default timeout. Without one, a hung/slow refresh
+        // never settles, `isRefreshing` never clears, and every other
+        // queued request (line 85-96) hangs forever with it.
+        const { data } = await axios.post(`${BASE_URL}/auth/refresh`, { refreshToken }, { timeout: 15000 });
         const { accessToken, refreshToken: newRefresh } = data.data;
         useAuthStore.getState().setAuth(useAuthStore.getState().user, accessToken, newRefresh);
         if (original.headers) original.headers.Authorization = `Bearer ${accessToken}`;

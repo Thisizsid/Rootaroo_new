@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../../shared/middleware/auth';
 import * as journalService from './service';
 import { uploadBuffer, getSignedUrl } from '../../shared/utils/s3';
+import { resizeImageBuffer } from '../../shared/utils/image';
 
 function getUserId(req: Request): string {
   return (req as AuthenticatedRequest).user!.userId;
@@ -93,12 +94,21 @@ export async function uploadMedia(req: Request, res: Response, next: NextFunctio
           f.mimetype,
           f.originalname.split('.').pop(),
         );
-        // `fileName` is the S3 key — persist this as `mediaUrl` when creating
-        // the entry. `url` is a signed URL for immediate preview only; it
-        // expires and must never be stored.
+
+        // Compressed thumbnail so the entry list/media grid doesn't download
+        // the full-resolution original for a small tile.
+        const thumbBuffer = await resizeImageBuffer(f.buffer, { width: 480 });
+        const thumbResult = await uploadBuffer(thumbBuffer, 'journal/thumbnails', 'image/jpeg', 'jpg');
+
+        // `fileName`/`thumbnailFileName` are S3 keys — persist as
+        // `mediaUrl`/`thumbnailUrl` when creating the entry. `url`/
+        // `thumbnailUrl` here are signed URLs for immediate preview only;
+        // they expire and must never be stored.
         return {
           fileName: result.key,
           url: await getSignedUrl(result.key),
+          thumbnailFileName: thumbResult.key,
+          thumbnailUrl: await getSignedUrl(thumbResult.key),
           size: f.size,
           mimetype: f.mimetype,
         };

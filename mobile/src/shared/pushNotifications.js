@@ -18,15 +18,16 @@ Notifications.setNotificationHandler({
 });
 
 /**
- * Registers this device for push notifications and hands the raw FCM/APNs
- * device token to the server (`DeviceToken`, sent via firebase-admin
- * directly — NOT Expo's push relay, so we deliberately use
- * `getDevicePushTokenAsync()` here rather than `getExpoPushTokenAsync()`).
+ * Registers this device for push notifications and hands an Expo push
+ * token to the server (`DeviceToken`, sent via Expo's own push relay —
+ * `expo-server-sdk` server-side — rather than talking to Firebase/APNs
+ * directly). `getExpoPushTokenAsync()` reads the EAS project id from
+ * `app.json`'s `extra.eas.projectId` automatically; no explicit `projectId`
+ * needed here as long as that's set (via `eas init`).
  *
  * Requires a native rebuild (expo-notifications is declared as a config
- * plugin but not yet compiled into the installed build) and, on Android,
- * `google-services.json` + the Google Services Gradle plugin for
- * `getDevicePushTokenAsync()` to resolve a real FCM token.
+ * plugin but not yet compiled into the installed build) for the permission/
+ * token APIs to resolve on-device.
  */
 export async function registerForPushNotificationsAsync() {
   try {
@@ -38,7 +39,7 @@ export async function registerForPushNotificationsAsync() {
     }
     if (status !== 'granted') return;
 
-    const { data: token } = await Notifications.getDevicePushTokenAsync();
+    const { data: token } = await Notifications.getExpoPushTokenAsync();
     if (!token) return;
 
     const platform = Platform.OS === 'ios' ? 'ios' : 'android';
@@ -51,7 +52,7 @@ export async function registerForPushNotificationsAsync() {
 /**
  * Unregisters this device's push token on logout, so the server stops
  * targeting a device that's no longer signed in. Re-derives the token via
- * `getDevicePushTokenAsync()` rather than persisting it separately — cheap
+ * `getExpoPushTokenAsync()` rather than persisting it separately — cheap
  * (native-cached, no new permission prompt) once permission was already
  * granted, matching how registration itself re-derives on every launch.
  */
@@ -60,7 +61,7 @@ export async function unregisterPushNotificationsAsync() {
     const { status } = await Notifications.getPermissionsAsync();
     if (status !== 'granted') return;
 
-    const { data: token } = await Notifications.getDevicePushTokenAsync();
+    const { data: token } = await Notifications.getExpoPushTokenAsync();
     if (!token) return;
 
     await notificationApi.unregisterToken(token);

@@ -8,6 +8,7 @@ import { User, RefreshToken, EmailVerification, PasswordReset, PhoneVerification
 import { sendEmail } from '../../shared/utils/mailer';
 import { getSignedUrl } from '../../shared/utils/s3';
 import { sendSms } from '../../shared/utils/sms';
+import logger from '../../shared/utils/logger';
 import { jwtVerify, createRemoteJWKSet } from 'jose';
 import { hashOtpCode, MAX_OTP_ATTEMPTS } from '../../shared/utils/otp';
 import { UnauthorizedError, ConflictError, NotFoundError, AppError } from '../../shared/utils/errors';
@@ -205,40 +206,39 @@ export async function updateProfile(
 
 // ── Google OAuth ──
 
+const GOOGLE_JWKS = createRemoteJWKSet(new URL('https://www.googleapis.com/oauth2/v3/certs'));
+
 export async function googleAuth(body: GoogleAuthBody): Promise<AuthResponse> {
   const { idToken } = body;
 
   // The mobile client obtains this ID token directly from Google's native
   // Sign-In SDK (@react-native-google-signin/google-signin), configured
   // with our Web Client ID as the audience — there's no server-side code
-  // exchange anymore. Verify it via Google's tokeninfo endpoint exactly as
-  // before, but since we no longer control which client requested the
-  // token ourselves, we MUST check the `aud` claim matches our own client —
-  // otherwise anyone could hand us a valid Google ID token issued to a
-  // completely different app and log in as that Google user.
-  const verifyResponse = await fetch('https://www.googleapis.com/oauth2/v3/tokeninfo', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ id_token: idToken }),
-  });
-
-  if (!verifyResponse.ok) {
+  // exchange anymore. Google ID tokens are standard RS256 JWTs, so verify
+  // the signature locally against Google's JWKS (same pattern as Apple
+  // below) instead of round-tripping to the tokeninfo endpoint on every
+  // login. We no longer control which client requested the token ourselves,
+  // so we MUST check the `aud` claim matches our own client — otherwise
+  // anyone could hand us a valid Google ID token issued to a completely
+  // different app and log in as that Google user.
+  let payload;
+  try {
+    const result = await jwtVerify(idToken, GOOGLE_JWKS, {
+      issuer: ['https://accounts.google.com', 'accounts.google.com'],
+      audience: env.google.clientId,
+    });
+    payload = result.payload;
+  } catch (verifyError) {
+    logger.error('[Auth] Google ID token verification failed:', (verifyError as Error).message);
     throw new AppError(401, 'Google ID token verification failed');
   }
 
-  const profile = await verifyResponse.json() as {
-    sub: string; email: string; email_verified?: string; name?: string; picture?: string; aud?: string;
-  };
-
-  if (profile.aud !== env.google.clientId) {
-    throw new AppError(401, 'Google ID token was not issued for this app');
-  }
-
-  const googleId = profile.sub;
-  const email = profile.email.toLowerCase();
-  const emailVerified = profile.email_verified === 'true';
-  const displayName = profile.name || email.split('@')[0];
-  const avatarUrl = profile.picture;
+  const googleId = payload.sub as string;
+  const email = (payload.email as string).toLowerCase();
+  const emailVerifiedClaim = payload.email_verified as boolean | string | undefined;
+  const emailVerified = emailVerifiedClaim === true || emailVerifiedClaim === 'true';
+  const displayName = (payload.name as string | undefined) || email.split('@')[0];
+  const avatarUrl = payload.picture as string | undefined;
 
   // Find existing user by googleId or email
   let user = await User.findOne({

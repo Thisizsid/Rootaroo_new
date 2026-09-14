@@ -161,10 +161,12 @@ export default function JournalEntryEditorScreen({ navigation, route }) {
           return {
             ...m,
             uploading: false,
-            // `fileName` is the durable S3 key — the value the entry stores.
+            // `fileName`/`thumbnailFileName` are durable S3 keys — the
+            // values the entry stores.
             upload: {
               mediaUrl: result.fileName,
               mediaType: 'photo',
+              thumbnailUrl: result.thumbnailFileName || undefined,
               fileSizeBytes: result.size,
             },
           };

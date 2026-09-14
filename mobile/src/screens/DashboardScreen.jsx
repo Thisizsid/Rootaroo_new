@@ -404,7 +404,7 @@ export default function DashboardScreen() {
     lastLoadAtRef.current = Date.now();
     setFetchError(false);
     try {
-      const [d, m, hh] = await Promise.all([
+      const [d, m, hh, calendarEvents] = await Promise.all([
         dashboardApi.get(),
         householdId
           ? householdApi.getMembers(householdId)
@@ -412,19 +412,17 @@ export default function DashboardScreen() {
         householdId
           ? householdApi.getHousehold(householdId)
           : Promise.resolve(null),
+        // Calendar widget — all household events (filtered per selected day
+        // in the widget). Run alongside the calls above instead of after —
+        // nothing here depends on their results, so awaiting it separately
+        // only added a serial round trip to every load.
+        eventApi.list().catch(() => []),
       ]);
       setData(d);
       setMembers(m);
       setCoverPhotoUrl(hh?.coverPhotoUrl || null);
       setUnreadCount(d?.notifications?.unreadCount || 0);
-
-      // Calendar widget — all household events (filtered per selected day in the widget)
-      try {
-        const calendarEvents = await eventApi.list();
-        setEvents(calendarEvents || []);
-      } catch {
-        setEvents([]);
-      }
+      setEvents(calendarEvents || []);
     } catch {
       setFetchError(true);
     } finally {
@@ -922,40 +920,14 @@ export default function DashboardScreen() {
                         },
                       ]}
                     >
-                      {m.avatarUrl ? (
-                        <Image
-                          source={{
-                            uri: m.avatarUrl,
-                          }}
-                          style={styles.avatarCircle}
-                        />
-                      ) : m.avatarEmoji ? (
-                        <View
-                          style={[
-                            styles.avatarCircle,
-                            {
-                              backgroundColor: withAlpha(colors.white, 0.1),
-                            },
-                          ]}
-                        >
-                          <Text style={styles.avatarEmoji}>
-                            {m.avatarEmoji}
-                          </Text>
-                        </View>
-                      ) : (
-                        <View
-                          style={[
-                            styles.avatarCircle,
-                            {
-                              backgroundColor: withAlpha(colors.white, 0.1),
-                            },
-                          ]}
-                        >
-                          <Text style={styles.avatarInitials}>
-                            {initials(m.displayName || m.name || "??")}
-                          </Text>
-                        </View>
-                      )}
+                      <Avatar
+                        url={m.avatarUrl}
+                        emoji={m.avatarEmoji}
+                        name={m.displayName || m.name || "??"}
+                        id={m.userId}
+                        size={32}
+                        style={styles.avatarCircle}
+                      />
                       <View style={styles.onlineDot} />
                     </View>
                   ))}

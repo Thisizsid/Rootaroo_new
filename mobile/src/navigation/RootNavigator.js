@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
-import { ActivityIndicator, Platform, View, TouchableOpacity, Text } from 'react-native';
+import { ActivityIndicator, Platform, View, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as NavigationBar from 'expo-navigation-bar';
 import { Ionicons } from '@expo/vector-icons';
@@ -265,27 +266,26 @@ function GlassTabBar({ state, descriptors, navigation }) {
         {
           // The dock sits in normal layout flow so the screen above it ends
           // where it begins — nothing scrolls behind it. The floating look is
-          // the *pill inside*: an opaque canvas strip with a rounded, shadowed
-          // bar inset from its edges.
+          // the *pill inside*: a translucent, blurred glass bar inset from
+          // the screen's edges, not an opaque strip.
           paddingBottom: (insets.bottom > 0 ? insets.bottom : 10) + 5,
           paddingHorizontal: 14,
           // No top padding: the pill's own top edge is where the screen ends,
           // so there is no canvas band above it reading as a seam.
           paddingTop: 0,
-          backgroundColor: colors.canvas,
+          backgroundColor: 'transparent',
         },
       ]}
     >
       <View
         style={{
-          flexDirection: 'row',
           borderRadius: 28,
           // No `overflow: 'hidden'` here — on iOS it suppresses the shadow that
-          // sells the floating look, and the tab buttons paint no background of
-          // their own, so there is nothing to clip to the rounded corners.
+          // sells the floating look. The blur/background fill is clipped to the
+          // radius by the inner wrapper below instead, so the shadow stays crisp.
           borderWidth: 1,
-          borderColor: colors.border,
-          backgroundColor: colors.overlaySlate,
+          borderColor: withAlpha(colors.white, 0.1),
+          borderTopColor: withAlpha(colors.white, 0.16),
           shadowColor: colors.black,
           shadowOffset: { width: 0, height: 10 },
           shadowOpacity: 0.4,
@@ -293,73 +293,93 @@ function GlassTabBar({ state, descriptors, navigation }) {
           elevation: 14,
         }}
       >
-        {state.routes.map((route, index) => {
-          const { options } = descriptors[route.key];
-          const label = options.tabBarLabel ?? options.title ?? route.name;
-          const isFocused = state.index === index;
+        <View style={{ borderRadius: 28, overflow: 'hidden' }}>
+          {/* Android's BlurView has nothing to blur here — the dock sits in
+              normal document flow over a near-uniform dark-navy background,
+              so even working blur reads as a flat tint. iOS home screens
+              tend to have more varied content behind it, so keep it there;
+              on Android, skip straight to the same white-tinted glass fill
+              the rest of the app uses (see DashboardScreen's GLASS_FILL). */}
+          {Platform.OS === 'ios' && (
+            <BlurView intensity={40} tint="default" style={StyleSheet.absoluteFill} />
+          )}
+          <View
+            style={{
+              flexDirection: 'row',
+              backgroundColor: Platform.OS === 'ios'
+                ? withAlpha(colors.overlaySlate, 0.3)
+                : withAlpha(colors.white, 0.08),
+            }}
+          >
+            {state.routes.map((route, index) => {
+              const { options } = descriptors[route.key];
+              const label = options.tabBarLabel ?? options.title ?? route.name;
+              const isFocused = state.index === index;
 
-          const onPress = () => {
-            const event = navigation.emit({
-              type: 'tabPress',
-              target: route.key,
-              canPreventDefault: true,
-            });
-            if (!isFocused && !event.defaultPrevented) {
-              navigation.navigate(route.name, route.params);
-            }
-          };
+              const onPress = () => {
+                const event = navigation.emit({
+                  type: 'tabPress',
+                  target: route.key,
+                  canPreventDefault: true,
+                });
+                if (!isFocused && !event.defaultPrevented) {
+                  navigation.navigate(route.name, route.params);
+                }
+              };
 
-          const onLongPress = () => {
-            navigation.emit({ type: 'tabLongPress', target: route.key });
-          };
+              const onLongPress = () => {
+                navigation.emit({ type: 'tabLongPress', target: route.key });
+              };
 
-          const color = isFocused ? GOLD : INACTIVE;
+              const color = isFocused ? GOLD : INACTIVE;
 
-          return (
-            <TouchableOpacity
-              key={route.key}
-              accessibilityRole="button"
-              accessibilityState={isFocused ? { selected: true } : {}}
-              onPress={onPress}
-              onLongPress={onLongPress}
-              style={{
-                flex: 1,
-                alignItems: 'center',
-                justifyContent: 'center',
-                paddingVertical: 8,
+              return (
+                <TouchableOpacity
+                  key={route.key}
+                  accessibilityRole="button"
+                  accessibilityState={isFocused ? { selected: true } : {}}
+                  onPress={onPress}
+                  onLongPress={onLongPress}
+                  style={{
+                    flex: 1,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    paddingVertical: 8,
 
-                gap: 3,
-              }}
-              activeOpacity={0.75}
-            >
-              {/* Active gold pill behind icon */}
-              <View
-                style={{
-                  width: 44,
-                  height: 30,
-                  borderRadius: 15,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  //
+                    gap: 3,
+                  }}
+                  activeOpacity={0.75}
+                >
+                  {/* Active gold pill behind icon */}
+                  <View
+                    style={{
+                      width: 44,
+                      height: 30,
+                      borderRadius: 15,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      //
 
-                }}
-              >
-                {options.tabBarIcon ? options.tabBarIcon({ color, focused: isFocused, size: 22 }) : null}
-              </View>
-              <Text
-                style={{
-                  fontSize: 10.5,
-                  fontWeight: isFocused ? '700' : '600',
-                  letterSpacing: 0.1,
-                  color: isFocused ? INK : INACTIVE,
-                  fontFamily: isFocused ? 'PlusJakartaSans_700Bold' : 'Inter_600SemiBold',
-                }}
-              >
-                {label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+                    }}
+                  >
+                    {options.tabBarIcon ? options.tabBarIcon({ color, focused: isFocused, size: 22 }) : null}
+                  </View>
+                  <Text
+                    style={{
+                      fontSize: 10.5,
+                      fontWeight: isFocused ? '700' : '600',
+                      letterSpacing: 0.1,
+                      color: isFocused ? INK : INACTIVE,
+                      fontFamily: isFocused ? 'PlusJakartaSans_700Bold' : 'Inter_600SemiBold',
+                    }}
+                  >
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
       </View>
     </View>
   );

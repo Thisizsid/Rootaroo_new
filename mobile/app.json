@@ -27,8 +27,16 @@
       "predictiveBackGestureEnabled": false,
       "softwareKeyboardLayoutMode": "resize",
       "permissions": [
-        "USE_BIOMETRIC",
-        "USE_FINGERPRINT"
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.CAMERA",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
       ],
       "googleServicesFile": "./google-services.json"
     },
@@ -62,7 +70,10 @@
               "excludes": [
                 "**/libc++_shared.so"
               ]
-            }
+            },
+            "buildArchs": [
+              "arm64-v8a"
+            ]
           },
           "ios": {
             "deploymentTarget": "15.1"
@@ -76,6 +87,12 @@
           "iosUrlScheme": "com.googleusercontent.apps.247745926282-52752edgjmo5h2ao9fut4b0ddjr92hdr"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "cce7ed17-3488-4688-aa14-ff7eedef8559"
+      }
+    },
+    "owner": "rootaroos-team"
   }
 }
