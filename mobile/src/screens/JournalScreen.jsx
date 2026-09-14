@@ -14,7 +14,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import Svg, { Circle } from 'react-native-svg';
 import { format, isToday, isYesterday, parseISO } from 'date-fns';
-import { colors, fonts, radius, spacing, withAlpha } from '../shared/theme';
+import { colors, fonts, goldButton, radius, spacing, withAlpha } from '../shared/theme';
+import { GoldFill } from '../shared/components/GoldButton';
 import { journalApi } from '../shared/api/journal';
 import { moodById, moodIcon } from '../shared/constants/journalMoods';
 import GlassCard from '../shared/components/GlassCard';
@@ -201,6 +202,7 @@ export default function JournalScreen({ navigation }) {
             accessibilityRole="button"
             accessibilityLabel="New journal entry"
           >
+              <GoldFill radius={17} />
             <Ionicons name="add" size={24} color={colors.canvas} />
           </TouchableOpacity>
         </View>
@@ -330,6 +332,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.gold,
+    ...goldButton.glow,
   },
   scroll: { paddingHorizontal: spacing.xl },
   errorText: {

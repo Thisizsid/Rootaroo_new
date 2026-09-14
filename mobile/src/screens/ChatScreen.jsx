@@ -21,13 +21,17 @@ import { useChatStore } from '../shared/store/chatStore';
 import { registerChatSocket, unregisterChatSocket } from '../shared/socket/chatSocket';
 import { connectSocket } from '../shared/socket';
 import { useAuthStore } from '../shared/store/authStore';
-import { colors, fonts, radius, spacing, withAlpha } from '../shared/theme';
+import { colors, fonts, goldButton, radius, withAlpha } from '../shared/theme';
+import { GoldFill } from '../shared/components/GoldButton';
+import Avatar from '../components/Avatar';
 import MessageBubble from '../components/MessageBubble';
 import ChatInputBar from '../components/ChatInputBar';
 import TypingIndicator from '../components/TypingIndicator';
 import { chatApi } from '../shared/api/chat';
 import { householdApi } from '../shared/api/household';
 import { SvgXml } from 'react-native-svg';
+import { Ionicons } from '@expo/vector-icons';
+import { chatTheme } from '../shared/theme/chat';
 
 // Quick reactions shown in the long-press message actions dropdown (SCREEN 31)
 const MESSAGE_EMOJIS = ['👍', '❤️', '😂', '😲', '😢'];
@@ -112,7 +116,8 @@ export default function ChatScreen({ route }) {
       return 'Direct Message';
     }
     if (convType === 'household') {
-      return 'All members';
+      const cnt = partCount || (members.length > 0 ? members.length : 1);
+      return `${cnt} ${cnt === 1 ? 'member' : 'members'} · all in household`;
     }
     if (convType === 'group') {
       const cnt = partCount || (members.length > 0 ? members.length : 1);
@@ -141,7 +146,7 @@ export default function ChatScreen({ route }) {
   const setReplyTo = useChatStore((s) => s.setReplyTo);
   const BACK_SVG =
     '<svg width="20" height="20" viewBox="0 0 24 24" fill="none">' +
-    `<path d="M15 5l-7 7 7 7" stroke="${colors.ink}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>` +
+    `<path d="M15 5l-7 7 7 7" stroke="${chatTheme.chipIcon}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>` +
     '</svg>';
   const handleDeleteConversation = useCallback(() => {
     showAlert(
@@ -188,6 +193,9 @@ export default function ChatScreen({ route }) {
     );
   }, [handleDeleteConversation]);
   const currentUserId = useAuthStore((s) => s.user?.id || '');
+  const headerAvatarMembers = (currentConv?.participants || [])
+    .filter((p) => p.id !== currentUserId)
+    .slice(0, 2);
   const token = useAuthStore((s) => s.accessToken);
   const [editingMessage, setEditingMessage] = useState(null);
   const [previewMedia, setPreviewMedia] = useState(null);
@@ -240,22 +248,22 @@ export default function ChatScreen({ route }) {
     if (!messages || messages.length === 0) return [];
     const ordered = [...messages].reverse();
     const items = [];
+    let prevDate = null;
     for (let i = 0; i < ordered.length; i++) {
       const msg = ordered[i];
-      items.push({
-        type: 'message',
-        message: msg,
-      });
       const currentDate = formatDateDivider(msg.createdAt);
-      const nextMsg = ordered[i + 1];
-      const nextDate = nextMsg ? formatDateDivider(nextMsg.createdAt) : null;
-      if (!nextMsg || currentDate !== nextDate) {
+      if (currentDate !== prevDate) {
         items.push({
           type: 'date',
           date: currentDate,
           id: `date-${msg.createdAt}-${i}`,
         });
+        prevDate = currentDate;
       }
+      items.push({
+        type: 'message',
+        message: msg,
+      });
     }
     return items;
   }, [messages]);
@@ -368,8 +376,8 @@ export default function ChatScreen({ route }) {
     },
     [flatListItems],
   );
-  const typingDisplayNames = useMemo(
-    () => (typingUsers || []).filter((t) => t.userId !== currentUserId).map((t) => t.displayName),
+  const activeTypers = useMemo(
+    () => (typingUsers || []).filter((t) => t.userId !== currentUserId),
     [typingUsers, currentUserId],
   );
   const renderItem = useCallback(
@@ -377,7 +385,9 @@ export default function ChatScreen({ route }) {
       if (item.type === 'date') {
         return (
           <View style={styles.dateDivider}>
-            <Text style={styles.dateText}>{item.date}</Text>
+            <View style={styles.dateLine} />
+            <Text style={styles.dateText}>{item.date.toUpperCase()}</Text>
+            <View style={styles.dateLine} />
           </View>
         );
       }
@@ -464,7 +474,7 @@ export default function ChatScreen({ route }) {
   );
   const ListFooterComponent = (
     <>
-      <TypingIndicator displayNames={typingDisplayNames} />
+      <TypingIndicator typers={activeTypers} />
       <View
         style={{
           height: 4,
@@ -490,32 +500,38 @@ export default function ChatScreen({ route }) {
   return (
     <View style={styles.container}>
       {/* Header — always visible; long-press actions now live in the dropdown modal */}
-      <View
-        style={[
-          styles.header,
-          {
-            paddingTop: insets.top,
-          },
-        ]}
-      >
+      <View style={[styles.header, { paddingTop: insets.top }]}>
         <TouchableOpacity
-          style={[
-            styles.headerBackBtn,
-            {
-              top: insets.top + 14,
-            },
-          ]}
+          style={styles.headerBackBtn}
           activeOpacity={0.7}
           onPress={() => navigation.goBack()}
-          hitSlop={{
-            top: 12,
-            bottom: 12,
-            left: 12,
-            right: 12,
-          }}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
           <SvgXml xml={BACK_SVG} width={20} height={20} />
         </TouchableOpacity>
+
+        {(convType === 'group' || convType === 'household') && headerAvatarMembers.length > 0 && (
+          <View style={styles.headerAvatarCluster}>
+            {headerAvatarMembers.map((p, i) => (
+              <View
+                key={p.id}
+                style={[
+                  styles.headerAvatarSlot,
+                  i === 0 ? styles.headerAvatarSlotBack : styles.headerAvatarSlotFront,
+                ]}
+              >
+                <Avatar
+                  url={p.avatarUrl}
+                  emoji={p.avatarEmoji}
+                  name={p.displayName}
+                  id={p.id}
+                  size={25}
+                />
+              </View>
+            ))}
+          </View>
+        )}
+
         <TouchableOpacity
           style={styles.headerTitleContainer}
           activeOpacity={0.7}
@@ -530,20 +546,22 @@ export default function ChatScreen({ route }) {
           }}
           disabled={convType !== 'group' && convType !== 'household'}
         >
-          <Text style={styles.headerTitle}>{title || 'Mendez House'}</Text>
-          <Text style={styles.headerSubtitle}>{subtitleText}</Text>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {title || 'Mendez House'}
+          </Text>
+          <Text style={styles.headerSubtitle} numberOfLines={1}>
+            {subtitleText}
+          </Text>
         </TouchableOpacity>
+
         <TouchableOpacity
-          style={[
-            styles.headerMenuBtn,
-            {
-              top: insets.top + 14,
-            },
-          ]}
+          style={styles.headerMenuBtn}
           onPress={() => setMenuVisible((prev) => !prev)}
           hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel="Conversation options"
         >
-          <Text style={styles.headerMenuText}>⋮</Text>
+          <Ionicons name="ellipsis-vertical" size={16} color={chatTheme.chipIcon} />
         </TouchableOpacity>
       </View>
 
@@ -645,6 +663,7 @@ export default function ChatScreen({ route }) {
                   <Text style={styles.editCancelText}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={handleSaveEdit} style={styles.editSaveBtn}>
+                  <GoldFill radius={radius.sm} />
                   <Text style={styles.editSaveText}>Save</Text>
                 </TouchableOpacity>
               </View>
@@ -772,6 +791,8 @@ export default function ChatScreen({ route }) {
           onSendImage={handleSendImage}
           replyTo={replyTo}
           onDismissReply={() => setReplyTo(null)}
+          chatTitle={title}
+          participantCount={partCount}
         />
       </View>
     </View>
@@ -781,7 +802,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.canvas,
+    backgroundColor: chatTheme.bg,
   },
   keyboardView: {
     flex: 1,
@@ -790,7 +811,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.canvas,
+    backgroundColor: chatTheme.bg,
   },
   // ---- SCREEN 31: Long-press message actions dropdown ----
   actionOverlay: {
@@ -859,28 +880,53 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: 10,
-    backgroundColor: colors.canvas,
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 14,
+    backgroundColor: chatTheme.bg,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    position: 'relative',
+    borderBottomColor: chatTheme.chipBorder,
   },
   headerBackBtn: {
+    width: 36,
+    height: 36,
+    flexShrink: 0,
+    borderRadius: radius.md,
+    backgroundColor: chatTheme.chip,
+    borderWidth: 1,
+    borderColor: chatTheme.chipBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerAvatarCluster: {
+    width: 38,
+    height: 38,
+    flexShrink: 0,
+  },
+  headerAvatarSlot: {
     position: 'absolute',
-    left: 16,
-    padding: 4,
+    borderRadius: 15,
+    borderWidth: 2,
+    borderColor: chatTheme.bg,
+  },
+  headerAvatarSlotBack: {
+    top: 0,
+    right: 0,
+  },
+  headerAvatarSlotFront: {
+    bottom: 0,
+    left: 0,
   },
   headerMenuBtn: {
-    position: 'absolute',
-    right: 16,
-    padding: 4,
-  },
-  headerMenuText: {
-    fontSize: 22,
-    color: colors.ink,
-    fontWeight: '700',
+    width: 36,
+    height: 36,
+    flexShrink: 0,
+    borderRadius: radius.md,
+    backgroundColor: chatTheme.chip,
+    borderWidth: 1,
+    borderColor: chatTheme.chipBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   dropdownOverlay: {
     position: 'absolute',
@@ -920,17 +966,20 @@ const styles = StyleSheet.create({
     color: colors.danger,
   },
   headerTitleContainer: {
-    alignItems: 'center',
+    flex: 1,
+    minWidth: 0,
+    alignItems: 'flex-start',
   },
   headerTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontFamily: fonts.displayBold,
-    color: colors.ink,
+    color: chatTheme.headerTitle,
+    letterSpacing: -0.1,
   },
   headerSubtitle: {
-    fontSize: 12,
-    fontFamily: fonts.body,
-    color: colors.textMuted,
+    fontSize: 11.5,
+    fontFamily: fonts.bodySemiBold,
+    color: chatTheme.headerSub,
     marginTop: 2,
   },
   memberStrip: {
@@ -944,18 +993,22 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   dateDivider: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
     marginVertical: 12,
+    paddingHorizontal: 4,
+  },
+  dateLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: chatTheme.dividerLine,
   },
   dateText: {
-    fontSize: 11,
-    fontFamily: fonts.bodyMedium,
-    color: colors.textSecondary,
-    backgroundColor: withAlpha(colors.shadow, 0.05),
-    paddingHorizontal: 14,
-    paddingVertical: 4,
-    borderRadius: radius.pill,
-    overflow: 'hidden',
+    fontSize: 10.5,
+    fontFamily: fonts.bodyBold,
+    letterSpacing: 1.4,
+    color: chatTheme.dividerLabel,
   },
   emptyContainer: {
     flex: 1,
@@ -1059,10 +1112,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: radius.sm,
+    ...goldButton.glow,
   },
   editSaveText: {
     fontSize: 15,
-    color: colors.onAccent,
+    color: goldButton.onGold,
     fontFamily: fonts.bodySemiBold,
   },
   // ---- Fix 3: Image Preview/Lightbox styles ----

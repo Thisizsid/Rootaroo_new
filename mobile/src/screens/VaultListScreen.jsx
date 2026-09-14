@@ -30,7 +30,8 @@ import { vaultApi } from '../shared/api/vault';
 import { getPrivateKey } from '../shared/crypto/secureKeyStore';
 import Avatar from '../components/Avatar';
 import { formatFileSize, formatDate } from '../shared/utils/format';
-import { colors, fonts, radius, withAlpha } from '../shared/theme';
+import { colors, fonts, goldButton, radius, withAlpha } from '../shared/theme';
+import { GoldFill } from '../shared/components/GoldButton';
 import EmptyState from '../components/EmptyState';
 import ErrorState from '../components/ErrorState';
 import LoadingSkeleton from '../components/LoadingSkeleton';
@@ -389,6 +390,7 @@ export default function VaultListScreen({ navigation }) {
             disabled={unlockLoading}
             activeOpacity={0.85}
           >
+              <GoldFill radius={9999} disabled={unlockLoading} />
             {unlockLoading ? (
               <ActivityIndicator size="small" color={colors.onAccent} />
             ) : (
@@ -470,6 +472,7 @@ export default function VaultListScreen({ navigation }) {
         onPress={() => navigation.navigate('VaultUpload')}
         activeOpacity={0.85}
       >
+          <GoldFill radius={28} />
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>
 
@@ -567,6 +570,7 @@ export default function VaultListScreen({ navigation }) {
                 onPress={confirmRename}
                 activeOpacity={0.85}
               >
+                  <GoldFill radius={10} />
                 <Text style={styles.renameSaveText}>Save</Text>
               </TouchableOpacity>
             </View>
@@ -684,14 +688,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gold,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: colors.gold,
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.32,
-    shadowRadius: 20,
-    elevation: 5,
+    ...goldButton.glow,
   },
   unlockButtonText: {
     fontSize: 15,
@@ -790,19 +787,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gold,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: colors.gold,
-    shadowOffset: {
-      width: 0,
-      height: 10,
-    },
-    shadowOpacity: 0.4,
-    shadowRadius: 24,
-    elevation: 6,
+    ...goldButton.glow,
   },
   fabText: {
     fontSize: 24,
     fontFamily: fonts.displayBold,
-    color: colors.onAccent,
+    color: goldButton.onGold,
     lineHeight: 28,
   },
   // Empty
@@ -949,9 +939,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 10,
     backgroundColor: colors.gold,
+    ...goldButton.glow,
   },
   renameSaveText: {
-    color: colors.onAccent,
+    color: goldButton.onGold,
     fontSize: 14,
     fontFamily: fonts.displayBold,
   },

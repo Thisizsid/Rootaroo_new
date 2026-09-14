@@ -12,7 +12,8 @@ import { showAlert } from '../shared/services/themedAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { taskApi } from '../shared/api/task';
 import { useAuthStore } from '../shared/store/authStore';
-import { colors, spacing, radius, fonts } from '../shared/theme';
+import { colors, fonts, goldButton, radius, spacing } from '../shared/theme';
+import { GoldFill } from '../shared/components/GoldButton';
 import Avatar from '../components/Avatar';
 function formatDueDate(dateStr) {
   if (!dateStr) return 'No due date';
@@ -191,10 +192,12 @@ export default function TaskDetailScreen({ route, navigation }) {
       <View style={styles.actions}>
         {canComplete ? (
           <TouchableOpacity style={styles.primaryBtn} onPress={handleToggle} activeOpacity={0.8}>
+            <GoldFill radius={radius.pill} />
             <Text style={styles.primaryBtnText}>Mark complete</Text>
           </TouchableOpacity>
         ) : canReopen ? (
           <TouchableOpacity style={styles.primaryBtn} onPress={handleToggle} activeOpacity={0.8}>
+            <GoldFill radius={radius.pill} />
             <Text style={styles.primaryBtnText}>Mark as Pending</Text>
           </TouchableOpacity>
         ) : null}
@@ -352,20 +355,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gold,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: colors.gold,
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.28,
-    shadowRadius: 20,
-    elevation: 5,
+    ...goldButton.glow,
   },
   primaryBtnText: {
     fontSize: 15,
     fontWeight: '600',
     fontFamily: fonts.displayBold,
-    color: colors.onAccent,
+    color: goldButton.onGold,
   },
   outlineBtn: {
     height: 54,

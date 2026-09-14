@@ -33,7 +33,8 @@ import OfflineBanner from '../components/OfflineBanner';
 import ConfirmSheet from '../components/ConfirmSheet';
 import { KeyboardAvoider, keyboardScrollProps } from '../shared/components/KeyboardAware';
 import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
-import { colors, fonts, radius, withAlpha } from '../shared/theme';
+import { colors, fonts, goldButton, radius, withAlpha } from '../shared/theme';
+import { GoldFill } from '../shared/components/GoldButton';
 import { GlassSheen } from '../shared/components/GlassCard';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -569,6 +570,7 @@ export default function FeedScreen() {
           activeOpacity={0.8}
           onPress={() => navigation.navigate('CreatePost')}
         >
+            <GoldFill radius={28} />
           <Text style={styles.fabIcon}>+</Text>
         </TouchableOpacity>
       </AttachStep>
@@ -1099,19 +1101,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gold,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: colors.gold,
-    shadowOffset: {
-      width: 0,
-      height: 10,
-    },
-    shadowOpacity: 0.35,
-    shadowRadius: 24,
-    elevation: 8,
+    ...goldButton.glow,
   },
   fabIcon: {
     fontSize: 24,
     fontWeight: '700',
-    color: colors.onAccent,
+    color: goldButton.onGold,
     fontFamily: 'PlusJakartaSans_700Bold',
   },
 });

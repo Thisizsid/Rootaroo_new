@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
-import { colors, fonts, radius } from '../theme';
+import { colors, fonts, goldButton, radius } from '../theme';
+import { GoldFill } from './GoldButton';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -26,6 +27,7 @@ export default function TourTooltip({ title, body, total, current, isLast, next,
           activeOpacity={0.85}
           onPress={continueLabel ? onContinue : next}
         >
+            <GoldFill radius={radius.pill} />
           <Text style={styles.nextText}>{continueLabel ?? (isLast ? 'Done' : 'Next')}</Text>
         </TouchableOpacity>
       </View>
@@ -92,10 +94,11 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
+    ...goldButton.glow,
   },
   nextText: {
     fontFamily: fonts.bodySemiBold,
     fontSize: 14,
-    color: colors.onAccent,
+    color: goldButton.onGold,
   },
 });

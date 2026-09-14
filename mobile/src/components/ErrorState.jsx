@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { colors, fonts, radius, spacing } from '../shared/theme';
+import { colors, fonts, goldButton, radius, spacing } from '../shared/theme';
+import { GoldFill } from '../shared/components/GoldButton';
 
 /**
  * Full-screen generic error (design: 09-States-Errors — Generic Error).
@@ -31,6 +32,7 @@ export default function ErrorState({
         <View style={styles.actions}>
           {onRetry ? (
             <TouchableOpacity style={styles.primaryBtn} onPress={onRetry} activeOpacity={0.85}>
+              <GoldFill radius={radius.pill} />
               <Text style={styles.primaryText}>Try again</Text>
             </TouchableOpacity>
           ) : null}
@@ -103,17 +105,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gold,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: colors.gold,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.28,
-    shadowRadius: 20,
-    elevation: 6,
+    ...goldButton.glow,
   },
   primaryText: {
     fontSize: 15,
     fontWeight: '600',
     fontFamily: fonts.displayBold,
-    color: colors.onAccent,
+    color: goldButton.onGold,
   },
   secondaryBtn: {
     height: 54,

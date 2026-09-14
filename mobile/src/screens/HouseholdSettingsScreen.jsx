@@ -18,11 +18,16 @@ import QRCodeSvg from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
 import { useAuthStore } from '../shared/store/authStore';
 import { householdApi } from '../shared/api/household';
-import { colors, fonts, radius, withAlpha } from '../shared/theme';
+import { colors, fonts, goldButton, radius, withAlpha } from '../shared/theme';
+import { GoldFill } from '../shared/components/GoldButton';
 import ConfirmSheet from '../components/ConfirmSheet';
 import Avatar from '../components/Avatar';
 import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
 // Role options match mock Screen 37 exactly — Admin & Member only.
+// The QR needs a light quiet zone to stay scannable, so this tile stays warm
+// off-white in every theme — it is a scanning surface, not a themed one.
+const QR_TILE_BG = '#F4F0E6';
+
 const ROLE_OPTIONS = [
   {
     key: 'admin',
@@ -39,11 +44,6 @@ const ROLE_DISPLAY = {
   admin: 'Admin',
   member: 'Member',
   child: 'Member',
-};
-const ROLE_COLOR = {
-  admin: colors.gold,
-  member: colors.textMuted,
-  child: colors.textMuted,
 };
 export default function HouseholdSettingsScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -62,6 +62,7 @@ export default function HouseholdSettingsScreen({ navigation }) {
   const [actionLoading, setActionLoading] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
   const [showRoleModal, setShowRoleModal] = useState(false);
+  const [managing, setManaging] = useState(false);
   const [selectedMember, setSelectedMember] = useState(null);
   const [selectedRole, setSelectedRole] = useState('member');
 
@@ -72,6 +73,9 @@ export default function HouseholdSettingsScreen({ navigation }) {
   const currentUserRole = myRole || user?.role || 'member';
   const isAdmin = currentUserRole === 'admin';
   const joinLink = inviteCode ? `rootaru://join?code=${inviteCode}` : null;
+  const memberCountLabel = `${members.length} member${members.length === 1 ? '' : 's'}`;
+  const joinedOn = (iso) =>
+    iso ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null;
   const load = useCallback(async () => {
     if (!householdId) {
       setLoading(false);
@@ -242,8 +246,9 @@ export default function HouseholdSettingsScreen({ navigation }) {
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
             <Text style={styles.backIcon}>‹</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Household Settings</Text>
-          <View style={styles.headerSpacer} />
+          <View style={styles.headerText}>
+            <Text style={styles.headerTitle}>Household</Text>
+          </View>
         </View>
         <View style={styles.centered}>
           <Text
@@ -261,44 +266,14 @@ export default function HouseholdSettingsScreen({ navigation }) {
     );
   }
 
-  // ── Main render (mock Screen 36) ───────────────────────────────────────
+  // ── Main render ─────────────────────────────────────────────────────────
   return (
-    <View
-      style={[
-        styles.root,
-        {
-          paddingTop: insets.top,
-        },
-      ]}
-    >
+    <View style={[styles.root, { paddingTop: insets.top }]}>
       <StatusBar barStyle="light-content" backgroundColor={colors.canvas} />
-
-      {/* Minimal header so the user can navigate back (mock has no header bar) */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => navigation.goBack()}
-          hitSlop={{
-            top: 8,
-            bottom: 8,
-            left: 8,
-            right: 8,
-          }}
-        >
-          <Text style={styles.backIcon}>‹</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Household Settings</Text>
-        <View style={styles.headerSpacer} />
-      </View>
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[
-          styles.scrollContent,
-          {
-            paddingBottom: dockHeight + 16,
-          },
-        ]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: dockHeight + 16 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -311,13 +286,48 @@ export default function HouseholdSettingsScreen({ navigation }) {
           />
         }
       >
+        {/* ── Header ── */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => navigation.goBack()}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+          >
+            <Text style={styles.backIcon}>‹</Text>
+          </TouchableOpacity>
+          <View style={styles.headerText}>
+            <Text style={styles.headerTitle}>Household</Text>
+            <Text style={styles.headerSub} numberOfLines={1}>
+              {memberCountLabel}
+              {householdName ? ` · ${householdName}` : ''}
+            </Text>
+          </View>
+        </View>
+
         {/* ── Members ── */}
-        <Text style={styles.sectionLabel}>Members</Text>
-        <View style={styles.membersCard}>
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardHeaderLabel}>MEMBERS</Text>
+            {/* Rows are only tappable for an admin, and there was previously no
+                hint of that at all — "Manage" both reveals the affordance and
+                gives the chevrons somewhere to come from. */}
+            {isAdmin && members.length > 1 && (
+              <TouchableOpacity
+                onPress={() => setManaging((m) => !m)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityRole="button"
+              >
+                <Text style={styles.cardHeaderAction}>{managing ? 'Done' : 'Manage'}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
           {members.map((member, i) => {
             const isSelf = member.userId === user?.id;
-            const canManage = isAdmin && !isSelf;
-            const roleColor = ROLE_COLOR[member.role] || colors.textMuted;
+            const canManage = isAdmin && !isSelf && managing;
+            const joined = joinedOn(member.joinedAt);
             return (
               <TouchableOpacity
                 key={member.userId}
@@ -326,70 +336,81 @@ export default function HouseholdSettingsScreen({ navigation }) {
                 onPress={() => openRoleModal(member)}
                 style={[styles.memberRow, i === members.length - 1 && styles.memberRowLast]}
               >
-                <View style={[styles.memberAccent, { backgroundColor: roleColor }]} />
                 <Avatar
                   url={member.avatarUrl}
                   emoji={member.avatarEmoji}
                   name={member.displayName}
                   id={member.userId}
-                  size={36}
+                  size={44}
                 />
-                <Text style={styles.memberName} numberOfLines={1}>
-                  {member.displayName}
-                </Text>
-                <View
-                  style={[
-                    styles.memberRolePill,
-                    {
-                      backgroundColor: withAlpha(roleColor, 0.14),
-                    },
-                  ]}
-                >
-                  <Text style={[styles.memberRoleText, { color: roleColor }]}>
-                    {ROLE_DISPLAY[member.role] || 'Member'}
+                <View style={styles.memberInfo}>
+                  <Text style={styles.memberName} numberOfLines={1}>
+                    {member.displayName}
+                  </Text>
+                  <Text style={styles.memberMeta} numberOfLines={1}>
+                    {isSelf ? 'You' : ROLE_DISPLAY[member.role] || 'Member'}
+                    {joined ? ` · joined ${joined}` : ''}
                   </Text>
                 </View>
+                {member.role === 'admin' && (
+                  <View style={styles.adminPill}>
+                    <Text style={styles.adminPillText}>ADMIN</Text>
+                  </View>
+                )}
+                {canManage && <Text style={styles.rowChevron}>›</Text>}
               </TouchableOpacity>
             );
           })}
         </View>
 
-        {/* ── Invite section: QR + code, one permanent code for the whole household ── */}
-        <Text style={styles.sectionLabel}>Invite to household</Text>
-        <View style={styles.inviteCard}>
-          <View style={styles.inviteQrWrap}>
-            {joinLink ? (
-              <QRCodeSvg value={joinLink} size={132} color={colors.ink} backgroundColor={colors.surface} />
-            ) : (
-              <ActivityIndicator color={colors.gold} />
-            )}
+        {/* ── Invite ──
+            Admin-only: the server returns `inviteCode: null` to non-admins by
+            design (the code is a standing credential), so for a member this
+            card would render nothing but placeholder dashes. */}
+        {isAdmin && (
+          <View style={styles.card}>
+            <Text style={styles.inviteTitle}>Invite to household</Text>
+            <Text style={styles.inviteSub}>Scan or share the code to join instantly</Text>
+            <View style={styles.inviteBody}>
+              <View style={styles.qrTile}>
+                {joinLink ? (
+                  <QRCodeSvg
+                    value={joinLink}
+                    size={118}
+                    color={colors.shadow}
+                    backgroundColor={QR_TILE_BG}
+                  />
+                ) : (
+                  <ActivityIndicator color={colors.gold} />
+                )}
+              </View>
+              <View style={styles.inviteRight}>
+                <Text style={styles.joinCodeLabel}>JOIN CODE</Text>
+                <Text style={styles.joinCode} selectable>
+                  {inviteCode || '--------'}
+                </Text>
+                <TouchableOpacity
+                  style={styles.copyBtn}
+                  onPress={handleCopyInvite}
+                  activeOpacity={0.85}
+                >
+                  <GoldFill radius={radius.pill} />
+                  <Text style={styles.copyBtnText}>{codeCopied ? 'Copied!' : 'Copy code'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.shareBtn}
+                  onPress={handleShareInvite}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.shareBtnText}>Share link</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
-          <Text style={styles.inviteHint}>Anyone can scan this to join instantly</Text>
-          <View style={styles.inviteCodeBox}>
-            <Text style={styles.inviteCode}>{inviteCode || '--------'}</Text>
-          </View>
-          <View style={styles.inviteActions}>
-            <TouchableOpacity
-              style={styles.invitePillBtn}
-              onPress={handleCopyInvite}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.invitePillBtnText}>{codeCopied ? 'Copied!' : 'Copy code'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.invitePillBtn, styles.invitePillBtnOutline]}
-              onPress={handleShareInvite}
-              activeOpacity={0.85}
-            >
-              <Text style={[styles.invitePillBtnText, styles.invitePillBtnOutlineText]}>
-                Share
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+        )}
 
-        {/* ── Danger zone ── */}
-        <View style={styles.dangerCard}>
+        {/* ── Leave / delete ── */}
+        <View style={styles.card}>
           {pendingRequest && (
             <View style={styles.deletionBanner}>
               <Text style={styles.deletionBannerText}>
@@ -399,16 +420,22 @@ export default function HouseholdSettingsScreen({ navigation }) {
               </Text>
             </View>
           )}
+
           <TouchableOpacity
-            style={[styles.dangerRow, !isAdmin && styles.dangerRowLast]}
+            style={styles.actionRow}
             onPress={handleLeave}
             activeOpacity={0.7}
             disabled={!!pendingRequest}
           >
-            <Text style={[styles.dangerText, !!pendingRequest && styles.dangerTextDisabled]}>
-              Leave household
-            </Text>
+            <View style={styles.actionInfo}>
+              <Text style={[styles.actionTitle, !!pendingRequest && styles.actionDisabled]}>
+                Leave household
+              </Text>
+              <Text style={styles.actionSub}>You&apos;ll lose access to shared tasks</Text>
+            </View>
+            <Text style={styles.rowChevron}>›</Text>
           </TouchableOpacity>
+
           {isAdmin &&
             (scheduledDeletionAt ? (
               <View style={styles.deletionBanner}>
@@ -425,27 +452,34 @@ export default function HouseholdSettingsScreen({ navigation }) {
                 </TouchableOpacity>
               </View>
             ) : (
-              <TouchableOpacity
-                style={[styles.dangerRow, styles.dangerRowLast]}
-                onPress={handleDeleteNest}
-                activeOpacity={0.7}
-                disabled={!!pendingRequest}
-              >
-                <Text style={[styles.dangerText, !!pendingRequest && styles.dangerTextDisabled]}>
-                  Delete household
-                </Text>
-              </TouchableOpacity>
+              <>
+                <View style={styles.rowDivider} />
+                <TouchableOpacity
+                  style={styles.actionRow}
+                  onPress={handleDeleteNest}
+                  activeOpacity={0.7}
+                  disabled={!!pendingRequest}
+                >
+                  <View style={styles.actionInfo}>
+                    <Text
+                      style={[
+                        styles.actionTitle,
+                        styles.actionTitleDanger,
+                        !!pendingRequest && styles.actionDisabled,
+                      ]}
+                    >
+                      Delete household
+                    </Text>
+                    <Text style={styles.actionSub}>Permanent — removes all members</Text>
+                  </View>
+                  <Text style={[styles.rowChevron, styles.rowChevronDanger]}>›</Text>
+                </TouchableOpacity>
+              </>
             ))}
         </View>
 
         {actionLoading && (
-          <ActivityIndicator
-            size="small"
-            color={colors.gold}
-            style={{
-              marginTop: 20,
-            }}
-          />
+          <ActivityIndicator size="small" color={colors.gold} style={{ marginTop: 20 }} />
         )}
       </ScrollView>
 
@@ -499,6 +533,7 @@ export default function HouseholdSettingsScreen({ navigation }) {
               disabled={actionLoading}
               activeOpacity={0.85}
             >
+                <GoldFill radius={9999} disabled={actionLoading} />
               <Text style={styles.saveBtnText}>{actionLoading ? 'Saving…' : 'Save'}</Text>
             </TouchableOpacity>
 
@@ -554,218 +589,221 @@ export default function HouseholdSettingsScreen({ navigation }) {
   );
 }
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: colors.canvas,
-  },
+  root: { flex: 1, backgroundColor: colors.canvas },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: colors.canvas,
   },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 24,
-    paddingTop: 16,
-  },
-  // Header (minimal, mirrors mock Screen 38 header pattern)
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    height: 56,
-    paddingHorizontal: 24,
-  },
+  scroll: { flex: 1 },
+  scrollContent: { paddingHorizontal: 20, paddingTop: 4 },
+
+  // ── Header ──
+  header: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14 },
   backBtn: {
-    width: 32,
-    height: 32,
+    width: 42,
+    height: 42,
+    borderRadius: radius.card,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   backIcon: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: '700',
     color: colors.ink,
-    lineHeight: 26,
+    lineHeight: 28,
+    // The glyph sits optically right of centre in this face.
+    marginLeft: -2,
   },
+  headerText: { flex: 1 },
   headerTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    fontFamily: fonts.displayBold,
+    fontSize: 27,
+    lineHeight: 34,
+    fontFamily: fonts.display,
     color: colors.ink,
+    letterSpacing: -0.4,
   },
-  headerSpacer: {
-    width: 32,
-  },
-  // Section label
-  sectionLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    fontFamily: fonts.bodySemiBold,
-    letterSpacing: 0.4,
-    color: colors.textMuted,
-    marginBottom: 14,
-  },
-  // Members — grouped rows, role accent bar + pill badge (no card background)
-  membersCard: {
-    marginBottom: 28,
-  },
-  memberRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 13,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  memberRowLast: {
-    borderBottomWidth: 0,
-  },
-  memberAccent: {
-    width: 3,
-    alignSelf: 'stretch',
-    borderRadius: 2,
-  },
-  memberName: {
-    flex: 1,
-    fontSize: 14,
+  headerSub: {
+    marginTop: 2,
+    fontSize: 13,
     fontFamily: fonts.body,
-    color: colors.ink,
+    color: colors.textMuted,
   },
-  memberRolePill: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
-  },
-  memberRoleText: {
-    fontSize: 11,
-    fontWeight: '700',
-    fontFamily: fonts.bodySemiBold,
-  },
-  // Invite card — QR + permanent code + gold pill actions
-  inviteCard: {
+
+  // ── Shared card shell ──
+  card: {
+    marginTop: 14,
     backgroundColor: colors.surface,
-    borderRadius: 24,
-    paddingVertical: 24,
-    paddingHorizontal: 20,
-    marginBottom: 28,
-    alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.goldLight,
-    shadowColor: colors.shadow,
-    shadowOffset: {
-      width: 0,
-      height: 10,
-    },
-    shadowOpacity: 0.06,
-    shadowRadius: 28,
-    elevation: 3,
+    borderColor: colors.borderCool,
+    borderRadius: radius.xl,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
   },
-  inviteQrWrap: {
-    width: 132,
-    height: 132,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-  },
-  inviteHint: {
-    fontSize: 12,
-    fontFamily: fonts.body,
-    color: colors.textMuted,
-    marginBottom: 16,
-  },
-  inviteCodeBox: {
-    backgroundColor: colors.goldLight,
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    marginBottom: 18,
-  },
-  inviteCode: {
-    fontSize: 18,
-    fontWeight: '600',
-    fontFamily: fonts.mono,
-    letterSpacing: 2,
-    color: colors.goldDeep,
-  },
-  inviteActions: {
+  cardHeader: {
     flexDirection: 'row',
-    gap: 10,
-  },
-  invitePillBtn: {
-    paddingHorizontal: 22,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.gold,
     alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: colors.gold,
-    shadowOffset: {
-      width: 0,
-      height: 6,
-    },
-    shadowOpacity: 0.24,
-    shadowRadius: 14,
-    elevation: 4,
+    justifyContent: 'space-between',
+    paddingTop: 12,
+    paddingBottom: 4,
   },
-  invitePillBtnOutline: {
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  invitePillBtnText: {
-    fontSize: 14,
-    fontWeight: '600',
+  cardHeaderLabel: {
+    fontSize: 11,
+    letterSpacing: 1.4,
     fontFamily: fonts.bodySemiBold,
-    color: colors.onAccent,
+    color: colors.textFaint,
   },
-  invitePillBtnOutlineText: {
+  cardHeaderAction: {
+    fontSize: 14,
+    fontFamily: fonts.bodySemiBold,
+    color: colors.gold,
+  },
+
+  // ── Member rows ──
+  memberRow: { flexDirection: 'row', alignItems: 'center', gap: 13, paddingVertical: 12 },
+  memberRowLast: { paddingBottom: 14 },
+  memberInfo: { flex: 1 },
+  memberName: {
+    fontSize: 16,
+    fontFamily: fonts.bodyBold,
     color: colors.ink,
   },
-  // Danger zone
-  dangerCard: {
-    marginTop: 26,
+  memberMeta: {
+    marginTop: 2,
+    fontSize: 13,
+    fontFamily: fonts.body,
+    color: colors.textMuted,
   },
-  dangerRow: {
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: withAlpha(colors.danger, 0.15),
-  },
-  dangerRowLast: {
-    borderBottomWidth: 0,
-  },
-  dangerText: {
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: fonts.bodySemiBold,
-    color: colors.danger,
-  },
-  dangerTextDisabled: {
-    opacity: 0.4,
-  },
-  deletionBanner: {
+  adminPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: radius.sm,
     backgroundColor: colors.goldTint,
-    borderRadius: radius.card,
+  },
+  adminPillText: {
+    fontSize: 10,
+    letterSpacing: 0.8,
+    fontFamily: fonts.bodyBold,
+    color: colors.gold,
+  },
+  rowChevron: {
+    fontSize: 22,
+    lineHeight: 24,
+    fontFamily: fonts.body,
+    color: colors.textFaint,
+  },
+  rowChevronDanger: { color: withAlpha(colors.danger, 0.7) },
+  rowDivider: { height: 1, backgroundColor: colors.divider },
+
+  // ── Invite ──
+  inviteTitle: {
+    marginTop: 12,
+    fontSize: 17,
+    fontFamily: fonts.bodyBold,
+    color: colors.ink,
+  },
+  inviteSub: {
+    marginTop: 3,
+    fontSize: 13,
+    fontFamily: fonts.body,
+    color: colors.textMuted,
+  },
+  inviteBody: { flexDirection: 'row', gap: 16, paddingVertical: 16 },
+  qrTile: {
+    width: 142,
+    height: 142,
+    borderRadius: radius.lg,
+    backgroundColor: QR_TILE_BG,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inviteRight: { flex: 1, justifyContent: 'center' },
+  joinCodeLabel: {
+    fontSize: 10,
+    letterSpacing: 1.3,
+    fontFamily: fonts.bodySemiBold,
+    color: colors.textFaint,
+  },
+  joinCode: {
+    marginTop: 4,
+    fontSize: 19,
+    letterSpacing: 1.6,
+    fontFamily: fonts.mono,
+    color: colors.gold,
+  },
+  copyBtn: {
+    marginTop: 14,
+    height: 44,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...goldButton.glow,
+  },
+  copyBtnText: {
+    fontSize: 14,
+    fontFamily: fonts.bodyBold,
+    color: goldButton.onGold,
+  },
+  shareBtn: {
+    marginTop: 9,
+    height: 44,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceDark,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shareBtnText: {
+    fontSize: 14,
+    fontFamily: fonts.bodySemiBold,
+    color: colors.ink,
+  },
+
+  // ── Leave / delete rows ──
+  actionRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15 },
+  actionInfo: { flex: 1 },
+  actionTitle: {
+    fontSize: 16,
+    fontFamily: fonts.bodySemiBold,
+    color: colors.ink,
+  },
+  actionTitleDanger: { color: colors.danger },
+  actionSub: {
+    marginTop: 3,
+    fontSize: 13,
+    fontFamily: fonts.body,
+    color: colors.textMuted,
+  },
+  actionDisabled: { color: colors.textFaint },
+
+  // ── Pending / scheduled banners ──
+  deletionBanner: {
+    marginTop: 12,
+    marginBottom: 4,
     padding: 14,
-    marginVertical: 10,
-    gap: 8,
+    borderRadius: radius.card,
+    backgroundColor: colors.dangerSoft,
+    borderWidth: 1,
+    borderColor: withAlpha(colors.danger, 0.25),
   },
   deletionBannerText: {
     fontSize: 13,
-    fontFamily: fonts.bodyMedium,
-    color: colors.ink,
+    lineHeight: 19,
+    fontFamily: fonts.body,
+    color: colors.danger,
   },
   deletionBannerCancel: {
-    fontSize: 13,
+    marginTop: 10,
+    fontSize: 14,
     fontFamily: fonts.bodySemiBold,
-    color: colors.goldDeep,
+    color: colors.gold,
   },
-  // Role Edit modal (mock Screen 37)
+
   modalOverlay: {
     flex: 1,
     backgroundColor: withAlpha(colors.shadow, 0.55),
@@ -855,15 +893,8 @@ const styles = StyleSheet.create({
     borderRadius: 9999,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: colors.gold,
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.28,
-    shadowRadius: 20,
-    elevation: 6,
     marginBottom: 14,
+    ...goldButton.glow,
   },
   saveBtnLoading: {
     opacity: 0.7,
@@ -872,7 +903,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     fontFamily: fonts.displayBold,
-    color: colors.onAccent,
+    color: goldButton.onGold,
   },
   removeLink: {
     alignItems: 'center',

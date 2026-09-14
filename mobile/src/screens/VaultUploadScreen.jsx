@@ -26,6 +26,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { File, Paths } from 'expo-file-system';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
+import { ensureCamera } from '../shared/permissions';
 import { vaultApi } from '../shared/api/vault';
 import { useVaultStore } from '../shared/store/vaultStore';
 import { useAuthStore } from '../shared/store/authStore';
@@ -38,7 +39,8 @@ import {
 import { getPrivateKey } from '../shared/crypto/secureKeyStore';
 import { verifyPublicKey } from '../shared/crypto/keyPinStore';
 import { setupVaultKeys } from '../shared/crypto/vaultSetup';
-import { colors, fonts, radius, withAlpha } from '../shared/theme';
+import { colors, fonts, goldButton, radius, withAlpha } from '../shared/theme';
+import { GoldFill } from '../shared/components/GoldButton';
 import { KeyboardAvoider } from '../shared/components/KeyboardAware';
 const MAX_SIZE = 20 * 1024 * 1024;
 
@@ -284,11 +286,7 @@ export default function VaultUploadScreen({ navigation }) {
   };
   const handleTakePhoto = async () => {
     try {
-      const perm = await ImagePicker.requestCameraPermissionsAsync();
-      if (!perm.granted) {
-        showAlert('Permission needed', 'Camera access is required to take a photo.');
-        return;
-      }
+      if (!(await ensureCamera())) return;
       const result = await ImagePicker.launchCameraAsync({
         quality: 0.8,
       });
@@ -500,6 +498,7 @@ export default function VaultUploadScreen({ navigation }) {
                 onPress={() => closeNamePrompt(namePrompt.value)}
                 activeOpacity={0.85}
               >
+                  <GoldFill radius={10} />
                 <Text style={styles.namePromptSaveText}>Save</Text>
               </TouchableOpacity>
             </View>
@@ -704,9 +703,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 10,
     backgroundColor: colors.gold,
+    ...goldButton.glow,
   },
   namePromptSaveText: {
-    color: colors.onAccent,
+    color: goldButton.onGold,
     fontSize: 14,
     fontFamily: fonts.displayBold,
   },

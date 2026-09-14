@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import RootNavigator from './src/navigation/RootNavigator';
 import AlertHost from './src/components/AlertHost';
+import PermissionHost from './src/components/PermissionHost';
 import { useAppFonts } from './src/shared/theme/useAppFonts';
 import { colors } from './src/shared/theme';
 // Side-effect import: registers the i18next instance react-i18next's
@@ -60,6 +61,7 @@ export default function App() {
             <RootNavigator />
           </NavigationContainer>
           <AlertHost />
+          <PermissionHost />
         </SafeAreaProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>

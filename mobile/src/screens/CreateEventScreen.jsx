@@ -24,7 +24,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { householdApi } from '../shared/api/household';
 import { eventApi } from '../shared/api/event';
 import { useAuthStore } from '../shared/store/authStore';
-import { colors, fonts, radius, withAlpha } from '../shared/theme';
+import { colors, fonts, goldButton, radius, withAlpha } from '../shared/theme';
+import { GoldFill } from '../shared/components/GoldButton';
 import Avatar from '../components/Avatar';
 import { KEYBOARD_BEHAVIOR } from '../shared/components/KeyboardAware';
 const REPEAT_OPTIONS = [
@@ -255,6 +256,7 @@ export default function CreateEventScreen({ navigation }) {
           disabled={saving}
           activeOpacity={0.85}
         >
+            <GoldFill radius={9999} disabled={saving} />
           {saving ? (
             <ActivityIndicator size="small" color={colors.onAccent} />
           ) : (
@@ -446,14 +448,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 20,
     marginBottom: 75,
-    shadowColor: colors.gold,
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.28,
-    shadowRadius: 20,
-    elevation: 5,
+    ...goldButton.glow,
   },
   buttonDisabled: {
     opacity: 0.5,

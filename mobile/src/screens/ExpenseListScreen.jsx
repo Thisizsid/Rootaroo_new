@@ -14,7 +14,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { householdApi } from '../shared/api/household';
 import { useAuthStore } from '../shared/store/authStore';
 import { useExpenseStore } from '../shared/store/expenseStore';
-import { colors, fonts, withAlpha } from '../shared/theme';
+import { colors, fonts, goldButton, radius, withAlpha } from '../shared/theme';
+import { GoldFill } from '../shared/components/GoldButton';
 import Avatar from '../components/Avatar';
 function formatMoney(n) {
   return new Intl.NumberFormat('en-US', {
@@ -135,8 +136,8 @@ export default function ExpenseListScreen({ navigation }) {
   const owes = myBalance !== null && myBalance < 0;
   const owed = myBalance !== null && myBalance > 0;
   const balanceText =
-    myBalance === null
-      ? '$0.00'
+    myBalance === null || myBalance === 0
+      ? formatMoney(0)
       : myBalance < 0
         ? `−${formatMoney(Math.abs(myBalance))}`
         : `+${formatMoney(myBalance)}`;
@@ -149,12 +150,37 @@ export default function ExpenseListScreen({ navigation }) {
     payerMost && payerMost.displayName && payerMost.displayName !== user?.name
       ? `${payerMost.displayName.split(' ')[0]} paid more`
       : null;
+  // `summary` is all-time (the server sums every expense ever), so anything
+  // labelled "this month" has to be scoped here from the loaded page. The list
+  // is newest-first, so the current month is present unless a household logged
+  // more than one page of expenses within it.
+  const now = new Date();
+  const monthExpenses = expenses.filter((e) => {
+    const d = new Date(e.date || e.createdAt);
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  });
+  const monthTotal = monthExpenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
+  const monthLabel = now.toLocaleDateString('en-US', { month: 'long' });
   const subText = [
-    `${summary?.totalExpenses ?? 0} shared expense${(summary?.totalExpenses ?? 0) === 1 ? '' : 's'} this month`,
+    `${monthExpenses.length} shared expense${monthExpenses.length === 1 ? '' : 's'} this month`,
     mostPayerName,
   ]
     .filter(Boolean)
     .join(' · ');
+
+  /** Who a member owes, per the simplified ledger — drives their row sub-line. */
+  const owesLine = (userId) => {
+    const entry = summary?.ledger?.find((l) => l.fromUserId === userId);
+    return entry ? `Owes ${entry.toUserName.split(' ')[0]}` : null;
+  };
+  /** Falls back to the most recent expense they actually paid for. */
+  const paidLine = (userId) => {
+    const paid = expenses.find((e) => e.paidBy === userId);
+    return paid ? `Paid ${paid.title.toLowerCase()}` : null;
+  };
+  const memberSubline = (nb) =>
+    (nb.netBalance < 0 ? owesLine(nb.userId) : paidLine(nb.userId)) ||
+    (nb.netBalance === 0 ? 'Settled up' : null);
   const topCategory = deriveTopCategory(expenses);
   const recentLedger = summary?.ledger?.[0];
   const recentSettlement = recentLedger
@@ -200,173 +226,200 @@ export default function ExpenseListScreen({ navigation }) {
           },
         ]}
       >
-        {/* ── Header (SCREEN 22) ── */}
+        {/* ── Header ── */}
         <View style={styles.header}>
-          <Text style={styles.screenTitle}>Bills</Text>
+          <View style={styles.headerText}>
+            <Text style={styles.screenTitle}>Bills</Text>
+            <Text style={styles.screenSub} numberOfLines={1}>
+              {familyName} · {monthLabel}
+            </Text>
+          </View>
           <TouchableOpacity
+            style={styles.addBtn}
             onPress={() => navigation.navigate('CreateExpense')}
-            hitSlop={8}
-            activeOpacity={0.6}
+            activeOpacity={0.85}
+            accessibilityRole="button"
           >
-            <Text style={styles.addLink}>Add expense</Text>
+            <GoldFill radius={radius.pill} />
+            <Text style={styles.addBtnText}>+ Add expense</Text>
           </TouchableOpacity>
         </View>
 
-        {/* ── Balance card (Visa-style dark card) ── */}
-        <LinearGradient
-          colors={[colors.canvasElevated, colors.canvas]}
-          start={{
-            x: 0,
-            y: 0,
-          }}
-          end={{
-            x: 1,
-            y: 1,
-          }}
-          style={styles.balanceCard}
-        >
-          <View style={styles.cardTop}>
-            <View style={styles.chip}>
-              <View style={styles.chipLine} />
-              <View style={[styles.chipLine, styles.chipLineMid]} />
-            </View>
+        {/* ── Balance card ── */}
+        <View style={styles.balanceCard}>
+          <View style={styles.balanceTop}>
+            <Text style={styles.cardLabel}>YOUR BALANCE</Text>
             <View style={styles.avatarStack}>
-              {avatarMembers.map((m) => (
-                <Avatar
-                  key={m.userId}
-                  url={m.avatarUrl}
-                  emoji={m.avatarEmoji}
-                  name={m.displayName}
-                  id={m.userId}
-                  size={24}
-                  style={styles.stackAvatar}
-                />
+              {avatarMembers.map((m, i) => (
+                <View key={m.userId} style={[styles.stackItem, i > 0 && styles.stackItemOverlap]}>
+                  <Avatar
+                    url={m.avatarUrl}
+                    emoji={m.avatarEmoji}
+                    name={m.displayName}
+                    id={m.userId}
+                    size={28}
+                  />
+                </View>
               ))}
             </View>
           </View>
-          <Text style={styles.familyLabel}>{familyName}</Text>
-          <Text style={styles.balanceAmount}>{balanceText}</Text>
-          <Text
-            style={[
-              styles.balanceStatus,
-              {
-                color: owes ? colors.rustDeep : owed ? colors.success : colors.textSecondary,
-              },
-            ]}
-          >
-            {balanceStatus}
-          </Text>
-          <Text style={styles.cardSub}>{subText}</Text>
-        </LinearGradient>
 
-        {/* ── Widgets ── */}
-        <View style={styles.widgetRow}>
-          <View style={[styles.widget, styles.widgetNarrow]}>
-            <Text style={styles.widgetLabel}>THIS MONTH</Text>
-            <Text style={styles.widgetValue}>{formatMoneyCompact(summary?.totalAmount ?? 0)}</Text>
+          <View style={styles.balanceRow}>
+            <Text style={styles.balanceAmount}>{balanceText}</Text>
+            <View
+              style={[
+                styles.statusPill,
+                owes && styles.statusPillOwe,
+                owed && styles.statusPillOwed,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.statusPillText,
+                  owes && styles.statusPillTextOwe,
+                  owed && styles.statusPillTextOwed,
+                ]}
+              >
+                {balanceStatus.toUpperCase()}
+              </Text>
+            </View>
           </View>
-          <TouchableOpacity
-            style={[styles.widget, styles.widgetWide]}
-            onPress={() => navigation.navigate('ExpenseSettlements')}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.widgetLabel}>RECENT SETTLEMENT</Text>
-            {recentSettlement ? (
-              <>
-                <Text style={styles.widgetValue}>
-                  {recentSettlement.from} → {recentSettlement.to}
-                </Text>
-                <Text style={styles.widgetSub}>{formatMoneyCompact(recentSettlement.amount)}</Text>
-              </>
-            ) : (
-              <Text style={styles.widgetValue}>—</Text>
-            )}
-          </TouchableOpacity>
+
+          <Text style={styles.cardSub}>{subText}</Text>
+
+          <View style={styles.cardDivider} />
+
+          <View style={styles.statsRow}>
+            <View style={styles.statCol}>
+              <Text style={styles.statLabel}>THIS MONTH</Text>
+              <Text style={styles.statValue}>{formatMoneyCompact(monthTotal)}</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statCol}>
+              <Text style={styles.statLabel}>LAST SETTLED</Text>
+              {recentSettlement ? (
+                <View style={styles.statInline}>
+                  <Text style={styles.statValue}>
+                    {formatMoneyCompact(recentSettlement.amount)}
+                  </Text>
+                  <Text style={styles.statMeta} numberOfLines={1}>
+                    {recentSettlement.from.split(' ')[0]} → {recentSettlement.to.split(' ')[0]}
+                  </Text>
+                </View>
+              ) : (
+                <Text style={styles.statValue}>—</Text>
+              )}
+            </View>
+          </View>
+
+          <View style={styles.cardActions}>
+            <TouchableOpacity
+              style={styles.settleBtn}
+              onPress={() => navigation.navigate('ExpenseSettlements')}
+              activeOpacity={0.85}
+            >
+              <GoldFill radius={radius.pill} />
+              <Text style={styles.settleBtnText}>Settle up</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.ledgerBtn}
+              onPress={() => navigation.navigate('ExpenseLedger')}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.ledgerBtnText}>Ledger</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* ── Family balance ── */}
-        <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionLabel}>FAMILY BALANCE</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('ExpenseLedger')} hitSlop={8}>
-            <Text style={styles.sectionLink}>Ledger ›</Text>
-          </TouchableOpacity>
-        </View>
-        {(summary?.netBalances ?? []).map((nb) => {
-          const pos = nb.netBalance > 0;
-          const neg = nb.netBalance < 0;
-          return (
-            <TouchableOpacity
-              key={nb.userId}
-              style={styles.peopleRow}
-              activeOpacity={0.7}
-              onPress={() =>
-                navigation.navigate('MemberBalanceDetail', {
-                  userId: nb.userId,
-                  displayName: nb.displayName,
-                  avatarUrl: nb.avatarUrl,
-                  avatarEmoji: nb.avatarEmoji,
-                })
-              }
-            >
-              <Avatar
-                url={nb.avatarUrl}
-                emoji={nb.avatarEmoji}
-                name={nb.displayName}
-                id={nb.userId}
-                size={40}
-              />
-              <Text style={styles.peopleName}>{nb.displayName}</Text>
-              <View style={styles.peopleRight}>
-                <Text
-                  style={[
-                    styles.peopleBalance,
-                    {
-                      color: neg ? colors.danger : pos ? colors.success : colors.ink,
-                    },
-                  ]}
-                >
-                  {pos ? '+' : neg ? '−' : ''}
-                  {formatMoneyCompact(Math.abs(nb.netBalance))}
-                </Text>
-                <Text style={styles.peopleStatus}>
-                  {neg ? 'owes' : pos ? 'gets back' : 'settled'}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          );
-        })}
+        <Text style={styles.sectionLabel}>FAMILY BALANCE</Text>
+        {(summary?.netBalances || [])
+          .filter((nb) => nb.userId !== user?.id)
+          .map((nb) => {
+            const positive = nb.netBalance > 0;
+            const negative = nb.netBalance < 0;
+            const sub = memberSubline(nb);
+            return (
+              <TouchableOpacity
+                key={nb.userId}
+                style={styles.row}
+                activeOpacity={0.75}
+                onPress={() =>
+                  navigation.navigate('MemberBalanceDetail', {
+                    userId: nb.userId,
+                    displayName: nb.displayName,
+                  })
+                }
+              >
+                <Avatar
+                  url={nb.avatarUrl}
+                  emoji={nb.avatarEmoji}
+                  name={nb.displayName}
+                  id={nb.userId}
+                  size={44}
+                />
+                <View style={styles.rowBody}>
+                  <Text style={styles.rowTitle} numberOfLines={1}>
+                    {nb.displayName}
+                  </Text>
+                  {!!sub && (
+                    <Text style={styles.rowSub} numberOfLines={1}>
+                      {sub}
+                    </Text>
+                  )}
+                </View>
+                <View style={styles.rowRight}>
+                  <Text
+                    style={[
+                      styles.rowAmount,
+                      positive && styles.rowAmountPositive,
+                      negative && styles.rowAmountNegative,
+                    ]}
+                  >
+                    {positive ? '+' : negative ? '-' : ''}
+                    {formatMoneyCompact(Math.abs(nb.netBalance))}
+                  </Text>
+                  <Text style={styles.rowAmountMeta}>
+                    {positive ? 'gets back' : negative ? 'owes' : 'settled'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
 
         {/* ── Recent expenses ── */}
-        <Text style={[styles.sectionLabel, styles.sectionSpaced]}>RECENT EXPENSES</Text>
+        <Text style={styles.sectionLabel}>RECENT EXPENSES</Text>
         {expenses.length === 0 ? (
-          <Text style={styles.emptyText}>No expenses yet — add your first one above.</Text>
+          <Text style={styles.emptyText}>No expenses yet.</Text>
         ) : (
-          expenses.slice(0, 6).map((e) => {
-            const payer = e.payer?.displayName || 'You';
-            const split =
-              e.splitType === 'equal' ? `split among ${e.participants.length}` : 'custom split';
+          expenses.slice(0, 10).map((e) => {
+            const iPaid = e.paidBy === user?.id;
+            const payerName = iPaid ? 'You' : e.payer?.displayName?.split(' ')[0] || 'Someone';
+            const splitCount = e.participants?.length || 0;
             return (
               <TouchableOpacity
                 key={e.id}
-                style={styles.expenseRow}
-                onPress={() =>
-                  navigation.navigate('ExpenseDetail', {
-                    expenseId: e.id,
-                  })
-                }
-                activeOpacity={0.7}
+                style={styles.row}
+                activeOpacity={0.75}
+                onPress={() => navigation.navigate('ExpenseDetail', { expenseId: e.id })}
               >
-                <View style={styles.expenseTop}>
-                  <Text style={styles.expenseTitle} numberOfLines={1}>
+                <View style={styles.expenseIcon}>
+                  <View style={styles.expenseIconRing} />
+                </View>
+                <View style={styles.rowBody}>
+                  <Text style={styles.rowTitle} numberOfLines={1}>
                     {e.title}
                   </Text>
-                  <Text style={styles.expenseAmount}>{formatMoneyCompact(e.amount)}</Text>
-                </View>
-                <View style={styles.expenseBottom}>
-                  <Text style={styles.expenseMeta} numberOfLines={1}>
-                    {payer} · {split}
+                  <Text style={styles.rowSub} numberOfLines={1}>
+                    {payerName} paid
+                    {splitCount ? ` · split among ${splitCount}` : ''}
                   </Text>
-                  <Text style={styles.expenseDate}>{formatShortDate(e.date)}</Text>
+                </View>
+                <View style={styles.rowRight}>
+                  <Text style={styles.rowAmount}>{formatMoneyCompact(e.amount)}</Text>
+                  <Text style={styles.rowAmountMeta}>
+                    {formatShortDate(e.date || e.createdAt)}
+                  </Text>
                 </View>
               </TouchableOpacity>
             );
@@ -387,7 +440,8 @@ export default function ExpenseListScreen({ navigation }) {
           style={styles.insightCard}
         >
           <Text style={styles.insightText}>
-            This month your family shared {summary?.totalExpenses ?? 0} expenses.
+            This month your family shared {monthExpenses.length} expense
+            {monthExpenses.length === 1 ? '' : 's'}.
             {topCategory ? ` ${topCategory.name} were your biggest category.` : ''}
           </Text>
         </LinearGradient>
@@ -396,267 +450,247 @@ export default function ExpenseListScreen({ navigation }) {
   );
 }
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: colors.canvas,
-  },
-  content: {
-    paddingHorizontal: 24,
-    paddingTop: 4,
-  },
-  // Header (SCREEN 22)
+  root: { flex: 1, backgroundColor: colors.canvas },
+  content: { paddingHorizontal: 20, paddingTop: 8 },
+
+  /* ── Header ── */
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    height: 60,
+    gap: 12,
+    paddingVertical: 10,
+    marginBottom: 6,
   },
+  headerText: { flex: 1 },
   screenTitle: {
-    fontSize: 19,
-    fontWeight: '700',
-    fontFamily: fonts.displayBold,
+    fontFamily: fonts.display,
+    fontSize: 30,
+    lineHeight: 37,
     color: colors.ink,
+    letterSpacing: -0.6,
   },
-  addLink: {
+  screenSub: {
+    marginTop: 3,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: colors.textMuted,
+  },
+  addBtn: {
+    height: 42,
+    paddingHorizontal: 18,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...goldButton.glow,
+  },
+  addBtnText: {
+    fontFamily: fonts.bodyBold,
     fontSize: 14,
-    fontWeight: '500',
-    fontFamily: fonts.bodyMedium,
-    color: colors.goldDeep,
+    color: goldButton.onGold,
   },
-  // Balance card (SCREEN 22) — Visa-style dark card
+
+  /* ── Balance card ── */
   balanceCard: {
-    borderRadius: 28,
-    padding: 24,
-    marginTop: 8,
-    marginBottom: 20,
-    shadowColor: colors.shadow,
-    shadowOffset: {
-      width: 0,
-      height: 20,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 40,
-    elevation: 8,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: withAlpha(colors.gold, 0.3),
+    borderColor: colors.borderCool,
+    borderRadius: radius.sheet,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
   },
-  cardTop: {
+  balanceTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 26,
   },
-  chip: {
-    width: 34,
-    height: 24,
-    borderRadius: 5,
-    backgroundColor: colors.goldSoft,
-    justifyContent: 'center',
-    gap: 4,
-    paddingHorizontal: 5,
-  },
-  chipLine: {
-    height: 1.5,
-    borderRadius: 1,
-    backgroundColor: withAlpha(colors.canvas, 0.35),
-  },
-  chipLineMid: {
-    width: '70%',
-  },
-  familyLabel: {
-    fontSize: 12,
-    fontWeight: '600',
+  cardLabel: {
     fontFamily: fonts.bodySemiBold,
-    color: colors.goldSoft,
-    textTransform: 'uppercase',
+    fontSize: 11,
     letterSpacing: 1.4,
-    marginBottom: 10,
+    color: colors.textFaint,
   },
-  avatarStack: {
-    flexDirection: 'row',
-  },
-  stackAvatar: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: colors.goldLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: -8,
+  avatarStack: { flexDirection: 'row', alignItems: 'center' },
+  stackItem: {
+    borderRadius: 16,
     borderWidth: 2,
     borderColor: colors.canvasElevated,
   },
-  balanceAmount: {
-    fontSize: 46,
-    fontWeight: '800',
-    fontFamily: fonts.display,
-    color: colors.onAccent,
-    letterSpacing: -0.02,
-    marginBottom: 6,
-  },
-  balanceStatus: {
-    fontSize: 13,
-    fontWeight: '600',
-    fontFamily: fonts.bodySemiBold,
-    marginBottom: 4,
-  },
-  cardSub: {
-    fontSize: 13,
-    lineHeight: 18,
-    fontFamily: fonts.body,
-    color: colors.textSecondary,
-  },
-  // Widgets (SCREEN 22)
-  widgetRow: {
+  stackItemOverlap: { marginLeft: -10 },
+
+  balanceRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 10,
-    marginBottom: 26,
+    marginTop: 14,
   },
-  widget: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 14,
-    shadowColor: colors.shadow,
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.04,
-    shadowRadius: 2,
-    elevation: 1,
+  balanceAmount: {
+    fontFamily: fonts.display,
+    fontSize: 38,
+    lineHeight: 44,
+    color: colors.ink,
+    letterSpacing: -1,
   },
-  widgetNarrow: {
-    flex: 1,
+  statusPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: radius.sm,
+    backgroundColor: withAlpha(colors.success, 0.16),
   },
-  widgetWide: {
-    flex: 2,
-  },
-  widgetLabel: {
+  statusPillOwe: { backgroundColor: colors.dangerSoft },
+  statusPillOwed: { backgroundColor: colors.goldTint },
+  statusPillText: {
+    fontFamily: fonts.bodyBold,
     fontSize: 10,
-    fontWeight: '600',
-    fontFamily: fonts.bodySemiBold,
-    letterSpacing: 0.3,
-    color: colors.textMuted,
-    marginBottom: 8,
+    letterSpacing: 0.7,
+    color: colors.success,
   },
-  widgetValue: {
-    fontSize: 14,
-    fontWeight: '700',
-    fontFamily: fonts.displayBold,
-    color: colors.ink,
-  },
-  widgetSub: {
-    fontSize: 11,
+  statusPillTextOwe: { color: colors.danger },
+  statusPillTextOwed: { color: colors.gold },
+
+  cardSub: {
+    marginTop: 10,
     fontFamily: fonts.body,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  // Sections (SCREEN 22)
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  sectionLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    fontFamily: fonts.bodySemiBold,
-    letterSpacing: 0.4,
-    color: colors.textMuted,
-  },
-  sectionSpaced: {
-    marginTop: 26,
-    marginBottom: 14,
-  },
-  sectionLink: {
-    fontSize: 12,
-    fontWeight: '600',
-    fontFamily: fonts.bodySemiBold,
-    color: colors.goldDeep,
-  },
-  // Family balance rows
-  peopleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    paddingVertical: 13,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  peopleName: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '500',
-    fontFamily: fonts.bodyMedium,
-    color: colors.ink,
-  },
-  peopleRight: {
-    alignItems: 'flex-end',
-  },
-  peopleBalance: {
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: fonts.mono,
-  },
-  peopleStatus: {
-    fontSize: 11,
-    fontFamily: fonts.body,
-    color: colors.textMuted,
-    marginTop: 3,
-  },
-  // Recent expense rows
-  expenseRow: {
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  expenseTop: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  expenseTitle: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '600',
-    fontFamily: fonts.displayBold,
-    color: colors.ink,
-    marginRight: 8,
-  },
-  expenseAmount: {
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: fonts.mono,
-    color: colors.ink,
-  },
-  expenseBottom: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-  },
-  expenseMeta: {
-    flex: 1,
-    fontSize: 12,
-    fontFamily: fonts.body,
-    color: colors.textSecondary,
-    marginRight: 8,
-  },
-  expenseDate: {
-    fontSize: 11,
-    fontFamily: fonts.body,
-    color: colors.textMuted,
-  },
-  // Empty
-  emptyText: {
     fontSize: 13,
-    fontFamily: fonts.body,
-    color: colors.textSecondary,
-    paddingVertical: 14,
+    color: colors.textMuted,
   },
-  // Insight card
+  cardDivider: {
+    height: 1,
+    backgroundColor: colors.divider,
+    marginVertical: 16,
+  },
+
+  statsRow: { flexDirection: 'row', alignItems: 'flex-start' },
+  statCol: { flex: 1 },
+  statDivider: {
+    width: 1,
+    alignSelf: 'stretch',
+    backgroundColor: colors.divider,
+    marginHorizontal: 16,
+  },
+  statLabel: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 10,
+    letterSpacing: 1.2,
+    color: colors.textFaint,
+  },
+  statInline: { flexDirection: 'row', alignItems: 'baseline', gap: 7 },
+  statValue: {
+    marginTop: 5,
+    fontFamily: fonts.bodyBold,
+    fontSize: 17,
+    color: colors.ink,
+  },
+  statMeta: {
+    flexShrink: 1,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.textMuted,
+  },
+
+  cardActions: { flexDirection: 'row', gap: 12, marginTop: 18 },
+  settleBtn: {
+    flex: 1,
+    height: 46,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...goldButton.glow,
+  },
+  settleBtnText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 15,
+    color: goldButton.onGold,
+  },
+  ledgerBtn: {
+    flex: 1,
+    height: 46,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceDark,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ledgerBtnText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 15,
+    color: colors.ink,
+  },
+
+  /* ── Sections ── */
+  sectionLabel: {
+    marginTop: 24,
+    marginBottom: 10,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 11,
+    letterSpacing: 1.4,
+    color: colors.textFaint,
+  },
+
+  /* ── Shared row (family balance + recent expenses) ── */
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 13,
+    marginBottom: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderCool,
+    borderRadius: radius.xl,
+  },
+  rowBody: { flex: 1 },
+  rowTitle: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 15.5,
+    color: colors.ink,
+  },
+  rowSub: {
+    marginTop: 3,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: colors.textMuted,
+  },
+  rowRight: { alignItems: 'flex-end' },
+  rowAmount: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 15.5,
+    color: colors.ink,
+  },
+  rowAmountPositive: { color: colors.success },
+  rowAmountNegative: { color: colors.danger },
+  rowAmountMeta: {
+    marginTop: 3,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.textFaint,
+  },
+  expenseIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.card,
+    backgroundColor: colors.surfaceDark,
+    borderWidth: 1,
+    borderColor: colors.borderCool,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  expenseIconRing: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 2,
+    borderColor: colors.gold,
+  },
+
+  emptyText: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.textFaint,
+    paddingVertical: 12,
+  },
+
   insightCard: {
     borderRadius: 20,
     padding: 20,

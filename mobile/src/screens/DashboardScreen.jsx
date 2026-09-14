@@ -42,7 +42,8 @@ import { taskApi } from "../shared/api/task";
 import { expenseApi } from "../shared/api/expense";
 import { vaultApi } from "../shared/api/vault";
 import { eventApi } from "../shared/api/event";
-import { colors, fonts, spacing, radius, withAlpha } from "../shared/theme";
+import { colors, fonts, goldButton, radius, spacing, withAlpha } from '../shared/theme';
+import { GoldFill } from '../shared/components/GoldButton';
 import Avatar from "../components/Avatar";
 import { KeyboardAvoider } from "../shared/components/KeyboardAware";
 import GlassCard, { GlassSheen } from "../shared/components/GlassCard";
@@ -1800,6 +1801,7 @@ export default function DashboardScreen() {
                   disabled={!canSend || sending}
                   activeOpacity={0.7}
                 >
+                    <GoldFill radius={radius.md} disabled={!canSend} />
                   {sending ? (
                     <ActivityIndicator size="small" color={colors.navyDeep} />
                   ) : (
@@ -2762,6 +2764,7 @@ const mo = StyleSheet.create({
     borderRadius: radius.md,
     backgroundColor: colors.goldGlow,
     alignItems: "center",
+    ...goldButton.glow,
   },
   sendBtnDisabled: {
     opacity: 0.35,

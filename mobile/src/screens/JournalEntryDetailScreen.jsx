@@ -13,7 +13,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { format, parseISO } from "date-fns";
-import { colors, fonts, radius, spacing } from "../shared/theme";
+import { colors, fonts, goldButton, radius, spacing } from '../shared/theme';
+import { GoldFill } from '../shared/components/GoldButton';
 import { journalApi } from "../shared/api/journal";
 import { moodById, moodIcon } from "../shared/constants/journalMoods";
 import ConfirmSheet from "../components/ConfirmSheet";
@@ -233,6 +234,7 @@ export default function JournalEntryDetailScreen({ navigation, route }) {
           onPress={() => navigation.navigate("JournalEditor", { entry })}
           activeOpacity={0.85}
         >
+            <GoldFill radius={radius.md} />
           <Text style={styles.editBtnText}>Edit entry</Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -364,6 +366,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.gold,
+    ...goldButton.glow,
   },
   editBtnText: {
     fontFamily: fonts.bodyBold,

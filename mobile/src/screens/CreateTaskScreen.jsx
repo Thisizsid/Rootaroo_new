@@ -17,7 +17,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { taskApi } from '../shared/api/task';
 import { useAuthStore } from '../shared/store/authStore';
 import { householdApi } from '../shared/api/household';
-import { colors, radius, fonts, withAlpha } from '../shared/theme';
+import { colors, fonts, goldButton, radius, withAlpha } from '../shared/theme';
+import { GoldFill } from '../shared/components/GoldButton';
 import Avatar from '../components/Avatar';
 import { KEYBOARD_BEHAVIOR } from '../shared/components/KeyboardAware';
 const POINTS_OPTIONS = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
@@ -521,6 +522,7 @@ export default function CreateTaskScreen({ route, navigation }) {
           disabled={!canPost}
           activeOpacity={0.85}
         >
+            <GoldFill radius={radius.pill} disabled={!canPost} />
           {posting ? (
             <ActivityIndicator size="small" color={colors.onAccent} />
           ) : (
@@ -847,14 +849,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 20,
-    shadowColor: colors.gold,
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.28,
-    shadowRadius: 20,
-    elevation: 5,
+    ...goldButton.glow,
   },
   submitBtnDisabled: {
     opacity: 0.5,

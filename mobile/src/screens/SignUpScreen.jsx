@@ -14,7 +14,8 @@ import { showAlert } from '../shared/services/themedAlert';
 import Svg, { Path } from 'react-native-svg';
 import { authApi, storePendingAuthResponse } from '../shared/api/auth';
 import { startEmailSignupProgress } from '../shared/navigation/postAuthNavigation';
-import { colors, fonts, radius } from '../shared/theme';
+import { colors, fonts, goldButton, radius } from '../shared/theme';
+import { GoldFill } from '../shared/components/GoldButton';
 import { KEYBOARD_BEHAVIOR } from '../shared/components/KeyboardAware';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -202,6 +203,7 @@ export default function SignUpScreen({ navigation }) {
             activeOpacity={0.85}
             disabled={!canContinue}
           >
+              <GoldFill radius={27} disabled={!canContinue} />
             {loading ? (
               <ActivityIndicator color={colors.onAccent} />
             ) : (
@@ -333,6 +335,7 @@ const styles = StyleSheet.create({
     borderRadius: 27,
     alignItems: 'center',
     justifyContent: 'center',
+    ...goldButton.glow,
   },
   ctaButtonDisabled: {
     backgroundColor: colors.btnDisabledBg,

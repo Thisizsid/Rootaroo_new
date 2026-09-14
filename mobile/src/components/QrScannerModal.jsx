@@ -1,7 +1,8 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, StatusBar } from 'react-native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { CameraView } from 'expo-camera';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { hasPermission } from '../shared/permissions';
 import { colors, fonts, withAlpha } from '../shared/theme';
 
 /**
@@ -12,7 +13,7 @@ import { colors, fonts, withAlpha } from '../shared/theme';
  */
 export default function QrScannerModal({ visible, onClose, onScanned }) {
   const insets = useSafeAreaInsets();
-  const [permission, requestPermission] = useCameraPermissions();
+  const [granted, setGranted] = useState(false);
   const [scanned, setScanned] = useState(false);
 
   const handleBarcodeScanned = useCallback(
@@ -24,17 +25,34 @@ export default function QrScannerModal({ visible, onClose, onScanned }) {
     [scanned, onScanned],
   );
 
-  const handleShow = useCallback(() => {
-    setScanned(false);
-  }, []);
+  // Callers gate with ensureCamera() before setting `visible` — the shared
+  // permission sheet is a Modal and can't be stacked reliably on top of this
+  // one. This is only a read-back, so a caller that forgot closes cleanly
+  // instead of leaving the user on a dead black screen.
+  useEffect(() => {
+    if (!visible) {
+      setGranted(false);
+      setScanned(false);
+      return undefined;
+    }
+    let cancelled = false;
+    hasPermission('camera').then((ok) => {
+      if (cancelled) return;
+      setGranted(ok);
+      if (!ok) onClose?.();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, onClose]);
 
   if (!visible) return null;
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose} onShow={handleShow}>
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <View style={styles.root}>
         <StatusBar barStyle="light-content" />
-        {permission?.granted ? (
+        {granted && (
           <CameraView
             style={StyleSheet.absoluteFillObject}
             facing="back"
@@ -43,24 +61,10 @@ export default function QrScannerModal({ visible, onClose, onScanned }) {
             }}
             onBarcodeScanned={handleBarcodeScanned}
           />
-        ) : (
-          <View style={styles.permissionWrap}>
-            <Text style={styles.permissionTitle}>Camera access needed</Text>
-            <Text style={styles.permissionText}>
-              Allow camera access to scan a household invite QR code.
-            </Text>
-            <TouchableOpacity
-              style={styles.permissionBtn}
-              onPress={requestPermission}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.permissionBtnText}>Allow camera access</Text>
-            </TouchableOpacity>
-          </View>
         )}
 
         {/* Scan frame overlay */}
-        {permission?.granted && (
+        {granted && (
           <View style={styles.overlay} pointerEvents="none">
             <View style={styles.frame} />
             <Text style={styles.hint}>Point your camera at the household QR code</Text>
@@ -88,46 +92,6 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: colors.surfaceRaised,
-  },
-  permissionWrap: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 32,
-  },
-  permissionTitle: {
-    fontFamily: fonts.displayBold,
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.onAccent,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  permissionText: {
-    fontFamily: fonts.body,
-    fontSize: 14,
-    color: colors.onAccent,
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  permissionBtn: {
-    paddingHorizontal: 24,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.gold,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: colors.gold,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.28,
-    shadowRadius: 20,
-    elevation: 6,
-  },
-  permissionBtnText: {
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: fonts.bodySemiBold,
-    color: colors.onAccent,
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,

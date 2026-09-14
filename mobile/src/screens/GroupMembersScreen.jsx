@@ -15,7 +15,8 @@ import { useNavigation } from '@react-navigation/native';
 import { chatApi } from '../shared/api/chat';
 import { householdApi } from '../shared/api/household';
 import { useAuthStore } from '../shared/store/authStore';
-import { colors, fonts, radius, spacing, withAlpha } from '../shared/theme';
+import { colors, fonts, goldButton, radius, spacing, withAlpha } from '../shared/theme';
+import { GoldFill } from '../shared/components/GoldButton';
 import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
 const AVATAR_COLORS = [colors.gold, colors.avatarTan, colors.avatarLilac, colors.avatarSage, colors.avatarSky];
 function initials(name) {
@@ -225,6 +226,7 @@ export default function GroupMembersScreen({ route }) {
             disabled={busy}
             activeOpacity={0.7}
           >
+              <GoldFill radius={radius.pill} disabled={busy} />
             {busy ? (
               <ActivityIndicator size="small" color={colors.onAccent} />
             ) : (
@@ -395,6 +397,7 @@ export default function GroupMembersScreen({ route }) {
                         disabled={busy}
                         activeOpacity={0.7}
                       >
+                          <GoldFill radius={radius.pill} disabled={busy} />
                         {busy ? (
                           <ActivityIndicator size="small" color={colors.onAccent} />
                         ) : (
@@ -671,6 +674,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     minWidth: 64,
     alignItems: 'center',
+    ...goldButton.glow,
   },
   addBtnText: {
     fontFamily: fonts.bodyBold,

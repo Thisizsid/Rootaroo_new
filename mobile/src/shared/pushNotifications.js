@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { notificationApi } from './api/notification';
+import { ensureNotifications } from './permissions';
 
 // Without a handler, expo-notifications' documented default is to NOT show
 // an incoming notification at all while the app is in the foreground —
@@ -30,13 +31,11 @@ Notifications.setNotificationHandler({
  */
 export async function registerForPushNotificationsAsync() {
   try {
-    const { status: existing } = await Notifications.getPermissionsAsync();
-    let status = existing;
-    if (status !== 'granted') {
-      const req = await Notifications.requestPermissionsAsync();
-      status = req.status;
-    }
-    if (status !== 'granted') return;
+    // Silent on purpose: this runs opportunistically at launch, so a refusal
+    // must not throw the permission sheet in front of someone who never asked
+    // for it. An explicit, user-initiated ask belongs on a screen (e.g.
+    // NotificationPreferences), where the sheet is the right response.
+    if (!(await ensureNotifications({ silent: true }))) return;
 
     const { data: token } = await Notifications.getDevicePushTokenAsync();
     if (!token) return;

@@ -17,7 +17,8 @@ import {
 import { showAlert } from '../shared/services/themedAlert';
 import Svg, { Path } from 'react-native-svg';
 import { authApi } from '../shared/api/auth';
-import { colors, fonts, radius, withAlpha } from '../shared/theme';
+import { colors, fonts, goldButton, radius, withAlpha } from '../shared/theme';
+import { GoldFill } from '../shared/components/GoldButton';
 import { KEYBOARD_BEHAVIOR } from '../shared/components/KeyboardAware';
 const COUNTRY_CODES = [
   {
@@ -245,6 +246,7 @@ export default function PhoneSignUpScreen({ navigation }) {
               activeOpacity={0.85}
               disabled={loading}
             >
+                <GoldFill radius={27} disabled={loading} />
               {loading ? (
                 <ActivityIndicator color={colors.onAccent} />
               ) : (
@@ -486,6 +488,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
+    ...goldButton.glow,
   },
   primaryBtnDisabled: {
     opacity: 0.7,

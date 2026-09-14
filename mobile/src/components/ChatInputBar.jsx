@@ -11,10 +11,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { showAlert } from '../shared/services/themedAlert';
+import { ensureMicrophone } from '../shared/permissions';
 import ThreadedReplyPreview from './ThreadedReplyPreview';
+import AttachSheet from './AttachSheet';
 import { chatApi } from '../shared/api/chat';
 import { colors, fonts, radius } from '../shared/theme';
+import { chatTheme } from '../shared/theme/chat';
 
 function formatTimer(seconds) {
   const m = Math.floor(seconds / 60);
@@ -22,10 +26,11 @@ function formatTimer(seconds) {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-export default function ChatInputBar({ onSend, onSendVoice, onSendImage, replyTo, onDismissReply }) {
+export default function ChatInputBar({ onSend, onSendVoice, onSendImage, replyTo, onDismissReply, chatTitle, participantCount }) {
   const insets = useSafeAreaInsets();
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
+  const [attachVisible, setAttachVisible] = useState(false);
   const typingTimer = useRef(null);
   const typingStopped = useRef(true);
 
@@ -93,6 +98,10 @@ export default function ChatInputBar({ onSend, onSendVoice, onSendImage, replyTo
     }
   };
 
+  const handleAttach = () => {
+    setAttachVisible(true);
+  };
+
   const handlePickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
@@ -123,11 +132,7 @@ export default function ChatInputBar({ onSend, onSendVoice, onSendImage, replyTo
 
   const startRecording = async () => {
     try {
-      const { status } = await Audio.requestPermissionsAsync();
-      if (status !== 'granted') {
-        showAlert('Microphone access needed', 'Enable microphone access to record voice messages.');
-        return;
-      }
+      if (!(await ensureMicrophone())) return;
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
@@ -187,147 +192,161 @@ export default function ChatInputBar({ onSend, onSendVoice, onSendImage, replyTo
   return (
     <View style={[styles.wrapper, { paddingBottom: Math.max(insets.bottom, 0) }]}>
       {replyTo && (
-          <ThreadedReplyPreview
-            senderName={replyTo.senderName}
-            content={replyTo.content}
-            onDismiss={onDismissReply}
-          />
-        )}
-        {isRecording ? (
-          <View style={styles.container}>
-            <View style={styles.recordingDot} />
-            <Text style={styles.recordingTimer}>{formatTimer(recordSeconds)}</Text>
-            <Text style={styles.recordingHint}>Recording…</Text>
-            <TouchableOpacity
-              onPress={() => stopRecording({ send: false })}
-              style={styles.iconBtn}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="close" size={18} color={colors.textSecondary} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => stopRecording({ send: true })}
-              style={[styles.sendBtn, styles.sendBtnActive]}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="arrow-up" size={18} color={colors.onAccent} />
-            </TouchableOpacity>
-          </View>
-        ) : (
+        <ThreadedReplyPreview
+          senderName={replyTo.senderName}
+          content={replyTo.content}
+          onDismiss={onDismissReply}
+        />
+      )}
+      {isRecording ? (
         <View style={styles.container}>
-          <TouchableOpacity onPress={handlePickImage} style={styles.iconBtn} disabled={sending}>
-            <Ionicons name="image-outline" size={20} color={colors.textSecondary} />
+          <View style={styles.recordingDot} />
+          <Text style={styles.recordingTimer}>{formatTimer(recordSeconds)}</Text>
+          <Text style={styles.recordingHint}>Recording…</Text>
+          <TouchableOpacity
+            onPress={() => stopRecording({ send: false })}
+            style={styles.iconBtn}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="close" size={18} color={chatTheme.inputIcon} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={startRecording} style={styles.iconBtn} disabled={sending}>
-            <Ionicons name="mic-outline" size={20} color={colors.textSecondary} />
+          <TouchableOpacity
+            onPress={() => stopRecording({ send: true })}
+            style={styles.sendBtn}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={chatTheme.sendGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <Ionicons name="arrow-up" size={18} color={chatTheme.sendIcon} />
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View style={styles.container}>
+          <TouchableOpacity
+            onPress={handleAttach}
+            style={styles.attachBtn}
+            disabled={sending}
+            accessibilityRole="button"
+            accessibilityLabel="Attach"
+          >
+            <Ionicons name="add" size={22} color={chatTheme.inputIcon} />
           </TouchableOpacity>
           <TextInput
             style={styles.input}
-            placeholder="Message…"
-            placeholderTextColor={colors.textMuted}
+            placeholder={chatTitle ? `Message ${chatTitle}…` : 'Message…'}
+            placeholderTextColor={chatTheme.inputPlaceholder}
             value={text}
             onChangeText={handleTextChange}
             multiline
             maxLength={5000}
             editable={!sending}
           />
-          {isDisabled ? (
-            <TouchableOpacity
-              onPress={handleSendLike}
-              style={[styles.sendBtn, styles.sendBtnActive]}
-              disabled={sending}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="thumbs-up" size={18} color={colors.onAccent} />
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              onPress={handleSend}
-              style={[styles.sendBtn, styles.sendBtnActive]}
-              disabled={sending}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="arrow-up" size={18} color={colors.onAccent} />
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity
+            onPress={isDisabled ? handleSendLike : handleSend}
+            style={styles.sendBtn}
+            disabled={sending}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={chatTheme.sendGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <Ionicons
+              name={isDisabled ? 'thumbs-up' : 'arrow-up'}
+              size={16}
+              color={chatTheme.sendIcon}
+            />
+          </TouchableOpacity>
         </View>
-        )}
+      )}
+      <AttachSheet
+        visible={attachVisible}
+        onClose={() => setAttachVisible(false)}
+        chatTitle={chatTitle}
+        participantCount={participantCount}
+        onPickImage={handlePickImage}
+        onStartVoice={startRecording}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrapper: {
-    backgroundColor: colors.canvas,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginBottom: 10,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+    backgroundColor: chatTheme.bg,
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 10,
   },
+  // The mock's single rounded pill — attach button, input, and send button
+  // all sit inside this one container instead of three separate surfaces.
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 4,
+    backgroundColor: chatTheme.inputBg,
+    borderWidth: 1,
+    borderColor: chatTheme.inputBorder,
+    borderRadius: radius.pill,
+    paddingVertical: 6,
+    paddingLeft: 8,
+    paddingRight: 6,
   },
-  iconBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: colors.surface,
+  attachBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+  },
+  iconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   input: {
     flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: radius.pill,
-    paddingHorizontal: 18,
+    minWidth: 0,
+    paddingHorizontal: 4,
     paddingVertical: 10,
-    fontSize: 15,
-    fontFamily: fonts.body,
+    fontSize: 14.5,
+    fontFamily: fonts.bodySemiBold,
     maxHeight: 100,
-    color: colors.ink,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-    elevation: 1,
+    color: chatTheme.inputText,
   },
   sendBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  sendBtnActive: {
-    backgroundColor: colors.gold,
-  },
-  sendBtnDisabled: {
-    backgroundColor: colors.surfaceDark,
   },
   recordingDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
     backgroundColor: colors.danger,
+    marginLeft: 4,
   },
   recordingTimer: {
     fontSize: 15,
     fontWeight: '700',
     fontFamily: fonts.mono,
-    color: colors.ink,
+    color: chatTheme.inputText,
   },
   recordingHint: {
     fontFamily: fonts.body,
     flex: 1,
     fontSize: 14,
-    color: colors.textMuted,
+    color: chatTheme.inputIcon,
   },
 });
