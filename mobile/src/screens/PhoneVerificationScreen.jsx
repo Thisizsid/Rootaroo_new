@@ -15,7 +15,8 @@ import { authApi } from '../shared/api/auth';
 import { useAuthStore } from '../shared/store/authStore';
 import { loadSignupProgress } from '../shared/store/signupProgress';
 import { resolvePostAuthNavigation } from '../shared/navigation/postAuthNavigation';
-import { colors, fonts, radius } from '../shared/theme';
+import { colors, fonts, goldButton, radius } from '../shared/theme';
+import { GoldFill } from '../shared/components/GoldButton';
 import { KeyboardAwareScrollView } from '../shared/components/KeyboardAware';
 const OTP_LENGTH = 6;
 const RESEND_COOLDOWN = 30; // seconds
@@ -250,6 +251,7 @@ export default function PhoneVerificationScreen({ navigation, route }) {
                   activeOpacity={0.85}
                   disabled={!otpFilled || verifying}
                 >
+                    <GoldFill radius={27} disabled={(!otpFilled || verifying)} />
                   <Text style={styles.primaryText}>Verify number</Text>
                 </TouchableOpacity>
 
@@ -437,6 +439,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
+    ...goldButton.glow,
   },
   primaryBtnDisabled: {
     backgroundColor: colors.btnDisabledBg,
@@ -446,7 +449,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.2,
-    color: colors.onAccent,
+    color: goldButton.onGold,
   },
   // Change number
   changeBtn: {

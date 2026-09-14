@@ -54,7 +54,8 @@ import { getPrivateKey, storePrivateKey, getBackupMode } from '../shared/crypto/
 import { verifyPublicKey } from '../shared/crypto/keyPinStore';
 import { formatFileSize } from '../shared/utils/format';
 import * as ScreenCapture from 'expo-screen-capture';
-import { colors, fonts, withAlpha } from '../shared/theme';
+import { colors, fonts, goldButton, withAlpha } from '../shared/theme';
+import { GoldFill } from '../shared/components/GoldButton';
 import ConfirmSheet from '../components/ConfirmSheet';
 import { KeyboardAvoider } from '../shared/components/KeyboardAware';
 function categorize(mimeType) {
@@ -470,6 +471,7 @@ export default function VaultViewerScreen({ navigation, route }) {
             </Text>
             <Text style={styles.fileCardMeta}>{formatFileSize(doc.sizeBytes)}</Text>
             <TouchableOpacity style={styles.playBtn} onPress={toggleAudio} activeOpacity={0.85}>
+              <GoldFill radius={9999} />
               <Text style={styles.playBtnText}>
                 {audioStatus === 'playing' ? '⏸ Pause' : '▶ Play'}
               </Text>
@@ -493,6 +495,7 @@ export default function VaultViewerScreen({ navigation, route }) {
               disabled={exporting}
               activeOpacity={0.85}
             >
+                <GoldFill radius={9999} />
               {exporting ? (
                 <ActivityIndicator size="small" color={colors.onAccent} />
               ) : (
@@ -646,6 +649,7 @@ export default function VaultViewerScreen({ navigation, route }) {
                 onPress={confirmRename}
                 activeOpacity={0.85}
               >
+                  <GoldFill radius={10} />
                 <Text style={styles.renameSaveText}>Save</Text>
               </TouchableOpacity>
             </View>
@@ -781,11 +785,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gold,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: colors.gold,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.28,
-    shadowRadius: 20,
-    elevation: 6,
+    ...goldButton.glow,
   },
   openBtnText: {
     fontSize: 14,
@@ -800,16 +800,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gold,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: colors.gold,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.28,
-    shadowRadius: 20,
-    elevation: 6,
+    ...goldButton.glow,
   },
   playBtnText: {
     fontSize: 14,
     fontFamily: fonts.displayBold,
-    color: colors.onAccent,
+    color: goldButton.onGold,
   },
   // ── Options action sheet ──
   overlay: {
@@ -908,9 +904,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 10,
     backgroundColor: colors.gold,
+    ...goldButton.glow,
   },
   renameSaveText: {
-    color: colors.onAccent,
+    color: goldButton.onGold,
     fontSize: 14,
     fontFamily: fonts.displayBold,
   },

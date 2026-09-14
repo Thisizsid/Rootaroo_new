@@ -12,8 +12,9 @@ import {
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, fonts } from '../../shared/theme';
+import { colors, fonts, goldButton } from '../../shared/theme';
 import { KEYBOARD_BEHAVIOR } from './KeyboardAware';
+import { GoldFill } from './GoldButton';
 
 /**
  * Auth wizard shell — matches design/auth-designs/screen05..11 (rootaro signup).
@@ -94,6 +95,7 @@ export default function SignupWizardShell({
               disabled={continueDisabled || loading}
               activeOpacity={0.85}
             >
+                <GoldFill radius={27} disabled={(continueDisabled || loading)} />
               {loading ? (
                 <ActivityIndicator color={colors.onAccent} />
               ) : (
@@ -190,6 +192,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.goldWarm,
     alignItems: 'center',
     justifyContent: 'center',
+    ...goldButton.glow,
   },
 
   ctaOff: {

@@ -14,7 +14,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Swipeable } from 'react-native-gesture-handler';
 import { notificationApi } from '../shared/api/notification';
-import { colors, fonts, withAlpha } from '../shared/theme';
+import { colors, fonts, goldButton, withAlpha } from '../shared/theme';
+import { GoldFill } from '../shared/components/GoldButton';
 import GlassCard from '../shared/components/GlassCard';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -206,6 +207,7 @@ export default function NotificationScreen({ navigation }) {
       activeOpacity={0.85}
       onPress={() => handleMarkRead(id)}
     >
+        <GoldFill radius={16} />
       <Ionicons name="checkmark-done" size={18} color={colors.navyDeep} />
       <Text style={styles.swipeActionText}>Mark read</Text>
     </TouchableOpacity>
@@ -451,6 +453,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
+    ...goldButton.glow,
   },
   swipeActionText: {
     fontSize: 11,

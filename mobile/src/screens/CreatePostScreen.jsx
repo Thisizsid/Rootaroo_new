@@ -25,9 +25,11 @@ import { feedApi } from '../shared/api/feed';
 import { householdApi } from '../shared/api/household';
 import apiClient from '../shared/api/client';
 import * as ImagePicker from 'expo-image-picker';
+import { ensureCamera } from '../shared/permissions';
 import { useFeedStore } from '../shared/store/feedStore';
 import { useAuthStore } from '../shared/store/authStore';
-import { colors, fonts, radius, withAlpha } from '../shared/theme';
+import { colors, fonts, goldButton, radius, withAlpha } from '../shared/theme';
+import { GoldFill } from '../shared/components/GoldButton';
 import { KEYBOARD_BEHAVIOR } from '../shared/components/KeyboardAware';
 const MAX_CHARS = 10000;
 const MAX_MEDIA = 10;
@@ -284,11 +286,6 @@ export default function CreatePostScreen({ navigation, route }) {
     [media.length],
   );
   const pickFromLibrary = useCallback(async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      alert('Permission needed: Allow photo library access to attach media.');
-      return;
-    }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images', 'videos'],
       allowsMultipleSelection: true,
@@ -300,11 +297,7 @@ export default function CreatePostScreen({ navigation, route }) {
     await uploadAssets(result.assets);
   }, [uploadAssets]);
   const takePhoto = useCallback(async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') {
-      alert('Permission needed: Allow camera access to take a photo.');
-      return;
-    }
+    if (!(await ensureCamera())) return;
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ['images'],
       quality: 0.85,
@@ -634,6 +627,7 @@ export default function CreatePostScreen({ navigation, route }) {
               pressed && styles.postButtonPressed,
             ]}
           >
+              <GoldFill radius={9999} disabled={!canPost} />
             <Animated.View
               style={{
                 transform: [
@@ -1141,11 +1135,7 @@ const styles = StyleSheet.create({
     borderRadius: 9999,
     alignItems: 'center',
     minWidth: 88,
-    shadowColor: colors.gold,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.28,
-    shadowRadius: 14,
-    elevation: 5,
+    ...goldButton.glow,
   },
   postButtonDisabled: {
     opacity: 0.45,

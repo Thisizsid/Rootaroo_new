@@ -23,7 +23,8 @@ import { householdApi } from '../shared/api/household';
 import { useAuthStore } from '../shared/store/authStore';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { format, addDays } from 'date-fns';
-import { colors, radius, fonts, withAlpha } from '../shared/theme';
+import { colors, fonts, goldButton, radius, withAlpha } from '../shared/theme';
+import { GoldFill } from '../shared/components/GoldButton';
 import ConfirmSheet from '../components/ConfirmSheet';
 import EmptyState from '../components/EmptyState';
 import Avatar from '../components/Avatar';
@@ -776,6 +777,7 @@ export default function GroceryListScreen({ navigation }) {
               disabled={saving}
               activeOpacity={0.85}
             >
+                <GoldFill radius={radius.pill} disabled={saving} />
               {saving ? (
                 <ActivityIndicator size="small" color={colors.onAccent} />
               ) : (
@@ -1166,14 +1168,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 4,
-    shadowColor: colors.gold,
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.28,
-    shadowRadius: 20,
-    elevation: 5,
+    ...goldButton.glow,
   },
   saveBtnDisabled: {
     opacity: 0.5,

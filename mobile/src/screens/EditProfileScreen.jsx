@@ -20,7 +20,8 @@ import { authApi } from '../shared/api/auth';
 import { householdApi } from '../shared/api/household';
 import { feedApi } from '../shared/api/feed';
 import apiClient from '../shared/api/client';
-import { colors, fonts, radius, withAlpha } from '../shared/theme';
+import { colors, fonts, goldButton, radius, withAlpha } from '../shared/theme';
+import { GoldFill } from '../shared/components/GoldButton';
 import PostCard from '../shared/components/PostCard';
 import { KEYBOARD_BEHAVIOR } from '../shared/components/KeyboardAware';
 import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
@@ -108,11 +109,6 @@ export default function EditProfileScreen({ navigation }) {
   }, []);
   const pickCoverPhoto = useCallback(async () => {
     if (!householdId) return;
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      showAlert('Permission needed', 'Allow access to your photo library.');
-      return;
-    }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,
@@ -163,11 +159,6 @@ export default function EditProfileScreen({ navigation }) {
     showAlert('Cover photo', undefined, options);
   }, [coverPhotoUrl, pickCoverPhoto, removeCoverPhoto]);
   const pickAvatar = useCallback(async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      showAlert('Permission needed', 'Allow access to your photo library.');
-      return;
-    }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,
@@ -321,6 +312,7 @@ export default function EditProfileScreen({ navigation }) {
                   right: 8,
                 }}
               >
+                  <GoldFill radius={17} />
                 <Text style={styles.coverEditBadgeIcon}>✎</Text>
               </TouchableOpacity>
             )}
@@ -676,10 +668,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: colors.canvas,
+    ...goldButton.glow,
   },
   coverEditBadgeIcon: {
     fontSize: 14,
-    color: colors.onAccent,
+    color: goldButton.onGold,
   },
   // Delete account (SCREEN 40)
   deleteRow: {

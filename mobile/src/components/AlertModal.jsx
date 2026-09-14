@@ -2,7 +2,8 @@ import React from 'react';
 import { View, Text, StyleSheet, Modal, Pressable, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SvgXml } from 'react-native-svg';
-import { colors, fonts, radius, spacing, withAlpha } from '../shared/theme';
+import { colors, fonts, goldButton, radius, spacing, withAlpha } from '../shared/theme';
+import { GoldFill } from '../shared/components/GoldButton';
 
 const INFO_SVG =
   '<svg width="24" height="24" viewBox="0 0 24 24" fill="none">' +
@@ -54,6 +55,7 @@ export default function AlertModal({ visible, title, message, buttons, onRequest
                   }}
                   activeOpacity={0.85}
                 >
+                    <GoldFill radius={radius.pill} />
                   <Text style={[styles.btnText, isCancel && styles.btnTextCancel]}>{btn.text}</Text>
                 </TouchableOpacity>
               );
@@ -127,11 +129,7 @@ const styles = StyleSheet.create({
   },
   btnGold: {
     backgroundColor: colors.gold,
-    shadowColor: colors.gold,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.28,
-    shadowRadius: 20,
-    elevation: 6,
+    ...goldButton.glow,
   },
   btnDanger: {
     backgroundColor: colors.danger,
@@ -150,7 +148,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     fontFamily: fonts.displayBold,
-    color: colors.onAccent,
+    color: goldButton.onGold,
   },
   btnTextCancel: { color: colors.ink },
 });

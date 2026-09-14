@@ -7,7 +7,8 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
-import { colors, fonts, withAlpha } from '../theme';
+import { colors, fonts, goldButton, withAlpha } from '../theme';
+import { GoldFill } from './GoldButton';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -274,6 +275,7 @@ export default function DatePickerModal({
                 onPress={handleConfirm}
                 activeOpacity={0.85}
               >
+                  <GoldFill radius={22} />
                 <Text style={styles.confirmText}>Done</Text>
               </TouchableOpacity>
             </View>
@@ -438,6 +440,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     backgroundColor: colors.gold,
     borderRadius: 22,
+    ...goldButton.glow,
   },
   confirmText: {
     fontSize: 14,

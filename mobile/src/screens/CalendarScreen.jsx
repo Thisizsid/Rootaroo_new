@@ -24,7 +24,8 @@ import { checkInApi } from '../shared/api/checkin';
 import { useGoogleCalendarConnect } from '../shared/hooks/useGoogleCalendarConnect';
 import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
 import { useAuthStore } from '../shared/store/authStore';
-import { colors, fonts } from '../shared/theme';
+import { colors, fonts, goldButton } from '../shared/theme';
+import { GoldFill } from '../shared/components/GoldButton';
 import Avatar from '../components/Avatar';
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 function buildMonthGrid(year, month) {
@@ -420,6 +421,7 @@ export default function CalendarScreen({ navigation }) {
         onPress={() => navigation.navigate('CreateEvent')}
         activeOpacity={0.85}
       >
+          <GoldFill radius={28} />
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>
     </View>
@@ -723,19 +725,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gold,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: colors.gold,
-    shadowOffset: {
-      width: 0,
-      height: 10,
-    },
-    shadowOpacity: 0.4,
-    shadowRadius: 24,
-    elevation: 6,
+    ...goldButton.glow,
   },
   fabText: {
     fontSize: 24,
     fontFamily: fonts.displayBold,
-    color: colors.onAccent,
+    color: goldButton.onGold,
     lineHeight: 28,
   },
 });

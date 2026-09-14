@@ -18,7 +18,8 @@ import { expenseApi } from '../shared/api/expense';
 import { householdApi } from '../shared/api/household';
 import { useAuthStore } from '../shared/store/authStore';
 import { useExpenseStore } from '../shared/store/expenseStore';
-import { colors, radius, fonts, withAlpha } from '../shared/theme';
+import { colors, fonts, goldButton, radius, withAlpha } from '../shared/theme';
+import { GoldFill } from '../shared/components/GoldButton';
 import Avatar from '../components/Avatar';
 import { KEYBOARD_BEHAVIOR } from '../shared/components/KeyboardAware';
 function formatDateLabel(dateStr) {
@@ -323,6 +324,7 @@ export default function CreateExpenseScreen({ navigation }) {
           disabled={saving}
           activeOpacity={0.85}
         >
+            <GoldFill radius={radius.pill} disabled={saving} />
           {saving ? (
             <ActivityIndicator size="small" color={colors.onAccent} />
           ) : (
@@ -595,15 +597,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gold,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: colors.gold,
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.28,
-    shadowRadius: 20,
     marginBottom: 90,
-    elevation: 5,
+    ...goldButton.glow,
   },
   submitBtnDisabled: {
     opacity: 0.5,

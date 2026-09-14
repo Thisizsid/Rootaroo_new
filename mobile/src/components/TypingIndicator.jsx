@@ -1,83 +1,84 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
-import { colors, fonts } from '../shared/theme';
+import { View, StyleSheet, Animated } from 'react-native';
+import { chatTheme } from '../shared/theme/chat';
+import Avatar from './Avatar';
 
-export default function TypingIndicator({ displayNames }) {
+function Dot({ anim, color }) {
+  return (
+    <Animated.View
+      style={[styles.dot, { backgroundColor: color, transform: [{ translateY: anim }] }]}
+    />
+  );
+}
+
+/** One bubble per person currently typing — same shape as an "other" message
+ * bubble (avatar + rounded pill), holding three bouncing dots instead of
+ * text. The mock shows exactly this for a single typer; multiple typers
+ * simply stack as one row each, rather than collapsing into a name list the
+ * mock never depicts. */
+function TypingBubble({ typer }) {
   const dot1 = useRef(new Animated.Value(0)).current;
   const dot2 = useRef(new Animated.Value(0)).current;
   const dot3 = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const bounce = (anim, delay) => {
-      return Animated.loop(
+    const bounce = (anim, delay) =>
+      Animated.loop(
         Animated.sequence([
           Animated.delay(delay),
           Animated.timing(anim, { toValue: -4, duration: 200, useNativeDriver: true }),
           Animated.timing(anim, { toValue: 0, duration: 200, useNativeDriver: true }),
           Animated.delay(400),
-        ])
+        ]),
       );
-    };
-
-    const a1 = bounce(dot1, 0);
-    const a2 = bounce(dot2, 150);
-    const a3 = bounce(dot3, 300);
-
-    a1.start();
-    a2.start();
-    a3.start();
-
-    return () => {
-      a1.stop();
-      a2.stop();
-      a3.stop();
-    };
-  }, []);
-
-  if (displayNames.length === 0) return null;
-
-  const text =
-    displayNames.length === 1
-      ? `${displayNames[0]} is typing`
-      : displayNames.length === 2
-        ? `${displayNames[0]} and ${displayNames[1]} are typing`
-        : `${displayNames[0]} and ${displayNames.length - 1} others are typing`;
+    const anims = [bounce(dot1, 0), bounce(dot2, 150), bounce(dot3, 300)];
+    anims.forEach((a) => a.start());
+    return () => anims.forEach((a) => a.stop());
+  }, [dot1, dot2, dot3]);
 
   return (
-    <View style={styles.container}>
-      <View style={styles.dots}>
-        <Animated.View style={[styles.dot, { transform: [{ translateY: dot1 }] }]} />
-        <Animated.View style={[styles.dot, { transform: [{ translateY: dot2 }] }]} />
-        <Animated.View style={[styles.dot, { transform: [{ translateY: dot3 }] }]} />
+    <View style={styles.row}>
+      <Avatar
+        url={typer.avatarUrl}
+        emoji={typer.avatarEmoji}
+        name={typer.displayName}
+        id={typer.userId}
+        size={30}
+      />
+      <View style={styles.bubble}>
+        <Dot anim={dot1} color={chatTheme.typingDotDim} />
+        <Dot anim={dot2} color={chatTheme.typingDotMid} />
+        <Dot anim={dot3} color={chatTheme.typingDotDim} />
       </View>
-      <Text style={styles.text}>{text}</Text>
+    </View>
+  );
+}
+
+export default function TypingIndicator({ typers }) {
+  if (!typers || typers.length === 0) return null;
+  return (
+    <View style={styles.container}>
+      {typers.map((t) => (
+        <TypingBubble key={t.userId} typer={t} />
+      ))}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  container: { paddingHorizontal: 16, gap: 8 },
+  row: { flexDirection: 'row', alignItems: 'flex-end', gap: 10 },
+  bubble: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    gap: 8,
+    gap: 6,
+    paddingHorizontal: 15,
+    paddingVertical: 13,
+    borderRadius: 20,
+    borderBottomLeftRadius: 6,
+    backgroundColor: chatTheme.bubbleOtherBg,
+    borderWidth: 1,
+    borderColor: chatTheme.bubbleOtherBorder,
   },
-  dots: {
-    flexDirection: 'row',
-    gap: 3,
-    alignItems: 'center',
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.grayCool,
-  },
-  text: {
-    fontSize: 12,
-    color: colors.grayMuted,
-    fontStyle: 'italic',
-    fontFamily: fonts.body,
-  },
+  dot: { width: 6, height: 6, borderRadius: 3 },
 });

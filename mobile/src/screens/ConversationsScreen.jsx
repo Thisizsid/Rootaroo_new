@@ -11,6 +11,7 @@ import {
   StatusBar,
   RefreshControl,
   Image,
+  ScrollView,
 } from 'react-native';
 import { showAlert } from '../shared/services/themedAlert';
 import Svg, { Circle, Path } from 'react-native-svg';
@@ -19,7 +20,8 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { chatApi } from '../shared/api/chat';
 import { householdApi } from '../shared/api/household';
 import { useAuthStore } from '../shared/store/authStore';
-import { colors, withAlpha, fonts, spacing, radius } from '../shared/theme';
+import { colors, withAlpha, fonts, goldButton, spacing, radius } from '../shared/theme';
+import { GoldFill } from '../shared/components/GoldButton';
 import EmptyState from '../components/EmptyState';
 import ErrorState from '../components/ErrorState';
 import LoadingSkeleton from '../components/LoadingSkeleton';
@@ -53,6 +55,10 @@ function formatTimestamp(dateStr) {
     day: 'numeric',
   });
 }
+function avatarColorFor(name) {
+  const seed = (name || '?').charCodeAt(0) || 0;
+  return AVATAR_COLORS[Math.abs(seed) % AVATAR_COLORS.length];
+}
 function getOtherParticipant(conversation, currentUserId) {
   return conversation.participants.find((p) => p.id !== currentUserId);
 }
@@ -62,23 +68,6 @@ function getOtherParticipant(conversation, currentUserId) {
 /* ──────────────────────────────────────────── */
 
 /* New message: a pencil, tip lower-left / cap upper-right */
-function ComposeIcon({ size = 18, color = colors.ink }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Path
-        d="M9 3h6a1.5 1.5 0 0 1 1.5 1.5v10L12 21l-4.5-6.5v-10A1.5 1.5 0 0 1 9 3Z"
-        fill={color}
-        opacity={0.5}
-        transform="rotate(-45 12 12)"
-      />
-      <Path
-        d="M9 3h6v9a1.5 1.5 0 0 1-1.5 1.5h-3A1.5 1.5 0 0 1 9 12Z"
-        fill={color}
-        transform="rotate(-45 12 12)"
-      />
-    </Svg>
-  );
-}
 
 /* Household chat: two overlapping people */
 function PeopleIcon({ size = 20, color = colors.ink }) {
@@ -112,49 +101,55 @@ function ConversationItem({ item, currentUserId, onPress }) {
         ? '📷 Photo'
         : null);
   const timestamp = item.lastMessage?.createdAt || item.createdAt;
-  const avatarColor =
-    AVATAR_COLORS[
-      Math.abs((isGroup ? item.name || 'G' : displayName).charCodeAt(0)) % AVATAR_COLORS.length
-    ];
-  return (
-    <TouchableOpacity style={styles.conversationItem} onPress={onPress} activeOpacity={0.7}>
-      {/* Avatar */}
-      <View
-        style={[
-          styles.avatar,
-          {
-            backgroundColor: avatarColor,
-          },
-        ]}
-      >
-        {avatarUrl ? (
-          <Image
-            source={{
-              uri: avatarUrl,
-            }}
-            style={styles.avatarImage}
-          />
-        ) : (
-          <Text style={styles.avatarText}>
-            {isEveryone ? '👥' : isGroup ? '#' : initials(displayName)}
-          </Text>
-        )}
-      </View>
+  // A group shows two overlapping member avatars; a DM shows the one person.
+  const stack = isGroup ? (item.participants || []).slice(0, 2) : [];
 
-      {/* Content */}
-      <View style={styles.conversationContent}>
-        <View style={styles.conversationHeader}>
-          <Text style={styles.conversationName} numberOfLines={1}>
+  return (
+    <TouchableOpacity style={styles.convCard} onPress={onPress} activeOpacity={0.75}>
+      {isGroup ? (
+        <View style={styles.convStack}>
+          {stack.map((p, i) => (
+            <View
+              key={p.id}
+              style={[
+                styles.convStackAvatar,
+                i === 1 && styles.convStackAvatarFront,
+                { backgroundColor: avatarColorFor(p.displayName) },
+              ]}
+            >
+              {p.avatarUrl ? (
+                <Image source={{ uri: p.avatarUrl }} style={styles.convStackImage} />
+              ) : (
+                <Text style={styles.convStackText}>{initials(p.displayName || '?')}</Text>
+              )}
+            </View>
+          ))}
+        </View>
+      ) : (
+        <View style={[styles.convAvatar, { backgroundColor: avatarColorFor(displayName) }]}>
+          {avatarUrl ? (
+            <Image source={{ uri: avatarUrl }} style={styles.convAvatarImage} />
+          ) : (
+            <Text style={styles.convAvatarText}>{initials(displayName)}</Text>
+          )}
+        </View>
+      )}
+
+      <View style={styles.convBody}>
+        <View style={styles.convTopRow}>
+          <Text style={styles.convName} numberOfLines={1}>
             {displayName}
           </Text>
-          <Text style={styles.timestamp}>{formatTimestamp(timestamp)}</Text>
+          {isGroup && (
+            <View style={styles.convBadge}>
+              <Text style={styles.convBadgeText}>{isEveryone ? 'EVERYONE' : 'GROUP'}</Text>
+            </View>
+          )}
+          <View style={styles.convSpacer} />
+          <Text style={styles.convTime}>{formatTimestamp(timestamp)}</Text>
         </View>
-        {isGroup && item.lastMessage?.senderName && (
-          <Text style={styles.senderPrefix} numberOfLines={1}>
-            {item.lastMessage.senderName}
-          </Text>
-        )}
-        <Text style={styles.lastMessage} numberOfLines={2}>
+        <Text style={styles.convPreview} numberOfLines={1}>
+          {isGroup && item.lastMessage?.senderName ? `${item.lastMessage.senderName}: ` : ''}
           {lastMessage || 'No messages yet'}
         </Text>
       </View>
@@ -176,12 +171,14 @@ export default function ConversationsScreen() {
   const dismissChatTour = useAuthStore((s) => s.dismissChatTour);
   const triggerTasksTour = useAuthStore((s) => s.triggerTasksTour);
   const composeRef = useRef(null);
-  const peopleRef = useRef(null);
   const tourRef = useRef(null);
   const tourSteps = useMemo(() => {
     const meta = [
-      { ref: composeRef, title: 'Direct message', body: 'Tap here to message one person directly or search for someone.' },
-      { ref: peopleRef, title: 'Group chat', body: 'Tap here to start a group conversation with your whole household.' },
+      {
+        ref: composeRef,
+        title: 'Start a chat',
+        body: 'Message one person directly, or your whole household at once.',
+      },
     ];
     return meta.map(({ ref, title, body }, i) => ({
       before: () => {},
@@ -341,6 +338,43 @@ export default function ConversationsScreen() {
     }
   }, [conversations, otherMembers, householdName, nav]);
 
+  const handleMemberPress = useCallback(
+    async (m) => {
+      try {
+        // Reuse the existing DM if there already is one.
+        const existing = conversations.find(
+          (c) => c.type === 'dm' && c.participants.some((p) => p.id === m.userId),
+        );
+        if (existing) {
+          nav.navigate('ChatScreen', {
+            conversationId: existing.id,
+            title: m.displayName,
+            type: 'dm',
+            participantCount: 2,
+          });
+          return;
+        }
+        const conv = await chatApi.createConversation({
+          type: 'dm',
+          participantIds: [m.userId],
+        });
+        nav.navigate('ChatScreen', {
+          conversationId: conv.id,
+          title: m.displayName,
+          type: 'dm',
+          participantCount: 2,
+        });
+      } catch {
+        showAlert('Error', 'Could not start conversation');
+      }
+    },
+    [conversations, nav],
+  );
+
+  const conversationCountLabel = `${conversations.length} conversation${
+    conversations.length === 1 ? '' : 's'
+  }`;
+
   /* ── Navigate to conversation ── */
 
   const handleConversationPress = useCallback(
@@ -414,110 +448,81 @@ export default function ConversationsScreen() {
         <OfflineBanner onRetry={handleRefresh} />
       </View>
 
-      {/* ── Brand bar ── */}
-
-      {/* ── Messages header ── */}
-      <View style={styles.msgsHeader}>
-        <Text style={styles.msgsTitle}>Messages</Text>
-        <View style={styles.msgsActions}>
-          <AttachStep index={0} style={{ alignSelf: 'center' }}>
-            <TouchableOpacity
-              ref={composeRef}
-              style={styles.iconBtn}
-              activeOpacity={0.7}
-              onPress={() => {
-                setSearchQuery('');
-                setModalVisible(true);
-              }}
-            >
-              <ComposeIcon size={18} color={colors.ink} />
-            </TouchableOpacity>
-          </AttachStep>
-          <AttachStep index={1} style={{ alignSelf: 'center' }}>
-            <TouchableOpacity
-              ref={peopleRef}
-              style={styles.iconBtn}
-              onPress={handleMessageEveryone}
-              disabled={creating || otherMembers.length === 0}
-              activeOpacity={0.7}
-            >
-              {creating ? (
-                <ActivityIndicator size="small" color={colors.gold} />
-              ) : (
-                <PeopleIcon size={20} color={colors.ink} />
-              )}
-            </TouchableOpacity>
-          </AttachStep>
-        </View>
-      </View>
-
-      {/* ── Members grid ── */}
-      <View style={styles.memberGrid}>
-        {otherMembers.map((m) => (
-            <TouchableOpacity
-              key={m.userId}
-              style={styles.memberItem}
-              onPress={async () => {
-                try {
-                  // Check if DM already exists
-                  const existing = conversations.find(
-                    (c) => c.type === 'dm' && c.participants.some((p) => p.id === m.userId),
-                  );
-                  if (existing) {
-                    nav.navigate('ChatScreen', {
-                      conversationId: existing.id,
-                      title: m.displayName,
-                      type: 'dm',
-                      participantCount: 2,
-                    });
-                    return;
-                  }
-                  const conv = await chatApi.createConversation({
-                    type: 'dm',
-                    participantIds: [m.userId],
-                  });
-                  nav.navigate('ChatScreen', {
-                    conversationId: conv.id,
-                    title: m.displayName,
-                    type: 'dm',
-                    participantCount: 2,
-                  });
-                } catch {
-                  showAlert('Error', 'Could not start conversation');
-                }
-              }}
-            >
-              <View style={styles.memberAvatarWrap}>
-                {m.avatarUrl ? (
-                  <Image
-                    source={{
-                      uri: m.avatarUrl,
-                    }}
-                    style={styles.memberAvatar}
-                  />
-                ) : (
-                  <View style={styles.memberAvatarInit}>
-                    <Text style={styles.memberAvatarText}>{initials(m.displayName)}</Text>
-                  </View>
-                )}
-              </View>
-              <Text style={styles.memberName} numberOfLines={1}>
-                {m.displayName.split(' ')[0]}
-              </Text>
-            </TouchableOpacity>
-          ))}
-      </View>
-
-      {/* ── Conversations list ── */}
+      {/* ── Everything above the list scrolls with it (ListHeaderComponent),
+             so the header, household strip and RECENT label behave as one
+             sheet rather than a fixed chrome band. ── */}
       <FlatList
         style={styles.listFlex}
         data={conversations}
         renderItem={renderConversationItem}
         keyExtractor={keyExtractor}
-        contentContainerStyle={
-          conversations.length === 0
-            ? styles.listEmptyContent
-            : [styles.listContent, { paddingBottom: dockHeight + 16 }]
+        contentContainerStyle={[
+          conversations.length === 0 ? styles.listEmptyContent : styles.listContent,
+          { paddingBottom: dockHeight + 16 },
+        ]}
+        ListHeaderComponent={
+          <View>
+            <View style={styles.header}>
+              <View style={styles.headerText}>
+                <Text style={styles.headerTitle}>Messages</Text>
+                <Text style={styles.headerSub}>{conversationCountLabel}</Text>
+              </View>
+              <AttachStep index={0} style={{ alignSelf: 'center' }}>
+                <TouchableOpacity
+                  ref={composeRef}
+                  style={styles.composeBtn}
+                  activeOpacity={0.85}
+                  accessibilityRole="button"
+                  accessibilityLabel="New message"
+                  onPress={() => {
+                    setSearchQuery('');
+                    setModalVisible(true);
+                  }}
+                >
+                  <GoldFill radius={radius.card} />
+                  <Text style={styles.composeIcon}>+</Text>
+                </TouchableOpacity>
+              </AttachStep>
+            </View>
+
+            {otherMembers.length > 0 && (
+              <>
+                <Text style={styles.sectionLabel}>HOUSEHOLD</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.strip}
+                >
+                  {otherMembers.map((m) => (
+                    <TouchableOpacity
+                      key={m.userId}
+                      style={styles.stripItem}
+                      activeOpacity={0.75}
+                      onPress={() => handleMemberPress(m)}
+                    >
+                      {m.avatarUrl ? (
+                        <Image source={{ uri: m.avatarUrl }} style={styles.stripAvatar} />
+                      ) : (
+                        <View
+                          style={[
+                            styles.stripAvatar,
+                            { backgroundColor: avatarColorFor(m.displayName) },
+                          ]}
+                        >
+                          <Text style={styles.stripAvatarText}>{initials(m.displayName)}</Text>
+                        </View>
+                      )}
+                      <Text style={styles.stripName} numberOfLines={1}>
+                        {m.displayName.split(' ')[0]}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </>
+            )}
+
+            {conversations.length > 0 && <Text style={styles.sectionLabel}>RECENT</Text>}
+          </View>
         }
         ListEmptyComponent={ListEmptyComponent}
         refreshControl={
@@ -586,7 +591,23 @@ export default function ConversationsScreen() {
               style={searchModal.list}
               contentContainerStyle={{ paddingBottom: insets.bottom + spacing.xl }}
               ListHeaderComponent={
-                <Text style={searchModal.sectionLabel}>HOUSEHOLD MEMBERS</Text>
+                <>
+                  <TouchableOpacity
+                    style={searchModal.everyoneRow}
+                    onPress={handleMessageEveryone}
+                    disabled={creating || otherMembers.length === 0}
+                    activeOpacity={0.7}
+                  >
+                    <View style={searchModal.everyoneAv}>
+                      <PeopleIcon size={20} color={colors.gold} />
+                    </View>
+                    <View style={searchModal.mNameCol}>
+                      <Text style={searchModal.mName}>Message everyone</Text>
+                      <Text style={searchModal.mRole}>Your whole household</Text>
+                    </View>
+                  </TouchableOpacity>
+                  <Text style={searchModal.sectionLabel}>HOUSEHOLD MEMBERS</Text>
+                </>
               }
               renderItem={({ item: member }) => (
                 <TouchableOpacity
@@ -643,211 +664,172 @@ export default function ConversationsScreen() {
 /* ──────────────────────────────────────────── */
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.canvas,
-    paddingHorizontal: 4,
-  },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  bannerWrap: {
-    paddingHorizontal: 24,
-    paddingTop: 4,
-    paddingBottom: 8,
-  },
-  /* Header */
-  memberGrid: {
+  container: { flex: 1, backgroundColor: colors.canvas },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  bannerWrap: { paddingHorizontal: PAD, paddingTop: 4, paddingBottom: 4 },
+
+  /* ── Header ── */
+  header: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: colors.canvas,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    gap: 12,
-    maxHeight: 160,
-  },
-  memberItem: {
-    alignItems: 'center',
-    gap: 5,
-    width: 64,
-  },
-  memberAvatarWrap: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    borderWidth: 2,
-    borderColor: colors.gold,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    backgroundColor: colors.surface,
-  },
-  memberAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-  },
-  memberAvatarInit: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.gold,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  memberAvatarText: {
-    fontFamily: fonts.bodyBold,
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.onAccent,
-  },
-  memberName: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 10,
-    fontWeight: '600',
-    color: colors.textMuted,
-    maxWidth: 52,
-    textAlign: 'center',
-  },
-  brandBar: {
-    paddingHorizontal: PAD,
-    height: 48,
-    justifyContent: 'center',
-    backgroundColor: colors.canvas,
-  },
-  msgsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: PAD,
-    paddingVertical: 10,
-    backgroundColor: colors.canvas,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingTop: 10,
+    paddingBottom: 6,
   },
-  msgsTitle: {
+  headerText: { flex: 1 },
+  headerTitle: {
     fontFamily: fonts.display,
-    fontSize: 22,
-    fontWeight: '800',
+    fontSize: 30,
+    lineHeight: 37,
     color: colors.ink,
-    letterSpacing: -0.5,
+    letterSpacing: -0.6,
   },
-  msgsActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  iconBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: colors.shadow,
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.06,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  brand: {
-    fontSize: 15,
-    fontWeight: '900',
-    color: colors.ink,
-    letterSpacing: 2.5,
-  },
-  brandDot: {
-    color: colors.gold,
-  },
-  /* List */
-  listFlex: {
-    flex: 1,
-  },
-  listContent: {
-    paddingBottom: 24,
-  },
-  listEmptyContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: PAD,
-  },
-  /* Conversation item */
-  conversationItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: PAD,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 14,
-  },
-  avatarImage: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-  },
-  avatarText: {
-    fontFamily: fonts.bodyBold,
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.onAccent,
-  },
-  conversationContent: {
-    flex: 1,
-  },
-  conversationHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 3,
-  },
-  conversationName: {
-    fontFamily: fonts.bodyBold,
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.ink,
-    flex: 1,
-    marginRight: 8,
-  },
-  timestamp: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: 11,
-    fontWeight: '500',
-    color: colors.textFaint,
-  },
-  senderPrefix: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.gold,
-    marginBottom: 1,
-  },
-  lastMessage: {
+  headerSub: {
+    marginTop: 3,
     fontFamily: fonts.body,
     fontSize: 13,
-    fontWeight: '400',
+    color: colors.textMuted,
+  },
+  composeBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...goldButton.glow,
+  },
+  composeIcon: {
+    fontSize: 26,
+    lineHeight: 30,
+    fontFamily: fonts.body,
+    color: goldButton.onGold,
+  },
+
+  /* ── Section labels ── */
+  sectionLabel: {
+    marginTop: 18,
+    marginBottom: 10,
+    paddingHorizontal: PAD,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 11,
+    letterSpacing: 1.4,
+    color: colors.textFaint,
+  },
+
+  /* ── Household strip ── */
+  strip: { paddingHorizontal: PAD, gap: 18 },
+  stripItem: { alignItems: 'center', width: 62, gap: 7 },
+  stripAvatar: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stripAvatarText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 20,
+    color: colors.onAccent,
+  },
+  stripName: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.textMuted,
+    textAlign: 'center',
+  },
+
+  /* ── List ── */
+  listFlex: { flex: 1 },
+  listContent: { paddingBottom: 24 },
+  listEmptyContent: { flexGrow: 1 },
+
+  /* ── Conversation card ── */
+  convCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 13,
+    marginHorizontal: PAD,
+    marginBottom: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderCool,
+    borderRadius: radius.xl,
+  },
+  convAvatar: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  convAvatarImage: { width: 46, height: 46, borderRadius: 23 },
+  convAvatarText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 16,
+    color: colors.onAccent,
+  },
+  // Two overlapping circles, back one peeking out from behind the front.
+  convStack: { width: 46, height: 46 },
+  convStackAvatar: {
+    position: 'absolute',
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    top: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  convStackAvatarFront: {
+    top: 12,
+    left: 0,
+    right: undefined,
+    borderWidth: 2,
+    borderColor: colors.canvas,
+  },
+  convStackImage: { width: '100%', height: '100%', borderRadius: 17 },
+  convStackText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 12,
+    color: colors.onAccent,
+  },
+  convBody: { flex: 1 },
+  convTopRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  convName: {
+    flexShrink: 1,
+    fontFamily: fonts.bodyBold,
+    fontSize: 15.5,
+    color: colors.ink,
+  },
+  convSpacer: { flex: 1 },
+  convBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: radius.xs + 2,
+    backgroundColor: colors.goldTint,
+  },
+  convBadgeText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 9,
+    letterSpacing: 0.7,
+    color: colors.gold,
+  },
+  convTime: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 11.5,
+    color: colors.textFaint,
+  },
+  convPreview: {
+    marginTop: 4,
+    fontFamily: fonts.body,
+    fontSize: 13.5,
     color: colors.textSecondary,
   },
-  /* Empty state */
-  emptyContainer: {
-    alignItems: 'center',
-    paddingHorizontal: 40,
-  },
+
+  /* ── Empty state ── */
+  emptyContainer: { alignItems: 'center', paddingHorizontal: 40 },
   chatIcon: {
     width: 64,
     height: 64,
@@ -857,9 +839,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 26,
   },
-  chatIconText: {
-    fontSize: 28,
-  },
+  chatIconText: { fontSize: 28 },
   emptyTitle: {
     fontSize: 16,
     fontWeight: '700',
@@ -952,6 +932,21 @@ const searchModal = StyleSheet.create({
     fontSize: 14,
     fontFamily: fonts.body,
     color: colors.textFaint,
+  },
+  everyoneRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.lg,
+  },
+  everyoneAv: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.goldTint,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   mRow: {
     flexDirection: 'row',

@@ -20,7 +20,8 @@ import { householdApi } from '../shared/api/household';
 import { useAuthStore } from '../shared/store/authStore';
 import ConfirmSheet from '../components/ConfirmSheet';
 import { useExpenseStore } from '../shared/store/expenseStore';
-import { colors, radius, fonts, withAlpha } from '../shared/theme';
+import { colors, fonts, goldButton, radius, withAlpha } from '../shared/theme';
+import { GoldFill } from '../shared/components/GoldButton';
 import Avatar from '../components/Avatar';
 import { KEYBOARD_BEHAVIOR } from '../shared/components/KeyboardAware';
 function formatMoney(n) {
@@ -355,6 +356,7 @@ export default function ExpenseDetailScreen({ navigation, route }) {
             disabled={settling}
             activeOpacity={0.85}
           >
+              <GoldFill radius={radius.pill} disabled={settling} />
             <Text style={styles.primaryBtnText}>{settling ? 'Settling…' : 'Mark as settled'}</Text>
           </TouchableOpacity>
         )}
@@ -557,6 +559,7 @@ export default function ExpenseDetailScreen({ navigation, route }) {
                 disabled={saving}
                 activeOpacity={0.85}
               >
+                  <GoldFill radius={radius.pill} disabled={saving} />
                 {saving ? (
                   <ActivityIndicator size="small" color={colors.onAccent} />
                 ) : (
@@ -777,20 +780,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gold,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: colors.gold,
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.28,
-    shadowRadius: 20,
-    elevation: 5,
+    ...goldButton.glow,
   },
   primaryBtnText: {
     fontSize: 15,
     fontWeight: '600',
     fontFamily: fonts.displayBold,
-    color: colors.onAccent,
+    color: goldButton.onGold,
   },
   primaryBtnDisabled: {
     opacity: 0.6,
@@ -1046,14 +1042,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gold,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: colors.gold,
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.28,
-    shadowRadius: 20,
-    elevation: 5,
+    ...goldButton.glow,
   },
   editUpdateDisabled: {
     opacity: 0.5,

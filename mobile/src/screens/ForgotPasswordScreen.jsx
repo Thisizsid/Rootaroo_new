@@ -13,7 +13,8 @@ import {
 } from 'react-native';
 import { showAlert } from '../shared/services/themedAlert';
 import { authApi } from '../shared/api/auth';
-import { colors, fonts, radius } from '../shared/theme';
+import { colors, fonts, goldButton, radius } from '../shared/theme';
+import { GoldFill } from '../shared/components/GoldButton';
 import { KEYBOARD_BEHAVIOR } from '../shared/components/KeyboardAware';
 const OTP_LENGTH = 6;
 export default function ForgotPasswordScreen({ navigation }) {
@@ -252,6 +253,7 @@ export default function ForgotPasswordScreen({ navigation }) {
                 activeOpacity={0.85}
                 disabled={loading}
               >
+                  <GoldFill radius={27} disabled={loading} />
                 {loading ? (
                   <ActivityIndicator color={colors.onAccent} />
                 ) : (
@@ -271,6 +273,7 @@ export default function ForgotPasswordScreen({ navigation }) {
                   activeOpacity={0.85}
                   disabled={otp.join('').length < OTP_LENGTH || loading}
                 >
+                    <GoldFill radius={27} disabled={(otp.join('').length < OTP_LENGTH || loading)} />
                   {loading ? (
                     <ActivityIndicator color={colors.onAccent} />
                   ) : (
@@ -297,6 +300,7 @@ export default function ForgotPasswordScreen({ navigation }) {
                 activeOpacity={0.85}
                 disabled={loading}
               >
+                  <GoldFill radius={27} disabled={loading} />
                 {loading ? (
                   <ActivityIndicator color={colors.onAccent} />
                 ) : (
@@ -465,6 +469,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
+    ...goldButton.glow,
   },
   primaryBtnDisabled: {
     opacity: 0.45,

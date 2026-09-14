@@ -2,7 +2,8 @@ import React from 'react';
 import { View, Text, StyleSheet, Modal, Pressable, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SvgXml } from 'react-native-svg';
-import { colors, fonts, radius, spacing, withAlpha } from '../shared/theme';
+import { colors, fonts, goldButton, radius, spacing, withAlpha } from '../shared/theme';
+import { GoldFill } from '../shared/components/GoldButton';
 
 const TRASH_SVG =
   '<svg width="24" height="24" viewBox="0 0 24 24" fill="none">' +
@@ -50,6 +51,7 @@ export default function ConfirmSheet({
             disabled={loading}
             activeOpacity={0.85}
           >
+              <GoldFill radius={radius.pill} disabled={loading} />
             {loading ? (
               <ActivityIndicator size="small" color={colors.onAccent} />
             ) : (
@@ -135,11 +137,7 @@ const styles = StyleSheet.create({
   },
   confirmGold: {
     backgroundColor: colors.gold,
-    shadowColor: colors.gold,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.28,
-    shadowRadius: 20,
-    elevation: 6,
+    ...goldButton.glow,
   },
   confirmDisabled: { opacity: 0.6 },
   confirmText: {

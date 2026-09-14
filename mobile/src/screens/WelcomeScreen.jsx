@@ -13,7 +13,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LottieView from 'lottie-react-native';
-import { colors, fonts, radius } from '../shared/theme';
+import { colors, fonts, goldButton, radius } from '../shared/theme';
+import { GoldFill } from '../shared/components/GoldButton';
 const { width: W } = Dimensions.get('window');
 const AUTOPLAY_INTERVAL = 4200;
 const SLIDE_DURATION = 460; // eased forward/loop transition
@@ -308,6 +309,7 @@ export default function WelcomeScreen({ navigation }) {
           activeOpacity={0.85}
           onPress={() => navigation.navigate('ChooseMethod')}
         >
+            <GoldFill radius={radius.pill} />
           <Text style={styles.ctaText}>Get Started</Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -449,20 +451,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 14,
-    shadowColor: colors.gold,
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.28,
-    shadowRadius: 20,
-    elevation: 6,
+    ...goldButton.glow,
   },
   ctaText: {
     fontFamily: fonts.bodySemiBold,
     fontSize: 15,
     lineHeight: 15,
-    color: colors.onAccent,
+    color: goldButton.onGold,
   },
   existingLink: {
     fontFamily: fonts.bodyMedium,
