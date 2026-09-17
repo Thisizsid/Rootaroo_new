@@ -28,6 +28,21 @@ export function getInitials(name) {
     .slice(0, 2);
 }
 
+/**
+ * expo-image's `cachePolicy="disk"` treats `cacheKey` (not `uri`) as the
+ * cache identity when both are given. Keying by a stable entity id would
+ * mean a real photo change (a genuinely new URL) still hits the old cached
+ * bytes. Keying by the raw URL defeats caching too — presigned S3 URLs get
+ * a new query-string signature on every fetch even for the *same* photo.
+ * Stripping the query string gives a key that's stable across repeat views
+ * of the same photo, but changes the moment the photo is actually replaced
+ * (the underlying S3 key/path changes).
+ */
+export function cacheKeyFromUrl(url) {
+  if (!url) return undefined;
+  return url.split('?')[0];
+}
+
 export function avatarTone(id) {
   let hash = 0;
   const key = id || '?';
@@ -57,10 +72,7 @@ export default function Avatar({ url, emoji, name, id, size = 40, style }) {
     >
       {resolved ? (
         <Image
-          // Avatar URLs are presigned S3 links that change on every fetch —
-          // key the cache by the stable user id instead of the URI so
-          // repeat views hit the cache instead of re-downloading.
-          source={{ uri: resolved, cacheKey: id }}
+          source={{ uri: resolved, cacheKey: cacheKeyFromUrl(resolved) }}
           style={{ width: size, height: size }}
           cachePolicy="disk"
         />

@@ -22,6 +22,7 @@ import { feedApi } from '../shared/api/feed';
 import apiClient from '../shared/api/client';
 import { colors, fonts, goldButton, radius, withAlpha } from '../shared/theme';
 import { GoldFill } from '../shared/components/GoldButton';
+import { cacheKeyFromUrl } from '../components/Avatar';
 import PostCard from '../shared/components/PostCard';
 import { KEYBOARD_BEHAVIOR } from '../shared/components/KeyboardAware';
 import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
@@ -285,7 +286,7 @@ export default function EditProfileScreen({ navigation }) {
           <View style={styles.coverBanner}>
             {coverPhotoUrl ? (
               <Image
-                source={{ uri: coverPhotoUrl, cacheKey: householdId }}
+                source={{ uri: coverPhotoUrl, cacheKey: cacheKeyFromUrl(coverPhotoUrl) }}
                 style={styles.coverImage}
                 cachePolicy="disk"
               />

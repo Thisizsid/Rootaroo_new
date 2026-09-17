@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing, PanResponde
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, fonts, radius, withAlpha } from '../theme';
+import { cacheKeyFromUrl } from '../../components/Avatar';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 // Two layers of horizontal padding sit outside this component: the screen
@@ -175,10 +176,7 @@ export default function ContributorsStrip({ activity }) {
                     <View style={styles.avatarWrap}>
                       {a.avatarUrl ? (
                         <Image
-                          // avatarUrl is a presigned S3 link that changes on
-                          // every fetch — key by the member name as a stable
-                          // proxy (no per-item id is available in this shape).
-                          source={{ uri: a.avatarUrl, cacheKey: a.displayName || String(i) }}
+                          source={{ uri: a.avatarUrl, cacheKey: cacheKeyFromUrl(a.avatarUrl) }}
                           style={[styles.avatar, { borderColor: kindStyle.accent }]}
                           cachePolicy="disk"
                         />
