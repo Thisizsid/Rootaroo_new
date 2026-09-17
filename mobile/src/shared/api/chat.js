@@ -28,6 +28,10 @@ export const chatApi = {
     await apiClient.delete(`/chat/conversations/${conversationId}/participants/${userId}`);
   },
 
+  markConversationRead: async (conversationId) => {
+    await apiClient.post(`/chat/conversations/${conversationId}/read`);
+  },
+
   // Messages
   list: async (params) => {
     const res = await apiClient.get('/chat', { params });

@@ -6,6 +6,7 @@ class ConversationParticipant extends Model {
   declare conversationId: string;
   declare userId: string;
   declare joinedAt: CreationOptional<Date>;
+  declare lastReadAt: Date | null;
 }
 
 ConversationParticipant.init(
@@ -29,6 +30,14 @@ ConversationParticipant.init(
       type: DataTypes.DATE,
       field: 'joined_at',
       defaultValue: DataTypes.NOW,
+    },
+    // Null means "never read" — every message in the conversation counts as
+    // unread until the user opens it for the first time.
+    lastReadAt: {
+      type: DataTypes.DATE,
+      field: 'last_read_at',
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {

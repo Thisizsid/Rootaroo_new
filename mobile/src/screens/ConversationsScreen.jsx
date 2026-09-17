@@ -101,6 +101,7 @@ function ConversationItem({ item, currentUserId, onPress }) {
         ? '📷 Photo'
         : null);
   const timestamp = item.lastMessage?.createdAt || item.createdAt;
+  const unreadCount = item.unreadCount || 0;
   // A group shows two overlapping member avatars; a DM shows the one person.
   const stack = isGroup ? (item.participants || []).slice(0, 2) : [];
 
@@ -148,10 +149,22 @@ function ConversationItem({ item, currentUserId, onPress }) {
           <View style={styles.convSpacer} />
           <Text style={styles.convTime}>{formatTimestamp(timestamp)}</Text>
         </View>
-        <Text style={styles.convPreview} numberOfLines={1}>
-          {isGroup && item.lastMessage?.senderName ? `${item.lastMessage.senderName}: ` : ''}
-          {lastMessage || 'No messages yet'}
-        </Text>
+        <View style={styles.convBottomRow}>
+          <Text
+            style={[styles.convPreview, unreadCount > 0 && styles.convPreviewUnread]}
+            numberOfLines={1}
+          >
+            {isGroup && item.lastMessage?.senderName ? `${item.lastMessage.senderName}: ` : ''}
+            {lastMessage || 'No messages yet'}
+          </Text>
+          {unreadCount > 0 && (
+            <View style={styles.convUnreadBadge}>
+              <Text style={styles.convUnreadBadgeText}>
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </Text>
+            </View>
+          )}
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -821,11 +834,35 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     color: colors.textFaint,
   },
-  convPreview: {
+  convBottomRow: {
     marginTop: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  convPreview: {
+    flex: 1,
     fontFamily: fonts.body,
     fontSize: 13.5,
     color: colors.textSecondary,
+  },
+  convPreviewUnread: {
+    fontFamily: fonts.bodySemiBold,
+    color: colors.ink,
+  },
+  convUnreadBadge: {
+    minWidth: 20,
+    height: 20,
+    paddingHorizontal: 6,
+    borderRadius: 10,
+    backgroundColor: colors.gold,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  convUnreadBadgeText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 11,
+    color: colors.ink,
   },
 
   /* ── Empty state ── */

@@ -30,7 +30,10 @@ const ALLOWED_REACTIONS: ChatReactionType[] = ['👍', '❤️', '😂', '😲',
 
 // ── Conversation Helpers ──
 
-async function toConversationResponse(conv: Conversation): Promise<ConversationResponse> {
+async function toConversationResponse(
+  conv: Conversation,
+  unreadCount = 0,
+): Promise<ConversationResponse> {
   const participants = (conv.get('participants') as User[]) || [];
   const lastMsg = (conv.get('messages') as ChatMessage[])?.[0] || null;
   return {
@@ -52,6 +55,7 @@ async function toConversationResponse(conv: Conversation): Promise<ConversationR
           senderName: (lastMsg.get('sender') as User)?.displayName || 'Unknown',
         }
       : null,
+    unreadCount,
     createdAt: conv.createdAt.toISOString(),
   };
 }
@@ -214,9 +218,12 @@ export async function getUserConversations(userId: string): Promise<Conversation
   // Find conversations where user is a participant
   const participations = await ConversationParticipant.findAll({
     where: { userId },
-    attributes: ['conversationId'],
+    attributes: ['conversationId', 'lastReadAt'],
   });
   const convIds = participations.map((p) => p.conversationId);
+  const lastReadByConvId = new Map(
+    participations.map((p) => [p.conversationId, p.lastReadAt]),
+  );
 
   if (convIds.length === 0) return [];
 
@@ -235,7 +242,26 @@ export async function getUserConversations(userId: string): Promise<Conversation
     order: [['createdAt', 'DESC']],
   });
 
-  return Promise.all(convs.map(toConversationResponse));
+  return Promise.all(convs.map(async (conv) => {
+    const lastReadAt = lastReadByConvId.get(conv.id) || null;
+    const unreadCount = await ChatMessage.count({
+      where: {
+        conversationId: conv.id,
+        senderId: { [Op.ne]: userId },
+        createdAt: { [Op.gt]: lastReadAt || new Date(0) },
+      },
+    });
+    return toConversationResponse(conv, unreadCount);
+  }));
+}
+
+/** Marks a conversation as read up to now for this user — resets its unread count to 0. */
+export async function markConversationRead(userId: string, conversationId: string): Promise<void> {
+  const participant = await ConversationParticipant.findOne({
+    where: { conversationId, userId },
+  });
+  if (!participant) throw new NotFoundError('Conversation');
+  await participant.update({ lastReadAt: new Date() });
 }
 
 // ── Helpers ──

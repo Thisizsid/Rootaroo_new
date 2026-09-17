@@ -15,6 +15,7 @@ export interface ConversationResponse {
     createdAt: string;
     senderName: string;
   } | null;
+  unreadCount: number;
   createdAt: string;
 }
 

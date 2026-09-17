@@ -27,6 +27,7 @@ router.delete('/conversations/:id', validate(conversationIdParamSchema), ctrl.de
 router.post('/conversations/:id/participants', validate(addParticipantSchema), ctrl.addParticipantCtrl);
 router.delete('/conversations/:id/participants/:userId', validate(removeParticipantSchema), ctrl.removeParticipantCtrl);
 router.post('/conversations/:id/invite', validate(addParticipantSchema), ctrl.inviteParticipantCtrl);
+router.post('/conversations/:id/read', validate(conversationIdParamSchema), ctrl.markConversationReadCtrl);
 
 // Typing indicator: client-driven via the 'chat:typing'/'chat:stop-typing'
 // socket events (socket/chatSocket.ts) — there used to also be a REST

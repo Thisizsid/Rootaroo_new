@@ -208,6 +208,9 @@ export default function ChatScreen({ route }) {
     registerChatSocket();
     if (conversationId) {
       fetchMessages(conversationId);
+      // Opening the conversation is the "read" signal — best-effort, never
+      // block viewing messages on it.
+      chatApi.markConversationRead(conversationId).catch(() => {});
     }
     return () => {
       unregisterChatSocket();

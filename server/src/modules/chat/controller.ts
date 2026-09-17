@@ -178,6 +178,19 @@ export async function getUserConversationsCtrl(
   }
 }
 
+export async function markConversationReadCtrl(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    await chatService.markConversationRead(getUserId(req), req.params.id);
+    res.json({ success: true, data: { message: 'Conversation marked as read' } });
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function addParticipantCtrl(
   req: Request,
   res: Response,
