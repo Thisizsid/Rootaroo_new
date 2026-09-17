@@ -42,9 +42,13 @@ import { taskApi } from "../shared/api/task";
 import { expenseApi } from "../shared/api/expense";
 import { vaultApi } from "../shared/api/vault";
 import { eventApi } from "../shared/api/event";
+import { weatherApi } from "../shared/api/weather";
+import * as Location from "expo-location";
+import { ensureLocation } from "../shared/permissions";
 import { colors, fonts, goldButton, radius, spacing, withAlpha } from '../shared/theme';
 import { GoldFill } from '../shared/components/GoldButton';
 import Avatar from "../components/Avatar";
+import LoadingSkeleton from "../components/LoadingSkeleton";
 import { KeyboardAvoider } from "../shared/components/KeyboardAware";
 import GlassCard, { GlassSheen } from "../shared/components/GlassCard";
 import { useTranslation } from "react-i18next";
@@ -360,6 +364,7 @@ export default function DashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [fetchError, setFetchError] = useState(false);
+  const [weather, setWeather] = useState(null);
 
   // Widget data
   const [coverPhotoUrl, setCoverPhotoUrl] = useState(null);
@@ -401,6 +406,36 @@ export default function DashboardScreen() {
   // doesn't hammer the API — still catches "did something elsewhere, came
   // back to Home" without a manual pull-to-refresh.
   const lastLoadAtRef = useRef(0);
+
+  // Weather pill next to the greeting — best-effort, once per mount. Silent
+  // permission ask (no primer sheet) since a weather widget isn't worth
+  // interrupting the dashboard for; if location is denied or the lookup
+  // fails, the pill just never appears.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        if (!(await ensureLocation({ silent: true }))) return;
+        let pos = await Location.getLastKnownPositionAsync();
+        if (!pos) {
+          pos = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Low,
+          });
+        }
+        const result = await weatherApi.get(
+          pos.coords.latitude,
+          pos.coords.longitude,
+        );
+        if (!cancelled) setWeather(result);
+      } catch {
+        /* no weather pill this session — non-critical */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const load = useCallback(async () => {
     lastLoadAtRef.current = Date.now();
     setFetchError(false);
@@ -758,9 +793,8 @@ export default function DashboardScreen() {
           height="100%"
           style={styles.ambient}
         />
-        <View style={styles.loadingWrap}>
-          <ActivityIndicator color={GOLD} size="large" />
-          <Text style={styles.loadingText}>Loading your home…</Text>
+        <View style={{ paddingTop: 24, flex: 1 }}>
+          <LoadingSkeleton variant="dashboard" dark />
         </View>
       </View>
     );
@@ -900,7 +934,16 @@ export default function DashboardScreen() {
 
           {/* ═══════ GREETING (sits directly on the field) ═══════ */}
           <View style={styles.greetBlock}>
-            <Text style={styles.greetDate}>{formatDate()}</Text>
+            <View style={styles.greetDateRow}>
+              <Text style={styles.greetDate}>{formatDate()}</Text>
+              {weather && (
+                <View style={styles.weatherPill}>
+                  <Text style={styles.weatherPillText}>
+                    {weather.emoji} {weather.tempC}°C
+                  </Text>
+                </View>
+              )}
+            </View>
             <View style={styles.greetRow}>
               <Text style={styles.greetTitle} numberOfLines={2}>
                 {getGreeting()} {user?.name?.split(" ")[0] || "there"}
@@ -1954,12 +1997,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 20,
   },
+  greetDateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 6,
+  },
   greetDate: {
     fontFamily: fonts.body,
     fontSize: 15,
     letterSpacing: 0.3,
     color: colors.textOnDarkFaint,
-    marginBottom: 6,
+  },
+  weatherPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+    backgroundColor: withAlpha(colors.textOnDark, 0.12),
+  },
+  weatherPillText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 13,
+    color: colors.textOnDark,
   },
   greetRow: {
     flexDirection: "row",

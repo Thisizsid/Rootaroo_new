@@ -8,6 +8,19 @@ import { colors, radius, spacing, withAlpha } from '../shared/theme';
  * Pulsing gradient blocks in list / feed / vault grid layouts.
  */
 export default function LoadingSkeleton({ variant = 'list', dark }) {
+  if (variant === 'dashboard') {
+    return (
+      <View style={styles.dashboardWrap}>
+        <ShimmerBlock dark width={180} height={20} style={styles.dashboardGreeting} />
+        <ShimmerBlock dark height={180} style={styles.dashboardCard} />
+        <ShimmerBlock dark height={140} style={styles.dashboardCard} />
+        <View style={styles.dashboardRow}>
+          <ShimmerBlock dark height={100} style={styles.dashboardHalf} />
+          <ShimmerBlock dark height={100} style={styles.dashboardHalf} />
+        </View>
+      </View>
+    );
+  }
   if (variant === 'feed') {
     return (
       <View style={styles.feedWrap}>
@@ -75,6 +88,17 @@ function ShimmerBlock({ height, width, dark, style }) {
 
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
+
+  // dashboard
+  dashboardWrap: {
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    gap: 16,
+  },
+  dashboardGreeting: { borderRadius: 6, marginBottom: 4 },
+  dashboardCard: { borderRadius: radius.cardLg },
+  dashboardRow: { flexDirection: 'row', gap: 16 },
+  dashboardHalf: { flex: 1, borderRadius: radius.cardLg },
 
   // list
   listWrap: {
