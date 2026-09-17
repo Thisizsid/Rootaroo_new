@@ -13,6 +13,7 @@ export const createEventSchema: ValidationSchemas = {
     inviteeIds: z.array(z.string().uuid()).max(30, 'Max 30 invitees').optional(),
     repeats: z.enum(['none', 'daily', 'weekly', 'monthly']).default('none'),
     syncToGoogle: z.boolean().optional(),
+    syncToApple: z.boolean().optional(),
     description: z.string().max(2000, 'Description too long').nullable().optional(),
   }),
 };
@@ -25,6 +26,7 @@ export const updateEventSchema: ValidationSchemas = {
     inviteeIds: z.array(z.string().uuid()).max(30, 'Max 30 invitees').optional(),
     repeats: z.enum(['none', 'daily', 'weekly', 'monthly']).optional(),
     syncToGoogle: z.boolean().optional(),
+    syncToApple: z.boolean().optional(),
     description: z.string().max(2000, 'Description too long').nullable().optional(),
   }),
   params: z.object({
@@ -45,5 +47,12 @@ export const connectGoogleCalendarSchema: ValidationSchemas = {
   body: z.object({
     code: z.string().min(1, 'Authorization code is required'),
     redirectUri: z.string().min(1).optional(),
+  }),
+};
+
+export const connectAppleCalendarSchema: ValidationSchemas = {
+  body: z.object({
+    appleId: z.string().email('Must be a valid Apple ID email'),
+    appSpecificPassword: z.string().min(1, 'App-specific password is required'),
   }),
 };

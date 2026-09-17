@@ -20,11 +20,13 @@ import expenseRouter from './modules/expense/routes';
 import vaultRouter from './modules/vault/routes';
 import chatRouter from './modules/chat/routes';
 import eventRouter from './modules/calendar/routes';
+import calendarFeedRouter from './modules/calendar/feedRoutes';
 import checkInRouter from './modules/checkin/routes';
 import pingRouter from './modules/ping/routes';
 import placeRouter from './modules/place/routes';
 import journalRouter from './modules/journal/routes';
 import adminRouter from './modules/admin/routes';
+import weatherRouter from './modules/weather/routes';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger';
 import logger from './shared/utils/logger';
@@ -134,12 +136,14 @@ app.use('/api/v1/vault', vaultRouter);
 app.use('/api/v1/notifications', notificationRouter);
 app.use('/api/v1/dashboard', dashboardRouter);
 app.use('/api/v1/events', eventRouter);
+app.use('/api/v1/calendar-feed', calendarFeedRouter);
 app.use('/api/v1/chat', chatRouter);
 app.use('/api/v1/checkins', checkInRouter);
 app.use('/api/v1/pings', pingRouter);
 app.use('/api/v1/places', placeRouter);
 app.use('/api/v1/journal', journalRouter);
 app.use('/api/v1/admin', adminRouter);
+app.use('/api/v1/weather', weatherRouter);
 
 // ── Swagger Docs ──
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));

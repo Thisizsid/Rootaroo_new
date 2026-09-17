@@ -7,6 +7,7 @@ import {
   listEventsQuerySchema,
   updateEventSchema,
   connectGoogleCalendarSchema,
+  connectAppleCalendarSchema,
 } from './validation';
 
 const router = Router();
@@ -21,6 +22,17 @@ router.get('/export.ics', ctrl.exportIcs);                      // FR-185: iCale
 router.get('/google/status', ctrl.googleStatus);
 router.post('/google/connect', validate(connectGoogleCalendarSchema), ctrl.googleConnect);
 router.post('/google/disconnect', ctrl.googleDisconnect);
+
+// Outlook Calendar one-way ICS subscription feed (must precede /:id) — no
+// body to validate, connect just (re)generates the feed token.
+router.get('/outlook/status', ctrl.outlookStatus);
+router.post('/outlook/connect', ctrl.outlookConnect);
+router.post('/outlook/disconnect', ctrl.outlookDisconnect);
+
+// Apple Calendar two-way sync (must precede /:id)
+router.get('/apple/status', ctrl.appleStatus);
+router.post('/apple/connect', validate(connectAppleCalendarSchema), ctrl.appleConnect);
+router.post('/apple/disconnect', ctrl.appleDisconnect);
 
 router.get('/:id', ctrl.getById);                               // FR: single event detail
 router.patch('/:id', validate(updateEventSchema), ctrl.update); // FR-187/188: edit

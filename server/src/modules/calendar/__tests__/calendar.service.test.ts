@@ -10,6 +10,14 @@ import {
   connectGoogleCalendar,
   disconnectGoogleCalendar,
   syncUserCalendar,
+  getOutlookSyncStatus,
+  connectOutlookCalendar,
+  disconnectOutlookCalendar,
+  getOutlookFeedIcs,
+  getAppleSyncStatus,
+  connectAppleCalendar,
+  disconnectAppleCalendar,
+  syncAppleUserCalendar,
 } from '../service';
 import { ForbiddenError } from '../../../shared/utils/errors';
 
@@ -56,9 +64,22 @@ jest.mock('../../../shared/utils/googleCalendar', () => ({
   deleteGoogleEvent: jest.fn(),
 }));
 
+jest.mock('../../../shared/utils/outlookCalendar', () => ({
+  generateOutlookFeedToken: jest.fn(),
+}));
+
+jest.mock('../../../shared/utils/appleCalendar', () => ({
+  discoverPrimaryCalendar: jest.fn(),
+  listAppleEvents: jest.fn(),
+  upsertAppleEvent: jest.fn(),
+  deleteAppleEvent: jest.fn(),
+}));
+
 import * as models from '../../../database/models';
 import * as notifications from '../../../shared/services/notifications';
 import * as googleCalendar from '../../../shared/utils/googleCalendar';
+import * as outlookCalendar from '../../../shared/utils/outlookCalendar';
+import * as appleCalendar from '../../../shared/utils/appleCalendar';
 
 function fakeEvent(overrides: any = {}) {
   return {
@@ -392,7 +413,9 @@ describe('Google Calendar sync', () => {
     it('deletes the sync state', async () => {
       await disconnectGoogleCalendar(syncUserId);
 
-      expect(modelsMock.CalendarSyncState.destroy).toHaveBeenCalledWith({ where: { userId: syncUserId } });
+      expect(modelsMock.CalendarSyncState.destroy).toHaveBeenCalledWith({
+        where: { userId: syncUserId, provider: 'google' },
+      });
     });
   });
 
@@ -448,6 +471,252 @@ describe('Google Calendar sync', () => {
       await syncUserCalendar(syncUserId);
 
       expect(localEvent.destroy).toHaveBeenCalled();
+    });
+  });
+});
+
+describe('Outlook Calendar sync (one-way ICS feed)', () => {
+  const syncUserId = userId;
+  const feedToken = 'a'.repeat(48);
+
+  function fakeOutlookSyncState(overrides: any = {}) {
+    return {
+      id: 'sync-outlook-1',
+      userId: syncUserId,
+      provider: 'outlook',
+      outlookFeedToken: feedToken,
+      isActive: true,
+      save: jest.fn().mockResolvedValue(undefined),
+      ...overrides,
+    };
+  }
+
+  describe('getOutlookSyncStatus', () => {
+    it('returns disconnected when no sync state exists', async () => {
+      (modelsMock.CalendarSyncState.findOne as jest.Mock).mockResolvedValue(null);
+
+      const result = await getOutlookSyncStatus(syncUserId);
+
+      expect(result).toEqual({ connected: false, feedUrl: null });
+    });
+
+    it('returns connected with the feed URL when active', async () => {
+      (modelsMock.CalendarSyncState.findOne as jest.Mock).mockResolvedValue(fakeOutlookSyncState());
+
+      const result = await getOutlookSyncStatus(syncUserId);
+
+      expect(result.connected).toBe(true);
+      expect(result.feedUrl).toContain(feedToken);
+    });
+  });
+
+  describe('connectOutlookCalendar', () => {
+    it('generates a feed token and creates a sync state when none exists', async () => {
+      (outlookCalendar.generateOutlookFeedToken as jest.Mock).mockReturnValue(feedToken);
+      (modelsMock.CalendarSyncState.findOne as jest.Mock).mockResolvedValue(null);
+      (modelsMock.CalendarSyncState.create as jest.Mock).mockResolvedValue(fakeOutlookSyncState());
+
+      const result = await connectOutlookCalendar(syncUserId);
+
+      expect(modelsMock.CalendarSyncState.create).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: syncUserId, provider: 'outlook', outlookFeedToken: feedToken }),
+      );
+      expect(result.connected).toBe(true);
+      expect(result.feedUrl).toContain(feedToken);
+    });
+
+    it('reuses the existing feed token on reconnect', async () => {
+      const state = fakeOutlookSyncState({ isActive: false });
+      (modelsMock.CalendarSyncState.findOne as jest.Mock).mockResolvedValue(state);
+
+      const result = await connectOutlookCalendar(syncUserId);
+
+      expect(outlookCalendar.generateOutlookFeedToken).not.toHaveBeenCalled();
+      expect(state.isActive).toBe(true);
+      expect(state.save).toHaveBeenCalled();
+      expect(result.connected).toBe(true);
+    });
+  });
+
+  describe('disconnectOutlookCalendar', () => {
+    it('deletes the sync state', async () => {
+      await disconnectOutlookCalendar(syncUserId);
+
+      expect(modelsMock.CalendarSyncState.destroy).toHaveBeenCalledWith({
+        where: { userId: syncUserId, provider: 'outlook' },
+      });
+    });
+  });
+
+  describe('getOutlookFeedIcs', () => {
+    it('throws when no active state matches the token', async () => {
+      (modelsMock.CalendarSyncState.findOne as jest.Mock).mockResolvedValue(null);
+
+      await expect(getOutlookFeedIcs(feedToken)).rejects.toThrow('Calendar feed not found');
+    });
+
+    it('renders the household ICS for the token owner', async () => {
+      (modelsMock.CalendarSyncState.findOne as jest.Mock).mockResolvedValue(fakeOutlookSyncState({ userId: syncUserId }));
+      (modelsMock.HouseholdMember.findOne as jest.Mock).mockResolvedValue({ householdId, userId: syncUserId });
+      (modelsMock.CalendarEvent.findAll as jest.Mock).mockResolvedValue([fakeEvent()]);
+
+      const ics = await getOutlookFeedIcs(feedToken);
+
+      expect(ics).toContain('BEGIN:VCALENDAR');
+      expect(ics).toContain('Family dinner');
+    });
+  });
+});
+
+describe('Apple Calendar sync', () => {
+  const syncUserId = userId;
+  const appleId = 'user@icloud.com';
+  const calendarUrl = 'https://p01-caldav.icloud.com/1234/calendars/home/';
+
+  function fakeAppleSyncState(overrides: any = {}) {
+    return {
+      id: 'sync-apple-1',
+      userId: syncUserId,
+      provider: 'apple',
+      appleId,
+      applePassword: 'app-specific-password',
+      caldavCalendarHomeUrl: calendarUrl,
+      lastSyncedAt: null,
+      isActive: true,
+      save: jest.fn().mockResolvedValue(undefined),
+      ...overrides,
+    };
+  }
+
+  describe('getAppleSyncStatus', () => {
+    it('returns disconnected when no sync state exists', async () => {
+      (modelsMock.CalendarSyncState.findOne as jest.Mock).mockResolvedValue(null);
+
+      const result = await getAppleSyncStatus(syncUserId);
+
+      expect(result).toEqual({ connected: false, appleId: null, lastSyncedAt: null });
+    });
+
+    it('returns connected with the Apple ID when active', async () => {
+      (modelsMock.CalendarSyncState.findOne as jest.Mock).mockResolvedValue(fakeAppleSyncState());
+
+      const result = await getAppleSyncStatus(syncUserId);
+
+      expect(result.connected).toBe(true);
+      expect(result.appleId).toBe(appleId);
+    });
+  });
+
+  describe('connectAppleCalendar', () => {
+    it('validates credentials, resolves the calendar, and creates a sync state', async () => {
+      (appleCalendar.discoverPrimaryCalendar as jest.Mock).mockResolvedValue({ calendarUrl });
+      (modelsMock.CalendarSyncState.findOne as jest.Mock)
+        .mockResolvedValueOnce(null) // no existing state
+        .mockResolvedValue(fakeAppleSyncState()); // used by the background sync call
+      (modelsMock.CalendarSyncState.create as jest.Mock).mockResolvedValue(fakeAppleSyncState());
+      (modelsMock.HouseholdMember.findOne as jest.Mock).mockResolvedValue({ householdId, userId: syncUserId });
+      (appleCalendar.listAppleEvents as jest.Mock).mockResolvedValue({ objects: [] });
+      (modelsMock.CalendarEvent.findAll as jest.Mock).mockResolvedValue([]);
+
+      const result = await connectAppleCalendar(syncUserId, {
+        appleId,
+        appSpecificPassword: 'app-specific-password',
+      });
+
+      expect(appleCalendar.discoverPrimaryCalendar).toHaveBeenCalledWith(appleId, 'app-specific-password');
+      expect(modelsMock.CalendarSyncState.create).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: syncUserId, provider: 'apple', appleId, caldavCalendarHomeUrl: calendarUrl }),
+      );
+      expect(result.connected).toBe(true);
+    });
+
+    it('propagates a credential/discovery failure without creating a sync state', async () => {
+      (appleCalendar.discoverPrimaryCalendar as jest.Mock).mockRejectedValue(new Error('bad password'));
+
+      await expect(
+        connectAppleCalendar(syncUserId, { appleId, appSpecificPassword: 'wrong' }),
+      ).rejects.toThrow('bad password');
+      expect(modelsMock.CalendarSyncState.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('disconnectAppleCalendar', () => {
+    it('deletes the sync state', async () => {
+      await disconnectAppleCalendar(syncUserId);
+
+      expect(modelsMock.CalendarSyncState.destroy).toHaveBeenCalledWith({
+        where: { userId: syncUserId, provider: 'apple' },
+      });
+    });
+  });
+
+  describe('syncAppleUserCalendar', () => {
+    it('does nothing when there is no active sync state', async () => {
+      (modelsMock.CalendarSyncState.findOne as jest.Mock).mockResolvedValue(null);
+
+      await syncAppleUserCalendar(syncUserId);
+
+      expect(appleCalendar.listAppleEvents).not.toHaveBeenCalled();
+    });
+
+    it('creates a local event for a new Apple event', async () => {
+      const state = fakeAppleSyncState();
+      (modelsMock.CalendarSyncState.findOne as jest.Mock).mockResolvedValue(state);
+      (modelsMock.HouseholdMember.findOne as jest.Mock).mockResolvedValue({ householdId, userId: syncUserId });
+      (appleCalendar.listAppleEvents as jest.Mock).mockResolvedValue({
+        objects: [{
+          href: `${calendarUrl}event-1.ics`,
+          etag: '"abc123"',
+          uid: 'event-1',
+          title: 'Dentist',
+          description: null,
+          startIso: '2026-08-10T09:00:00.000Z',
+          endIso: '2026-08-10T09:30:00.000Z',
+          recurrenceFreq: null,
+        }],
+      });
+      (modelsMock.CalendarEvent.findOne as jest.Mock).mockResolvedValue(null);
+      (modelsMock.CalendarEvent.create as jest.Mock).mockResolvedValue(fakeEvent());
+      (modelsMock.CalendarEvent.findAll as jest.Mock).mockResolvedValue([]);
+
+      await syncAppleUserCalendar(syncUserId);
+
+      expect(modelsMock.CalendarEvent.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Dentist',
+          externalProvider: 'apple',
+          externalEventId: `${calendarUrl}event-1.ics`,
+          createdBy: syncUserId,
+        }),
+      );
+      expect(state.lastSyncedAt).toBeInstanceOf(Date);
+      expect(state.save).toHaveBeenCalled();
+    });
+
+    it('updates an existing local event when the Apple object already has one', async () => {
+      const state = fakeAppleSyncState();
+      const localEvent = fakeEvent({ externalProvider: 'apple', externalEventId: `${calendarUrl}event-2.ics` });
+      (modelsMock.CalendarSyncState.findOne as jest.Mock).mockResolvedValue(state);
+      (modelsMock.HouseholdMember.findOne as jest.Mock).mockResolvedValue({ householdId, userId: syncUserId });
+      (appleCalendar.listAppleEvents as jest.Mock).mockResolvedValue({
+        objects: [{
+          href: `${calendarUrl}event-2.ics`,
+          etag: '"def456"',
+          uid: 'event-2',
+          title: 'Updated title',
+          description: null,
+          startIso: '2026-08-11T09:00:00.000Z',
+          endIso: '2026-08-11T09:30:00.000Z',
+          recurrenceFreq: null,
+        }],
+      });
+      (modelsMock.CalendarEvent.findOne as jest.Mock).mockResolvedValue(localEvent);
+      (modelsMock.CalendarEvent.findAll as jest.Mock).mockResolvedValue([]);
+
+      await syncAppleUserCalendar(syncUserId);
+
+      expect(localEvent.title).toBe('Updated title');
+      expect(localEvent.save).toHaveBeenCalled();
     });
   });
 });

@@ -2,9 +2,10 @@ import { v4 as uuidv4 } from 'uuid';
 import { fromZonedTime } from 'date-fns-tz';
 import { CalendarEvent, CalendarSyncState, EventInvitee, HouseholdMember, Household, User } from '../../database/models';
 import { Op } from 'sequelize';
-import { ForbiddenError, NotFoundError } from '../../shared/utils/errors';
+import { AppError, ForbiddenError, NotFoundError } from '../../shared/utils/errors';
 import { getUserHousehold as getUserHouseholdCore } from '../../shared/utils/household';
 import * as notificationService from '../../shared/services/notifications';
+import { env } from '../../config/env';
 import {
   exchangeCodeForTokens,
   getValidAccessToken,
@@ -13,6 +14,13 @@ import {
   upsertGoogleEvent,
   deleteGoogleEvent,
 } from '../../shared/utils/googleCalendar';
+import { generateOutlookFeedToken } from '../../shared/utils/outlookCalendar';
+import {
+  discoverPrimaryCalendar,
+  listAppleEvents,
+  upsertAppleEvent,
+  deleteAppleEvent,
+} from '../../shared/utils/appleCalendar';
 import logger from '../../shared/utils/logger';
 import { getIO } from '../../shared/utils/socket';
 import type {
@@ -22,6 +30,9 @@ import type {
   RepeatRule,
   GoogleCalendarConnectBody,
   GoogleCalendarStatusResponse,
+  OutlookCalendarStatusResponse,
+  AppleCalendarConnectBody,
+  AppleCalendarStatusResponse,
 } from './types';
 
 // ── Helpers ──
@@ -126,6 +137,11 @@ export async function createEvent(
       logger.warn('[Calendar] Google push failed on create:', e.message),
     );
   }
+  if (body.syncToApple) {
+    pushEventToAppleIfConnected(event, userId).catch((e: Error) =>
+      logger.warn('[Calendar] Apple push failed on create:', e.message),
+    );
+  }
 
   // Re-fetch with invitees so the response matches the mobile calendar schema.
   const withInvitees = await CalendarEvent.findByPk(event.id, {
@@ -149,10 +165,15 @@ export async function listEvents(
 ): Promise<CalendarEventResponse[]> {
   const householdId = await getUserHouseholdId(userId);
 
-  const where: Record<string, unknown> = { householdId };
-  if (query.month) {
-    where.eventDate = { between: [`${query.month}-01`, `${query.month}-31`] };
-  }
+  // No month given (e.g. Dashboard's widget call) used to mean "every event
+  // the household has ever created" — an unbounded, ever-growing payload
+  // (confirmed 275KB in production) for a widget that only ever shows the
+  // current period. Default to the current month instead.
+  const month = query.month || new Date().toISOString().slice(0, 7);
+  const where: Record<string, unknown> = {
+    householdId,
+    eventDate: { between: [`${month}-01`, `${month}-31`] },
+  };
 
   const events = await CalendarEvent.findAll({
     where,
@@ -251,6 +272,11 @@ export async function updateEvent(
       logger.warn('[Calendar] Google push failed on update:', e.message),
     );
   }
+  if (body.syncToApple || event.externalProvider === 'apple') {
+    pushEventToAppleIfConnected(event, userId).catch((e: Error) =>
+      logger.warn('[Calendar] Apple push failed on update:', e.message),
+    );
+  }
 
   const withInvitees = await CalendarEvent.findByPk(event.id, {
     include: [{ model: User, as: 'invitees' }],
@@ -271,11 +297,24 @@ export async function deleteEvent(
   await assertCanManageEvent(event, userId, householdId, 'delete');
 
   if (event.googleEventId) {
-    const state = await CalendarSyncState.findOne({ where: { userId: event.createdBy, isActive: true } });
-    if (state) {
+    const state = await CalendarSyncState.findOne({
+      where: { userId: event.createdBy, provider: 'google', isActive: true },
+    });
+    if (state && state.googleCalendarId) {
       const accessToken = await getValidAccessToken(state);
       await deleteGoogleEvent(accessToken, state.googleCalendarId, event.googleEventId).catch((e: Error) =>
         logger.warn('[Calendar] Google delete failed:', e.message),
+      );
+    }
+  }
+
+  if (event.externalProvider === 'apple' && event.externalEventId) {
+    const state = await CalendarSyncState.findOne({
+      where: { userId: event.createdBy, provider: 'apple', isActive: true },
+    });
+    if (state && state.appleId && state.applePassword) {
+      await deleteAppleEvent(state.appleId, state.applePassword, event.externalEventId, null).catch((e: Error) =>
+        logger.warn('[Calendar] Apple delete failed:', e.message),
       );
     }
   }
@@ -434,7 +473,7 @@ function toGoogleSyncStatusResponse(state: CalendarSyncState | null): GoogleCale
 }
 
 export async function getGoogleSyncStatus(userId: string): Promise<GoogleCalendarStatusResponse> {
-  const state = await CalendarSyncState.findOne({ where: { userId } });
+  const state = await CalendarSyncState.findOne({ where: { userId, provider: 'google' } });
   return toGoogleSyncStatusResponse(state);
 }
 
@@ -450,7 +489,7 @@ export async function connectGoogleCalendar(
   const tokens = await exchangeCodeForTokens(body.code, body.redirectUri);
   const calendarId = await getPrimaryCalendarId(tokens.accessToken);
 
-  let state = await CalendarSyncState.findOne({ where: { userId } });
+  let state = await CalendarSyncState.findOne({ where: { userId, provider: 'google' } });
   if (state) {
     state.googleCalendarId = calendarId;
     state.accessToken = tokens.accessToken;
@@ -463,6 +502,7 @@ export async function connectGoogleCalendar(
     state = await CalendarSyncState.create({
       id: uuidv4(),
       userId,
+      provider: 'google',
       googleCalendarId: calendarId,
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
@@ -477,13 +517,13 @@ export async function connectGoogleCalendar(
 }
 
 export async function disconnectGoogleCalendar(userId: string): Promise<void> {
-  await CalendarSyncState.destroy({ where: { userId } });
+  await CalendarSyncState.destroy({ where: { userId, provider: 'google' } });
 }
 
 /** Push a single Rootaroo event to its creator's connected Google Calendar, if any. */
 async function pushEventToGoogleIfConnected(event: CalendarEvent, userId: string): Promise<void> {
-  const state = await CalendarSyncState.findOne({ where: { userId, isActive: true } });
-  if (!state) return;
+  const state = await CalendarSyncState.findOne({ where: { userId, provider: 'google', isActive: true } });
+  if (!state || !state.googleCalendarId) return;
 
   const accessToken = await getValidAccessToken(state);
   const startIso = joinDateTime(String(event.eventDate), event.startTime);
@@ -504,6 +544,8 @@ async function pushEventToGoogleIfConnected(event: CalendarEvent, userId: string
 
   if (event.googleEventId !== googleEventId) {
     event.googleEventId = googleEventId;
+    event.externalProvider = 'google';
+    event.externalEventId = googleEventId;
     await event.save();
   }
 }
@@ -515,8 +557,8 @@ async function pushEventToGoogleIfConnected(event: CalendarEvent, userId: string
  * Called on connect and by the periodic `calendar-sync` cron job.
  */
 export async function syncUserCalendar(userId: string): Promise<void> {
-  const state = await CalendarSyncState.findOne({ where: { userId, isActive: true } });
-  if (!state) return;
+  const state = await CalendarSyncState.findOne({ where: { userId, provider: 'google', isActive: true } });
+  if (!state || !state.googleCalendarId) return;
 
   const householdId = await getUserHouseholdId(userId);
   const accessToken = await getValidAccessToken(state);
@@ -563,6 +605,8 @@ export async function syncUserCalendar(userId: string): Promise<void> {
         isRecurring: repeats !== 'none',
         recurrenceRule: repeats === 'none' ? null : repeats,
         googleEventId: gEvent.id,
+        externalProvider: 'google',
+        externalEventId: gEvent.id,
       });
     }
   }
@@ -580,6 +624,234 @@ export async function syncUserCalendar(userId: string): Promise<void> {
   for (const ev of unsynced) {
     await pushEventToGoogleIfConnected(ev, userId).catch((e: Error) =>
       logger.warn('[Calendar] Sync push failed for event', ev.id, e.message),
+    );
+  }
+}
+
+// ── Outlook Calendar sync (one-way ICS subscription feed) ──
+//
+// Originally planned as a Graph API OAuth two-way sync (see Google/Apple
+// sections' shape), but that requires an Azure AD app registration the
+// client wasn't able to complete. Microsoft has no API-key/anonymous path
+// into Graph — OAuth via an app registration is mandatory for any Graph
+// access at all, so dropping to a lower sync frequency doesn't avoid it.
+// Instead: expose each connected user's household calendar as a public,
+// token-authenticated `.ics` feed URL ("webcal" subscription). Outlook
+// polls it on its own schedule — no Azure app, no OAuth, but one-way
+// (Rootaroo → Outlook only) and Microsoft controls the refresh cadence.
+
+function buildOutlookFeedUrl(token: string): string {
+  return `${env.serverBaseUrl}/api/v1/calendar-feed/${token}.ics`;
+}
+
+function toOutlookSyncStatusResponse(state: CalendarSyncState | null): OutlookCalendarStatusResponse {
+  if (!state || !state.isActive || !state.outlookFeedToken) {
+    return { connected: false, feedUrl: null };
+  }
+  return { connected: true, feedUrl: buildOutlookFeedUrl(state.outlookFeedToken) };
+}
+
+export async function getOutlookSyncStatus(userId: string): Promise<OutlookCalendarStatusResponse> {
+  const state = await CalendarSyncState.findOne({ where: { userId, provider: 'outlook' } });
+  return toOutlookSyncStatusResponse(state);
+}
+
+export async function connectOutlookCalendar(userId: string): Promise<OutlookCalendarStatusResponse> {
+  let state = await CalendarSyncState.findOne({ where: { userId, provider: 'outlook' } });
+  const token = state?.outlookFeedToken || generateOutlookFeedToken();
+
+  if (state) {
+    state.outlookFeedToken = token;
+    state.isActive = true;
+    await state.save();
+  } else {
+    state = await CalendarSyncState.create({
+      id: uuidv4(),
+      userId,
+      provider: 'outlook',
+      outlookFeedToken: token,
+      isActive: true,
+    });
+  }
+
+  return toOutlookSyncStatusResponse(state);
+}
+
+export async function disconnectOutlookCalendar(userId: string): Promise<void> {
+  await CalendarSyncState.destroy({ where: { userId, provider: 'outlook' } });
+}
+
+/** Serves the `.ics` feed for a given feed token — public, unauthenticated route. */
+export async function getOutlookFeedIcs(token: string): Promise<string> {
+  const state = await CalendarSyncState.findOne({ where: { outlookFeedToken: token, isActive: true } });
+  if (!state) throw new AppError(404, 'Calendar feed not found');
+  return exportHouseholdIcs(state.userId);
+}
+
+// ── Apple Calendar two-way sync ──
+//
+// Same shape/scoping as Google and Outlook above, but no OAuth: the
+// "credential" is the Apple ID + app-specific password, verified and
+// resolved to a calendar right at connect time (see appleCalendar.ts's
+// discoverPrimaryCalendar) since there's no token exchange to piggyback a
+// validity check on the way Google/Outlook's connect flow gets one for free.
+// `caldavCalendarHomeUrl` stores the resolved calendar's own URL (not
+// literally a "home set" URL — the column name is a holdover from the
+// original CalDAV-discovery-cache design; storing the calendar URL directly
+// is simpler and is all the sync/push functions below actually need).
+
+function toAppleSyncStatusResponse(state: CalendarSyncState | null): AppleCalendarStatusResponse {
+  if (!state || !state.isActive) {
+    return { connected: false, appleId: null, lastSyncedAt: null };
+  }
+  return {
+    connected: true,
+    appleId: state.appleId,
+    lastSyncedAt: state.lastSyncedAt ? state.lastSyncedAt.toISOString() : null,
+  };
+}
+
+export async function getAppleSyncStatus(userId: string): Promise<AppleCalendarStatusResponse> {
+  const state = await CalendarSyncState.findOne({ where: { userId, provider: 'apple' } });
+  return toAppleSyncStatusResponse(state);
+}
+
+export async function connectAppleCalendar(
+  userId: string,
+  body: AppleCalendarConnectBody,
+): Promise<AppleCalendarStatusResponse> {
+  // Fail fast on a bad app-specific password rather than storing it and
+  // only discovering the problem on the next cron sync.
+  const { calendarUrl } = await discoverPrimaryCalendar(body.appleId, body.appSpecificPassword);
+
+  let state = await CalendarSyncState.findOne({ where: { userId, provider: 'apple' } });
+  if (state) {
+    state.appleId = body.appleId;
+    state.applePassword = body.appSpecificPassword;
+    state.caldavCalendarHomeUrl = calendarUrl;
+    state.isActive = true;
+    await state.save();
+  } else {
+    state = await CalendarSyncState.create({
+      id: uuidv4(),
+      userId,
+      provider: 'apple',
+      appleId: body.appleId,
+      applePassword: body.appSpecificPassword,
+      caldavCalendarHomeUrl: calendarUrl,
+      isActive: true,
+    });
+  }
+
+  syncAppleUserCalendar(userId).catch((e: Error) => logger.warn('[Calendar] Initial Apple sync failed:', e.message));
+
+  return toAppleSyncStatusResponse(state);
+}
+
+export async function disconnectAppleCalendar(userId: string): Promise<void> {
+  await CalendarSyncState.destroy({ where: { userId, provider: 'apple' } });
+}
+
+/** Push a single Rootaroo event to its creator's connected Apple calendar, if any. */
+async function pushEventToAppleIfConnected(event: CalendarEvent, userId: string): Promise<void> {
+  const state = await CalendarSyncState.findOne({ where: { userId, provider: 'apple', isActive: true } });
+  if (!state || !state.appleId || !state.applePassword || !state.caldavCalendarHomeUrl) return;
+
+  const startIso = joinDateTime(String(event.eventDate), event.startTime);
+  const endIso = joinDateTime(String(event.eventDate), event.endTime ?? event.startTime);
+  const existingHref = event.externalProvider === 'apple' ? event.externalEventId : null;
+
+  const { href } = await upsertAppleEvent(
+    state.appleId,
+    state.applePassword,
+    state.caldavCalendarHomeUrl,
+    {
+      uid: event.id,
+      title: event.title,
+      description: event.description,
+      startIso,
+      endIso,
+      recurrenceRule: event.isRecurring ? event.recurrenceRule : null,
+    },
+    existingHref ? { href: existingHref, etag: null } : null,
+  );
+
+  if (existingHref !== href) {
+    event.externalProvider = 'apple';
+    event.externalEventId = href;
+    await event.save();
+  }
+}
+
+/**
+ * Pull the connected user's Apple Calendar events into Rootaroo, then push
+ * any locally-created, not-yet-synced events of theirs back out. Same
+ * orchestration shape as the Google/Outlook sync functions above — called
+ * on connect and by the periodic `calendar-sync` cron job.
+ */
+export async function syncAppleUserCalendar(userId: string): Promise<void> {
+  const state = await CalendarSyncState.findOne({ where: { userId, provider: 'apple', isActive: true } });
+  if (!state || !state.appleId || !state.applePassword || !state.caldavCalendarHomeUrl) return;
+
+  const householdId = await getUserHouseholdId(userId);
+
+  // ── Pull ──
+  const { objects } = await listAppleEvents(state.appleId, state.applePassword, state.caldavCalendarHomeUrl);
+
+  for (const obj of objects) {
+    const existing = await CalendarEvent.findOne({
+      where: { externalProvider: 'apple', externalEventId: obj.href, householdId },
+    });
+
+    const starts = splitDateTime(new Date(obj.startIso).toISOString());
+    const ends = splitDateTime(new Date(obj.endIso).toISOString());
+    const freqMap: Record<string, string> = { DAILY: 'daily', WEEKLY: 'weekly', MONTHLY: 'monthly' };
+    const repeats = toRepeatRule(!!obj.recurrenceFreq, (obj.recurrenceFreq && freqMap[obj.recurrenceFreq]) || null);
+
+    if (existing) {
+      existing.title = obj.title || existing.title;
+      existing.description = obj.description;
+      existing.eventDate = starts.date as unknown as Date;
+      existing.startTime = starts.time;
+      existing.endTime = ends.time;
+      existing.isRecurring = repeats !== 'none';
+      existing.recurrenceRule = repeats === 'none' ? null : repeats;
+      await existing.save();
+    } else {
+      await CalendarEvent.create({
+        id: uuidv4(),
+        householdId,
+        createdBy: userId,
+        title: obj.title,
+        description: obj.description,
+        eventDate: starts.date as unknown as Date,
+        startTime: starts.time,
+        endTime: ends.time,
+        isRecurring: repeats !== 'none',
+        recurrenceRule: repeats === 'none' ? null : repeats,
+        externalProvider: 'apple',
+        externalEventId: obj.href,
+      });
+    }
+  }
+
+  // No incremental cursor for Apple (see appleCalendar.ts) — just record
+  // that a sync happened.
+  state.lastSyncedAt = new Date();
+  await state.save();
+
+  // ── Push ──
+  const unsynced = await CalendarEvent.findAll({
+    where: {
+      householdId,
+      createdBy: userId,
+      externalProvider: { [Op.is]: null } as any,
+      googleEventId: { [Op.is]: null } as any,
+    },
+  });
+  for (const ev of unsynced) {
+    await pushEventToAppleIfConnected(ev, userId).catch((e: Error) =>
+      logger.warn('[Calendar] Apple sync push failed for event', ev.id, e.message),
     );
   }
 }

@@ -9,6 +9,7 @@ export interface CreateEventBody {
   inviteeIds?: string[];
   repeats?: RepeatRule;
   syncToGoogle?: boolean;
+  syncToApple?: boolean;
   description?: string | null;
 }
 
@@ -19,6 +20,7 @@ export interface UpdateEventBody {
   inviteeIds?: string[];
   repeats?: RepeatRule;
   syncToGoogle?: boolean;
+  syncToApple?: boolean;
   description?: string | null;
 }
 
@@ -66,6 +68,24 @@ export interface GoogleCalendarConnectBody {
 export interface GoogleCalendarStatusResponse {
   connected: boolean;
   googleCalendarId: string | null;
+  lastSyncedAt: string | null;
+}
+
+export interface OutlookCalendarStatusResponse {
+  connected: boolean;
+  // Public webcal subscription URL the user adds in Outlook ("Subscribe
+  // from web") — one-way, no OAuth. null when not connected.
+  feedUrl: string | null;
+}
+
+export interface AppleCalendarConnectBody {
+  appleId: string;
+  appSpecificPassword: string;
+}
+
+export interface AppleCalendarStatusResponse {
+  connected: boolean;
+  appleId: string | null;
   lastSyncedAt: string | null;
 }
 

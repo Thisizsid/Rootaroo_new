@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StatusBar,
+  Platform,
 } from 'react-native';
 import { showAlert } from '../shared/services/themedAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,6 +23,8 @@ import { householdApi } from '../shared/api/household';
 import { eventApi } from '../shared/api/event';
 import { checkInApi } from '../shared/api/checkin';
 import { useGoogleCalendarConnect } from '../shared/hooks/useGoogleCalendarConnect';
+import * as Clipboard from 'expo-clipboard';
+import AppleCalendarConnectSheet from '../components/AppleCalendarConnectSheet';
 import { useTabBarDockHeight } from '../shared/hooks/useTabBarDockHeight';
 import { useAuthStore } from '../shared/store/authStore';
 import { colors, fonts, goldButton } from '../shared/theme';
@@ -87,6 +90,11 @@ export default function CalendarScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [googleStatus, setGoogleStatus] = useState(null);
+  const [outlookStatus, setOutlookStatus] = useState(null);
+  const [connectingOutlook, setConnectingOutlook] = useState(false);
+  const [appleStatus, setAppleStatus] = useState(null);
+  const [appleSheetVisible, setAppleSheetVisible] = useState(false);
+  const [connectingApple, setConnectingApple] = useState(false);
   const [checkedInTodayCount, setCheckedInTodayCount] = useState(0);
   const viewDate = useMemo(() => new Date(), []);
   const [selected, setSelected] = useState(() => new Date());
@@ -95,7 +103,7 @@ export default function CalendarScreen({ navigation }) {
     setError(null);
     const month = `${viewDate.getFullYear()}-${String(viewDate.getMonth() + 1).padStart(2, '0')}`;
     try {
-      const [memberList, eventList, syncStatus] = await Promise.all([
+      const [memberList, eventList, syncStatus, outlookSyncStatus, appleSyncStatus] = await Promise.all([
         householdId ? householdApi.getMembers(householdId) : Promise.resolve([]),
         eventApi
           .list({
@@ -103,10 +111,16 @@ export default function CalendarScreen({ navigation }) {
           })
           .catch(() => []),
         eventApi.getGoogleSyncStatus().catch(() => null),
+        // Outlook/Apple Calendar connect UI is iOS-only — skip the requests
+        // entirely on Android rather than fetching status nothing will show.
+        Platform.OS === 'ios' ? eventApi.getOutlookSyncStatus().catch(() => null) : Promise.resolve(null),
+        Platform.OS === 'ios' ? eventApi.getAppleSyncStatus().catch(() => null) : Promise.resolve(null),
       ]);
       setMembers(memberList);
       setEvents(eventList);
       setGoogleStatus(syncStatus);
+      setOutlookStatus(outlookSyncStatus);
+      setAppleStatus(appleSyncStatus);
       try {
         const ci = await checkInApi.list({
           limit: 50,
@@ -166,6 +180,103 @@ export default function CalendarScreen({ navigation }) {
       connectGoogle();
     }
   }, [googleStatus, connectGoogle]);
+  // Outlook has no OAuth app to connect through (see AppleCalendarConnectSheet
+  // comment above for the Apple equivalent of "different shape than Google")
+  // — it's a one-way ICS subscription feed. Pressing "Connect" just asks the
+  // server for a feed URL and copies it to the clipboard for the user to add
+  // in Outlook as "Subscribe from web."
+  const handleOutlookSyncPress = useCallback(() => {
+    if (outlookStatus?.connected) {
+      showAlert(
+        'Disconnect Outlook Calendar?',
+        'Rootaroo will stop offering your Outlook calendar link.',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+          {
+            text: 'Disconnect',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await eventApi.disconnectOutlookCalendar();
+                setOutlookStatus({ connected: false, feedUrl: null });
+              } catch {
+                showAlert('Error', 'Could not disconnect Outlook Calendar.');
+              }
+            },
+          },
+        ],
+      );
+      return;
+    }
+
+    (async () => {
+      setConnectingOutlook(true);
+      try {
+        const status = await eventApi.connectOutlookCalendar();
+        setOutlookStatus(status);
+        if (status.feedUrl) {
+          await Clipboard.setStringAsync(status.feedUrl);
+        }
+        showAlert(
+          'Outlook Calendar link ready',
+          `We copied your calendar link to the clipboard:\n\n${status.feedUrl}\n\nIn Outlook, add it as "Subscribe from web." New Rootaroo events will show up automatically, though Outlook checks for updates on its own schedule, not instantly. Events created directly in Outlook won't sync back to Rootaroo.`,
+        );
+      } catch {
+        showAlert('Error', 'Could not set up your Outlook Calendar link.');
+      } finally {
+        setConnectingOutlook(false);
+      }
+    })();
+  }, [outlookStatus]);
+  const handleAppleSyncPress = useCallback(() => {
+    if (appleStatus?.connected) {
+      showAlert(
+        'Disconnect Apple Calendar?',
+        'Rootaroo will stop syncing events with your Apple Calendar.',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+          {
+            text: 'Disconnect',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await eventApi.disconnectAppleCalendar();
+                setAppleStatus({
+                  connected: false,
+                  appleId: null,
+                  lastSyncedAt: null,
+                });
+              } catch {
+                showAlert('Error', 'Could not disconnect Apple Calendar.');
+              }
+            },
+          },
+        ],
+      );
+    } else {
+      setAppleSheetVisible(true);
+    }
+  }, [appleStatus]);
+  const handleAppleSheetSubmit = useCallback(async ({ appleId, appSpecificPassword }) => {
+    setConnectingApple(true);
+    try {
+      const status = await eventApi.connectAppleCalendar({ appleId, appSpecificPassword });
+      setAppleStatus(status);
+      setAppleSheetVisible(false);
+      showAlert('Connected', 'Your Apple Calendar is now syncing with Rootaroo.');
+    } catch (e) {
+      const msg = e?.response?.data?.error || e?.message || 'Could not connect Apple Calendar.';
+      showAlert('Error', msg);
+    } finally {
+      setConnectingApple(false);
+    }
+  }, []);
 
   // Reload members + events each time the screen gains focus, so newly created
   // events show up when returning from the Create Event sheet.
@@ -266,6 +377,44 @@ export default function CalendarScreen({ navigation }) {
                 </Text>
               )}
             </TouchableOpacity>
+            {Platform.OS === 'ios' && (
+              <>
+                <TouchableOpacity
+                  style={[
+                    styles.googleSyncChip,
+                    outlookStatus?.connected && styles.googleSyncChipConnected,
+                  ]}
+                  onPress={handleOutlookSyncPress}
+                  disabled={connectingOutlook}
+                  activeOpacity={0.8}
+                >
+                  {connectingOutlook ? (
+                    <ActivityIndicator size="small" color={colors.goldDeep} />
+                  ) : (
+                    <Text style={styles.googleSyncChipText}>
+                      {outlookStatus?.connected ? 'Outlook Calendar synced' : 'Connect Outlook Calendar'}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.googleSyncChip,
+                    appleStatus?.connected && styles.googleSyncChipConnected,
+                  ]}
+                  onPress={handleAppleSyncPress}
+                  disabled={connectingApple}
+                  activeOpacity={0.8}
+                >
+                  {connectingApple ? (
+                    <ActivityIndicator size="small" color={colors.goldDeep} />
+                  ) : (
+                    <Text style={styles.googleSyncChipText}>
+                      {appleStatus?.connected ? 'Apple Calendar synced' : 'Connect Apple Calendar'}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </>
+            )}
           </View>
           <View style={styles.avatarStack}>
             {members.slice(0, 4).map((m, i) => (
@@ -424,6 +573,13 @@ export default function CalendarScreen({ navigation }) {
           <GoldFill radius={28} />
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>
+
+      <AppleCalendarConnectSheet
+        visible={appleSheetVisible}
+        loading={connectingApple}
+        onSubmit={handleAppleSheetSubmit}
+        onCancel={() => setAppleSheetVisible(false)}
+      />
     </View>
   );
 }

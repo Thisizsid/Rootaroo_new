@@ -41,6 +41,11 @@ export const env = {
     callbackUrl: process.env.GOOGLE_CALLBACK_URL || '',
   },
 
+  // Public origin this server is reachable at — needed to build the
+  // absolute Outlook ICS feed subscription URL (webcal), since that URL is
+  // handed to Microsoft's servers, not just used internally.
+  serverBaseUrl: process.env.SERVER_BASE_URL || `http://localhost:${process.env.PORT || '3000'}`,
+
   apple: {
     bundleId: process.env.APPLE_BUNDLE_ID || 'com.rootaroo.app',
   },

@@ -86,3 +86,54 @@ export async function googleDisconnect(req: Request, res: Response, next: NextFu
     res.status(200).json({ success: true, data: { message: 'Google Calendar disconnected' } });
   } catch (e) { next(e); }
 }
+
+export async function outlookStatus(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await calendarService.getOutlookSyncStatus(getUserId(req));
+    res.status(200).json({ success: true, data: result });
+  } catch (e) { next(e); }
+}
+
+export async function outlookConnect(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await calendarService.connectOutlookCalendar(getUserId(req));
+    res.status(200).json({ success: true, data: result });
+  } catch (e) { next(e); }
+}
+
+export async function outlookDisconnect(req: Request, res: Response, next: NextFunction) {
+  try {
+    await calendarService.disconnectOutlookCalendar(getUserId(req));
+    res.status(200).json({ success: true, data: { message: 'Outlook Calendar disconnected' } });
+  } catch (e) { next(e); }
+}
+
+/** Public, unauthenticated `.ics` feed Outlook subscribes to (webcal). */
+export async function outlookFeed(req: Request, res: Response, next: NextFunction) {
+  try {
+    const ics = await calendarService.getOutlookFeedIcs(req.params.token);
+    res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+    res.send(ics);
+  } catch (e) { next(e); }
+}
+
+export async function appleStatus(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await calendarService.getAppleSyncStatus(getUserId(req));
+    res.status(200).json({ success: true, data: result });
+  } catch (e) { next(e); }
+}
+
+export async function appleConnect(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await calendarService.connectAppleCalendar(getUserId(req), req.body);
+    res.status(200).json({ success: true, data: result });
+  } catch (e) { next(e); }
+}
+
+export async function appleDisconnect(req: Request, res: Response, next: NextFunction) {
+  try {
+    await calendarService.disconnectAppleCalendar(getUserId(req));
+    res.status(200).json({ success: true, data: { message: 'Apple Calendar disconnected' } });
+  } catch (e) { next(e); }
+}

@@ -1,5 +1,6 @@
 import { Model, DataTypes, CreationOptional } from 'sequelize';
 import sequelize from '../../config/database';
+import type { CalendarProvider } from './CalendarSyncState';
 
 class CalendarEvent extends Model {
   declare id: CreationOptional<string>;
@@ -13,6 +14,8 @@ class CalendarEvent extends Model {
   declare isRecurring: boolean;
   declare recurrenceRule: string | null;
   declare googleEventId: string | null;
+  declare externalProvider: CalendarProvider | null;
+  declare externalEventId: string | null;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare deletedAt: Date | null;
@@ -73,6 +76,16 @@ CalendarEvent.init(
       allowNull: true,
       field: 'google_event_id',
     },
+    externalProvider: {
+      type: DataTypes.ENUM('google', 'outlook', 'apple'),
+      allowNull: true,
+      field: 'external_provider',
+    },
+    externalEventId: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      field: 'external_event_id',
+    },
     createdAt: {
       type: DataTypes.DATE,
       field: 'created_at',
@@ -93,6 +106,7 @@ CalendarEvent.init(
     paranoid: true,
     indexes: [
       { name: 'idx_calendar_household_date', fields: ['household_id', 'event_date'] },
+      { name: 'idx_calendar_events_external', fields: ['external_provider', 'external_event_id'] },
     ],
   }
 );

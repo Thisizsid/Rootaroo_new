@@ -24,4 +24,30 @@ export const eventApi = {
 
   disconnectGoogleCalendar: () =>
     apiClient.post('/events/google/disconnect'),
+
+  getOutlookSyncStatus: () =>
+    apiClient
+      .get('/events/outlook/status')
+      .then((r) => r.data.data),
+
+  connectOutlookCalendar: () =>
+    apiClient
+      .post('/events/outlook/connect')
+      .then((r) => r.data.data),
+
+  disconnectOutlookCalendar: () =>
+    apiClient.post('/events/outlook/disconnect'),
+
+  getAppleSyncStatus: () =>
+    apiClient
+      .get('/events/apple/status')
+      .then((r) => r.data.data),
+
+  connectAppleCalendar: (data) =>
+    apiClient
+      .post('/events/apple/connect', data)
+      .then((r) => r.data.data),
+
+  disconnectAppleCalendar: () =>
+    apiClient.post('/events/apple/disconnect'),
 };
