@@ -13,6 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, radius } from '../shared/theme';
 import { chatTheme } from '../shared/theme/chat';
+import { useVoiceAudioStore } from '../shared/store/voiceAudioStore';
 import Avatar from './Avatar';
 
 function formatDuration(seconds) {
@@ -25,7 +26,7 @@ function formatDuration(seconds) {
 // Decorative reference waveform; voice clips do not include amplitude data.
 const WAVEFORM_HEIGHTS = [4, 6, 10, 16, 20, 24, 16, 12, 20, 24, 12, 8, 14, 20, 22, 16, 8, 6, 12, 18, 22, 14, 8, 12, 18, 10, 6];
 
-function VoiceBubble({ mediaUrl, durationSeconds, isOwn, isSelected, onLongPress, onTapDeselect }) {
+function VoiceBubble({ messageId, mediaUrl, durationSeconds, isOwn, isSelected, onLongPress, onTapDeselect }) {
   const [playing, setPlaying] = useState(false);
   const [positionMillis, setPositionMillis] = useState(0);
   const [durationMillis, setDurationMillis] = useState((durationSeconds || 0) * 1000);
@@ -33,12 +34,25 @@ function VoiceBubble({ mediaUrl, durationSeconds, isOwn, isSelected, onLongPress
   const loadingRef = useRef(null);
   const waveWidthRef = useRef(1);
 
+  const activeMessageId = useVoiceAudioStore((s) => s.activeMessageId);
+  const setActive = useVoiceAudioStore((s) => s.setActive);
+  const clearActive = useVoiceAudioStore((s) => s.clearActive);
 
   useEffect(() => {
     return () => {
       soundRef.current?.unloadAsync?.();
     };
   }, []);
+
+  // Only one voice note plays at a time — when a different bubble becomes
+  // active while this one is still playing, pause here too. `pauseAsync`
+  // triggers `onStatusUpdate` with the real `isPlaying:false`, so `playing`
+  // stays driven by actual playback state rather than a second flag.
+  useEffect(() => {
+    if (activeMessageId !== messageId && playing) {
+      soundRef.current?.pauseAsync?.();
+    }
+  }, [activeMessageId, messageId, playing]);
 
   const onStatusUpdate = (status) => {
     if (!status.isLoaded) return;
@@ -49,6 +63,7 @@ function VoiceBubble({ mediaUrl, durationSeconds, isOwn, isSelected, onLongPress
       setPlaying(false);
       setPositionMillis(0);
       soundRef.current?.setPositionAsync(0);
+      clearActive(messageId);
     }
   };
 
@@ -78,7 +93,9 @@ function VoiceBubble({ mediaUrl, durationSeconds, isOwn, isSelected, onLongPress
       const status = await sound.getStatusAsync();
       if (status.isLoaded && status.isPlaying) {
         await sound.pauseAsync();
+        clearActive(messageId);
       } else {
+        setActive(messageId);
         await sound.playAsync();
       }
     } catch {
@@ -272,6 +289,7 @@ export default function MessageBubble({
         )}
         {message.mediaUrl && message.type === 'voice' ? (
           <VoiceBubble
+            messageId={message.id}
             mediaUrl={message.mediaUrl}
             durationSeconds={message.durationSeconds}
             isOwn={isOwn}
