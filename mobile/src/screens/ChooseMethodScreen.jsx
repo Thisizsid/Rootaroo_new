@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, StatusBar, TouchableOpacity, Image, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, StatusBar, TouchableOpacity, Image, Platform } from 'react-native';
 import Svg, { Path, Rect } from 'react-native-svg';
 import { colors, fonts, radius } from '../shared/theme';
 import {
@@ -9,6 +9,7 @@ import {
 import { loadSignupProgress } from '../shared/store/signupProgress';
 import { useGoogleSignIn } from '../shared/hooks/useGoogleSignIn';
 import { useAppleSignIn } from '../shared/hooks/useAppleSignIn';
+import SpinningIcon from '../components/SpinningIcon';
 /* Small inline icons (stroke = ink, like the mockup) */
 function PhoneIcon() {
   return (
@@ -105,7 +106,7 @@ export default function ChooseMethodScreen({ navigation }) {
             disabled={googleLoading}
           >
             {googleLoading ? (
-              <ActivityIndicator color={colors.ink} size="small" />
+              <SpinningIcon source={require('../../assets/images/google-g.png')} size={18} />
             ) : (
               <>
                 <GoogleChip />

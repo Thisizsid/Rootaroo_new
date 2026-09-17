@@ -24,6 +24,7 @@ import { resolvePostAuthNavigation } from '../shared/navigation/postAuthNavigati
 import { loadSignupProgress } from '../shared/store/signupProgress';
 import { colors, fonts, goldButton, radius, withAlpha } from '../shared/theme';
 import { GoldFill } from '../shared/components/GoldButton';
+import SpinningIcon from '../components/SpinningIcon';
 import { KEYBOARD_BEHAVIOR } from '../shared/components/KeyboardAware';
 function SvgApple() {
   return (
@@ -107,7 +108,7 @@ export default function SignInScreen({ navigation }) {
             disabled={googleLoading}
           >
             {googleLoading ? (
-              <ActivityIndicator color={colors.legacyNavy} size="small" />
+              <SpinningIcon source={require('../../assets/images/google-g.png')} size={19} />
             ) : (
               <>
                 <Image
