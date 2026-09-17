@@ -57,6 +57,19 @@ export const householdApi = {
 
   getMyPendingActionRequest: (householdId) =>
     apiClient.get(`/households/${householdId}/action-requests/mine`).then((r) => r.data.data),
+
+  getPendingLeaveRequest: (householdId) =>
+    apiClient.get(`/households/${householdId}/action-requests/pending`).then((r) => r.data.data),
+
+  approveLeaveRequest: (householdId, requestId) =>
+    apiClient
+      .post(`/households/${householdId}/leave-requests/${requestId}/approve`)
+      .then((r) => r.data.data),
+
+  rejectLeaveRequest: (householdId, requestId) =>
+    apiClient
+      .post(`/households/${householdId}/leave-requests/${requestId}/reject`)
+      .then((r) => r.data.data),
 };
 
 export async function loadMyHousehold() {

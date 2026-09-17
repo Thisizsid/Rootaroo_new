@@ -64,6 +64,29 @@ export async function getMyPendingActionRequest(req: Request, res: Response, nex
   } catch (e) { next(e); }
 }
 
+export async function getPendingLeaveRequest(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await householdService.getPendingLeaveRequestForAdmin(getUserId(req), req.params.id);
+    res.status(200).json({ success: true, data: result });
+  } catch (e) { next(e); }
+}
+
+export async function approveLeaveRequest(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await householdService.approveLeaveRequest(getUserId(req), req.params.id, req.params.requestId);
+    res.status(200).json({ success: true, data: result });
+  } catch (e) { next(e); }
+}
+
+export async function rejectLeaveRequest(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await householdService.rejectLeaveRequest(
+      getUserId(req), req.params.id, req.params.requestId, req.body?.reviewerNote,
+    );
+    res.status(200).json({ success: true, data: result });
+  } catch (e) { next(e); }
+}
+
 export async function transferAdmin(req: Request, res: Response, next: NextFunction) {
   try {
     const result = await householdService.transferAdmin(getUserId(req), req.params.id, req.body.newAdminId);

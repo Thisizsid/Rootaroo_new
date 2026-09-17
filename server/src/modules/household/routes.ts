@@ -243,4 +243,10 @@ router.post('/:id/request-deletion', ctrl.requestDeletion);
 router.post('/:id/cancel-deletion', ctrl.cancelDeletion);
 router.get('/:id/action-requests/mine', ctrl.getMyPendingActionRequest);
 
+// Household-admin review of a member's pending leave request — replaces the
+// old Rootaroo-staff email review for 'leave' requests specifically.
+router.get('/:id/action-requests/pending', ctrl.getPendingLeaveRequest);
+router.post('/:id/leave-requests/:requestId/approve', ctrl.approveLeaveRequest);
+router.post('/:id/leave-requests/:requestId/reject', ctrl.rejectLeaveRequest);
+
 export default router;

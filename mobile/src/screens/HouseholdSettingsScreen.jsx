@@ -57,6 +57,8 @@ export default function HouseholdSettingsScreen({ navigation }) {
   const [myRole, setMyRole] = useState('');
   const [scheduledDeletionAt, setScheduledDeletionAt] = useState(null);
   const [pendingRequest, setPendingRequest] = useState(null);
+  const [pendingLeaveRequest, setPendingLeaveRequest] = useState(null);
+  const [leaveReviewLoading, setLeaveReviewLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -86,10 +88,12 @@ export default function HouseholdSettingsScreen({ navigation }) {
       return;
     }
     try {
-      const [hh, memberList, pending] = await Promise.all([
+      const [hh, memberList, pending, pendingLeave] = await Promise.all([
         householdApi.getHousehold(householdId),
         householdApi.getMembers(householdId),
         householdApi.getMyPendingActionRequest(householdId),
+        // 403s for non-admins — harmless, just means nothing to review.
+        householdApi.getPendingLeaveRequest(householdId).catch(() => null),
       ]);
       setHouseholdName(hh.name);
       setInviteCode(hh.inviteCode);
@@ -98,6 +102,7 @@ export default function HouseholdSettingsScreen({ navigation }) {
       setScheduledDeletionAt(hh.scheduledDeletionAt);
       setMembers(memberList);
       setPendingRequest(pending);
+      setPendingLeaveRequest(pendingLeave);
     } catch {
       showAlert('Error', 'Failed to load household settings.');
     } finally {
@@ -158,6 +163,46 @@ export default function HouseholdSettingsScreen({ navigation }) {
   };
   const handleSaveRole = async () => {
     if (!selectedMember || !householdId) return;
+
+    // The server's changeRole endpoint refuses `role: 'admin'` outright — a
+    // single-admin household can only mint a new admin via the dedicated
+    // transfer endpoint, which demotes the caller in the same swap. Route
+    // that case there instead of letting it hit the server and 400.
+    if (selectedRole === 'admin') {
+      showAlert(
+        'Transfer Admin Role?',
+        `${selectedMember.displayName} will become the household admin and you'll become a regular member.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Transfer',
+            style: 'destructive',
+            onPress: async () => {
+              setActionLoading(true);
+              try {
+                await householdApi.transferAdmin(householdId, selectedMember.userId);
+                setMembers((p) =>
+                  p.map((m) => {
+                    if (m.userId === selectedMember.userId) return { ...m, role: 'admin' };
+                    if (m.userId === user?.id) return { ...m, role: 'member' };
+                    return m;
+                  }),
+                );
+                setMyRole('member');
+                setShowRoleModal(false);
+                setSelectedMember(null);
+              } catch (e) {
+                showAlert('Error', e?.response?.data?.error || 'Failed to transfer admin.');
+              } finally {
+                setActionLoading(false);
+              }
+            },
+          },
+        ],
+      );
+      return;
+    }
+
     setActionLoading(true);
     try {
       await householdApi.changeRole(householdId, selectedMember.userId, selectedRole);
@@ -220,6 +265,31 @@ export default function HouseholdSettingsScreen({ navigation }) {
     } finally {
       setActionLoading(false);
       setConfirmLeave(false);
+    }
+  };
+  const handleApproveLeaveRequest = async () => {
+    if (!householdId || !pendingLeaveRequest) return;
+    setLeaveReviewLoading(true);
+    try {
+      await householdApi.approveLeaveRequest(householdId, pendingLeaveRequest.id);
+      setPendingLeaveRequest(null);
+      await load();
+    } catch (e) {
+      showAlert('Error', e?.response?.data?.error || 'Failed to approve the leave request.');
+    } finally {
+      setLeaveReviewLoading(false);
+    }
+  };
+  const handleRejectLeaveRequest = async () => {
+    if (!householdId || !pendingLeaveRequest) return;
+    setLeaveReviewLoading(true);
+    try {
+      await householdApi.rejectLeaveRequest(householdId, pendingLeaveRequest.id);
+      setPendingLeaveRequest(null);
+    } catch (e) {
+      showAlert('Error', e?.response?.data?.error || 'Failed to decline the leave request.');
+    } finally {
+      setLeaveReviewLoading(false);
     }
   };
   const handleDeleteNest = () => {
@@ -531,6 +601,30 @@ export default function HouseholdSettingsScreen({ navigation }) {
 
         {/* ── Leave / delete ── */}
         <View style={styles.card}>
+          {isAdmin && pendingLeaveRequest && (
+            <View style={styles.deletionBanner}>
+              <Text style={styles.deletionBannerText}>
+                {(pendingLeaveRequest.requestedByName || 'A member')} wants to leave the household.
+              </Text>
+              <View style={styles.leaveReviewRow}>
+                <TouchableOpacity
+                  onPress={handleApproveLeaveRequest}
+                  activeOpacity={0.7}
+                  disabled={leaveReviewLoading}
+                >
+                  <Text style={styles.deletionBannerCancel}>Approve</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleRejectLeaveRequest}
+                  activeOpacity={0.7}
+                  disabled={leaveReviewLoading}
+                >
+                  <Text style={[styles.deletionBannerCancel, styles.leaveReviewDecline]}>Decline</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
           {pendingRequest && (
             <View style={styles.deletionBanner}>
               <Text style={styles.deletionBannerText}>
@@ -915,6 +1009,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     fontFamily: fonts.body,
+    color: colors.danger,
+  },
+  leaveReviewRow: {
+    flexDirection: 'row',
+    gap: 20,
+  },
+  leaveReviewDecline: {
     color: colors.danger,
   },
   deletionBannerCancel: {

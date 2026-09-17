@@ -56,3 +56,9 @@ export interface HouseholdActionRequestResponse {
   reviewedAt: string | null;
   createdAt: string;
 }
+
+/** The admin-facing view of a pending leave request — adds the requester's
+ * display name so the settings screen can show "X wants to leave." */
+export interface PendingLeaveRequestResponse extends HouseholdActionRequestResponse {
+  requestedByName: string | null;
+}

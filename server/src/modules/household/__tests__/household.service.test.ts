@@ -3,7 +3,7 @@ import {
   cancelHouseholdDeletion, rotateInviteCode, getHousehold,
   createHousehold, updateCoverPhoto, removeCoverPhoto,
   requestLeaveHousehold, requestHouseholdDeletion, approveActionRequest, rejectActionRequest,
-  getMyPendingActionRequest,
+  getMyPendingActionRequest, getPendingLeaveRequestForAdmin, approveLeaveRequest, rejectLeaveRequest,
 } from '../service';
 import * as models from '../../../database/models';
 
@@ -42,7 +42,9 @@ jest.mock('../../../database/models', () => {
 
 jest.mock('../../../shared/services/notifications', () => ({
   notifyHousehold: jest.fn().mockResolvedValue(undefined),
+  notifyUser: jest.fn().mockResolvedValue(undefined),
 }));
+import { notifyUser } from '../../../shared/services/notifications';
 
 const userId = '550e8400-e29b-41d4-a716-446655440001';
 const otherUserId = '660e8400-e29b-41d4-a716-446655440002';
@@ -397,7 +399,7 @@ describe('Household Service — Member Management', () => {
   });
 
   describe('requestLeaveHousehold', () => {
-    it('should create a pending leave request and email the admin alert', async () => {
+    it('should create a pending leave request and notify the household admin in-app (not email Rootaroo)', async () => {
       (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'member' }));
       (models.HouseholdActionRequest.findOne as jest.Mock).mockResolvedValue(null);
       (models.HouseholdActionRequest.create as jest.Mock).mockResolvedValue({ id: 'req-1' });
@@ -408,7 +410,11 @@ describe('Household Service — Member Management', () => {
       expect(models.HouseholdActionRequest.create).toHaveBeenCalledWith(
         expect.objectContaining({ householdId, requestedBy: userId, type: 'leave' }),
       );
-      expect(sendAdminAlertEmail).toHaveBeenCalled();
+      expect(notifyUser).toHaveBeenCalledWith(
+        userId, 'leave_request', 'Leave request', expect.stringContaining('wants to leave'),
+        expect.objectContaining({ type: 'leave_request', requestId: 'req-1', householdId }),
+      );
+      expect(sendAdminAlertEmail).not.toHaveBeenCalled();
       // The membership itself must not be touched yet — only on approval.
       expect(models.HouseholdMember.destroy).not.toHaveBeenCalled();
     });
@@ -428,6 +434,102 @@ describe('Household Service — Member Management', () => {
       await expect(requestLeaveHousehold(userId, householdId))
         .rejects.toThrow('already pending review');
       expect(models.HouseholdActionRequest.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('household-admin review of a leave request', () => {
+    function fakeLeaveRequest(overrides: any = {}) {
+      return {
+        id: 'req-9',
+        householdId,
+        requestedBy: otherUserId,
+        type: 'leave',
+        status: 'pending',
+        reviewerNote: null,
+        reviewedAt: null,
+        createdAt: new Date('2026-08-01'),
+        save: jest.fn().mockResolvedValue(undefined),
+        ...overrides,
+      };
+    }
+
+    describe('getPendingLeaveRequestForAdmin', () => {
+      it("returns the pending leave request with the requester's name", async () => {
+        (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'admin' }));
+        (models.HouseholdActionRequest.findOne as jest.Mock).mockResolvedValue(fakeLeaveRequest());
+        (models.User.findByPk as jest.Mock).mockResolvedValue({ displayName: 'Leaving Member' });
+
+        const result = await getPendingLeaveRequestForAdmin(userId, householdId);
+
+        expect(result).toEqual(expect.objectContaining({ id: 'req-9', requestedByName: 'Leaving Member' }));
+      });
+
+      it('returns null when there is no pending leave request', async () => {
+        (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'admin' }));
+        (models.HouseholdActionRequest.findOne as jest.Mock).mockResolvedValue(null);
+
+        const result = await getPendingLeaveRequestForAdmin(userId, householdId);
+
+        expect(result).toBeNull();
+      });
+
+      it('throws ForbiddenError for a non-admin caller', async () => {
+        (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'member' }));
+
+        await expect(getPendingLeaveRequestForAdmin(userId, householdId))
+          .rejects.toThrow('Only the household admin');
+      });
+    });
+
+    describe('approveLeaveRequest', () => {
+      it('removes the member, marks the request approved, and notifies the requester', async () => {
+        const destroy = jest.fn().mockResolvedValue(undefined);
+        (models.HouseholdMember.findOne as jest.Mock)
+          .mockResolvedValueOnce(fakeMembership({ role: 'admin' })) // caller-is-admin check
+          .mockResolvedValueOnce({ role: 'member', destroy }); // leaveHousehold's own membership lookup
+        (models.HouseholdActionRequest.findByPk as jest.Mock).mockResolvedValue(fakeLeaveRequest());
+
+        await approveLeaveRequest(userId, householdId, 'req-9');
+
+        expect(destroy).toHaveBeenCalled();
+        expect(notifyUser).toHaveBeenCalledWith(
+          otherUserId, 'leave_response', 'Leave request approved', expect.any(String),
+          expect.objectContaining({ approved: true }),
+        );
+      });
+
+      it('throws ForbiddenError for a non-admin caller', async () => {
+        (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'member' }));
+
+        await expect(approveLeaveRequest(userId, householdId, 'req-9'))
+          .rejects.toThrow('Only the household admin');
+      });
+
+      it("throws NotFoundError when the request doesn't belong to this household", async () => {
+        (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'admin' }));
+        (models.HouseholdActionRequest.findByPk as jest.Mock).mockResolvedValue(
+          fakeLeaveRequest({ householdId: 'some-other-household' }),
+        );
+
+        await expect(approveLeaveRequest(userId, householdId, 'req-9')).rejects.toThrow('Leave request');
+      });
+    });
+
+    describe('rejectLeaveRequest', () => {
+      it('marks the request rejected and notifies the requester', async () => {
+        (models.HouseholdMember.findOne as jest.Mock).mockResolvedValue(fakeMembership({ role: 'admin' }));
+        const request = fakeLeaveRequest();
+        (models.HouseholdActionRequest.findByPk as jest.Mock).mockResolvedValue(request);
+
+        await rejectLeaveRequest(userId, householdId, 'req-9', 'not now');
+
+        expect(request.status).toBe('rejected');
+        expect(request.reviewerNote).toBe('not now');
+        expect(notifyUser).toHaveBeenCalledWith(
+          otherUserId, 'leave_response', 'Leave request declined', expect.any(String),
+          expect.objectContaining({ approved: false }),
+        );
+      });
     });
   });
 

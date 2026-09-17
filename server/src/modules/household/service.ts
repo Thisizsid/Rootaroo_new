@@ -6,12 +6,13 @@ import { sequelize, Household, HouseholdMember, HouseholdActionRequest, Invitati
 import { ConflictError, NotFoundError, ForbiddenError, AppError } from '../../shared/utils/errors';
 import { getSignedUrl, deleteObject } from '../../shared/utils/s3';
 import { sendAdminAlertEmail } from '../../shared/utils/mailer';
+import { getIO } from '../../shared/utils/socket';
 import logger from '../../shared/utils/logger';
 import * as notificationService from '../../shared/services/notifications';
 import type {
   CreateHouseholdBody, HouseholdResponse, InvitationResponse, JoinHouseholdBody,
   MemberResponse, ChangeRoleBody, HouseholdActionRequestType, HouseholdActionRequestStatus,
-  HouseholdActionRequestResponse,
+  HouseholdActionRequestResponse, PendingLeaveRequestResponse,
 } from './types';
 
 function generateCode(): string {
@@ -481,11 +482,29 @@ export async function requestLeaveHousehold(userId: string, householdId: string)
     type: 'leave',
   });
 
-  const user = await User.findByPk(userId);
-  await sendAdminAlertEmail(
-    'Rootaroo: household leave request',
-    `Request ID: ${request.id}\nHousehold: ${householdId}\nRequested by: ${user?.displayName || userId} (${user?.email || 'unknown'})\nType: leave\n\nApprove: POST /api/v1/admin/requests/${request.id}/approve\nReject: POST /api/v1/admin/requests/${request.id}/reject`,
-  ).catch((e: Error) => logger.warn('[Household] Failed to send admin alert email:', e.message));
+  // Reviewed by the household's own admin, in-app — not Rootaroo staff.
+  const [user, adminMembership] = await Promise.all([
+    User.findByPk(userId),
+    HouseholdMember.findOne({ where: { householdId, role: 'admin' } }),
+  ]);
+  if (adminMembership) {
+    const requesterName = user?.displayName || 'A member';
+    const notifyData = { type: 'leave_request', requestId: request.id, householdId };
+    notificationService
+      .notifyUser(
+        adminMembership.userId,
+        'leave_request',
+        'Leave request',
+        `${requesterName} wants to leave the household`,
+        notifyData,
+      )
+      .catch(() => {});
+    try {
+      getIO().to(`user:${adminMembership.userId}`).emit('household:leave-request', notifyData);
+    } catch {
+      /* socket not available (e.g. in tests) — push notification above still covers it */
+    }
+  }
 }
 
 export async function requestHouseholdDeletion(userId: string, householdId: string): Promise<void> {
@@ -596,6 +615,94 @@ export async function rejectActionRequest(
   await request.save();
 
   return toActionRequestResponse(request);
+}
+
+// ── Household-admin review of a member's leave request ──
+//
+// Reuses the generic approveActionRequest/rejectActionRequest above (they
+// only need a requestId) — these wrappers add the caller-is-this-household's-
+// admin check and notify the requester of the outcome, mirroring
+// modules/ping/service.ts's respondToPingRequest pattern.
+
+export async function getPendingLeaveRequestForAdmin(
+  userId: string,
+  householdId: string,
+): Promise<PendingLeaveRequestResponse | null> {
+  const membership = await getMembership(householdId, userId);
+  if (membership.role !== 'admin') {
+    throw new ForbiddenError('Only the household admin can view leave requests');
+  }
+
+  const request = await HouseholdActionRequest.findOne({
+    where: { householdId, type: 'leave', status: 'pending' },
+    order: [['createdAt', 'DESC']],
+  });
+  if (!request) return null;
+
+  const requester = await User.findByPk(request.requestedBy);
+  return { ...toActionRequestResponse(request), requestedByName: requester?.displayName || null };
+}
+
+async function assertCallerIsHouseholdAdmin(userId: string, householdId: string): Promise<void> {
+  const membership = await getMembership(householdId, userId);
+  if (membership.role !== 'admin') {
+    throw new ForbiddenError('Only the household admin can review leave requests');
+  }
+}
+
+async function getLeaveRequestForHousehold(householdId: string, requestId: string): Promise<HouseholdActionRequest> {
+  const request = await HouseholdActionRequest.findByPk(requestId);
+  if (!request || request.householdId !== householdId || request.type !== 'leave') {
+    throw new NotFoundError('Leave request');
+  }
+  return request;
+}
+
+export async function approveLeaveRequest(
+  adminUserId: string,
+  householdId: string,
+  requestId: string,
+): Promise<HouseholdActionRequestResponse> {
+  await assertCallerIsHouseholdAdmin(adminUserId, householdId);
+  const request = await getLeaveRequestForHousehold(householdId, requestId);
+
+  const result = await approveActionRequest(requestId);
+
+  notificationService
+    .notifyUser(
+      request.requestedBy,
+      'leave_response',
+      'Leave request approved',
+      'You have left the household.',
+      { type: 'leave_response', approved: true, householdId },
+    )
+    .catch(() => {});
+
+  return result;
+}
+
+export async function rejectLeaveRequest(
+  adminUserId: string,
+  householdId: string,
+  requestId: string,
+  reviewerNote?: string,
+): Promise<HouseholdActionRequestResponse> {
+  await assertCallerIsHouseholdAdmin(adminUserId, householdId);
+  const request = await getLeaveRequestForHousehold(householdId, requestId);
+
+  const result = await rejectActionRequest(requestId, reviewerNote);
+
+  notificationService
+    .notifyUser(
+      request.requestedBy,
+      'leave_response',
+      'Leave request declined',
+      'The household admin declined your request to leave.',
+      { type: 'leave_response', approved: false, householdId },
+    )
+    .catch(() => {});
+
+  return result;
 }
 
 export async function cancelHouseholdDeletion(userId: string, householdId: string): Promise<void> {
