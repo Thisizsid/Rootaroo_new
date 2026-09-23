@@ -11,6 +11,14 @@ const STEP_TO_ROUTE = {
   address: 'SignupStepAddress',
   verify: 'EmailVerification',
   invite: 'InviteMembers',
+  // The post-invite feature overview (household creators only). Listed here
+  // so an in-session resume reopens the step the user was on rather than
+  // failing to map — see FeatureTourShell for why a re-login skips the tour.
+  feature1: 'FeatureIntro',
+  feature2: 'FeatureDay',
+  feature3: 'FeatureHub',
+  feature4: 'FeaturePrivacy',
+  feature5: 'FeaturePricing',
 };
 
 export function stepToRoute(step, authMethod) {
