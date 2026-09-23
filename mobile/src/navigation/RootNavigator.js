@@ -16,6 +16,11 @@ import SignUpScreen from '../screens/SignUpScreen';
 import SignInScreen from '../screens/SignInScreen';
 import HouseholdSetupScreen from '../screens/HouseholdSetupScreen';
 import InviteMembersScreen from '../screens/InviteMembersScreen';
+import FeatureIntroScreen from '../screens/onboarding/FeatureIntroScreen';
+import FeatureDayScreen from '../screens/onboarding/FeatureDayScreen';
+import FeatureHubScreen from '../screens/onboarding/FeatureHubScreen';
+import FeaturePrivacyScreen from '../screens/onboarding/FeaturePrivacyScreen';
+import FeaturePricingScreen from '../screens/onboarding/FeaturePricingScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import EmailVerificationScreen from '../screens/EmailVerificationScreen';
 import PhoneSignUpScreen from '../screens/PhoneSignUpScreen';
@@ -101,6 +106,15 @@ function AuthNavigator() {
       <AuthStack.Screen name="SignupStepAvatar" component={SignupStepAvatarScreen} />
       <AuthStack.Screen name="HouseholdSetup" component={HouseholdSetupScreen} />
       <AuthStack.Screen name="InviteMembers" component={InviteMembersScreen} />
+      {/* Feature overview — the five-step tour a household CREATOR sees
+          after InviteMembers, immediately before setup completes. Members
+          who joined with a code skip straight past it (see
+          InviteMembersScreen.finish). */}
+      <AuthStack.Screen name="FeatureIntro" component={FeatureIntroScreen} />
+      <AuthStack.Screen name="FeatureDay" component={FeatureDayScreen} />
+      <AuthStack.Screen name="FeatureHub" component={FeatureHubScreen} />
+      <AuthStack.Screen name="FeaturePrivacy" component={FeaturePrivacyScreen} />
+      <AuthStack.Screen name="FeaturePricing" component={FeaturePricingScreen} />
       <AuthStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
       <AuthStack.Screen name="EmailVerification" component={EmailVerificationScreen} />
     </AuthStack.Navigator>

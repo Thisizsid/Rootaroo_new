@@ -7,6 +7,7 @@ import { ensureCamera } from '../shared/permissions';
 import { useAuthStore } from '../shared/store/authStore';
 import { householdApi } from '../shared/api/household';
 import { navigateAfterHouseholdSetup } from '../shared/navigation/postAuthNavigation';
+import { updateSignupProgress } from '../shared/store/signupProgress';
 import { colors, fonts, radius } from '../shared/theme';
 const FAMILY_EMOJIS = ['🏡', '🌿', '☀️'];
 // Matches the QR the household admin generates in Household Settings /
@@ -56,6 +57,11 @@ export default function HouseholdSetupScreen({ navigation }) {
           ? await householdApi.create(nestName.trim())
           : await householdApi.join(inviteCode.trim());
       setHousehold(hh.id);
+      // Whether this user CREATED the household or joined an existing one
+      // decides, much later, whether they see the feature overview after
+      // InviteMembers — both paths pass through that screen, so the flag is
+      // the only thing that can tell them apart there.
+      await updateSignupProgress({ createdHousehold: option === 'create' });
       if (option === 'create') {
         navigation.navigate('SignupStepAddress');
       } else {

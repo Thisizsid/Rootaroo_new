@@ -13,7 +13,7 @@ import * as Clipboard from 'expo-clipboard';
 import SignupWizardShell from '../shared/components/SignupWizardShell';
 import { useAuthStore } from '../shared/store/authStore';
 import { householdApi } from '../shared/api/household';
-import { updateSignupProgress } from '../shared/store/signupProgress';
+import { loadSignupProgress, updateSignupProgress } from '../shared/store/signupProgress';
 import { colors, fonts } from '../shared/theme';
 import Avatar from '../components/Avatar';
 
@@ -57,6 +57,15 @@ export default function InviteMembersScreen({ navigation }) {
   const otherMembers = members.filter((m) => m.userId !== user?.id);
   const currentUserName = currentUser?.displayName || user?.name || user?.email || 'You';
   const finish = async () => {
+    // Whoever CREATED this household gets the feature overview before landing
+    // on Home — it is the tail of onboarding, so FeaturePricingScreen (its
+    // last step) is what completes setup for them. People who joined with an
+    // invite code finish right here, exactly as they always have.
+    const progress = await loadSignupProgress();
+    if (progress?.createdHousehold) {
+      navigation.navigate('FeatureIntro');
+      return;
+    }
     await updateSignupProgress({
       step: 'done',
       setupComplete: true,
