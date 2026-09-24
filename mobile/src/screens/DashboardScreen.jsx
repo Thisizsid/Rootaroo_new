@@ -1816,7 +1816,7 @@ export default function DashboardScreen() {
                   disabled={!canSend || sending}
                   activeOpacity={0.7}
                 >
-                    <GoldFill radius={radius.md} disabled={!canSend} />
+                  <GoldFill radius={radius.md} disabled={!canSend || sending} />
                   {sending ? (
                     <ActivityIndicator size="small" color={colors.navyDeep} />
                   ) : (
@@ -2795,7 +2795,7 @@ const mo = StyleSheet.create({
     flex: 1,
     paddingVertical: 15,
     borderRadius: radius.md,
-    backgroundColor: colors.goldGlow,
+    backgroundColor: colors.gold,
     alignItems: "center",
     ...goldButton.glow,
   },

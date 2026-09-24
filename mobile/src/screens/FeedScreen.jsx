@@ -577,7 +577,7 @@ export default function FeedScreen() {
           activeOpacity={0.8}
           onPress={() => navigation.navigate('CreatePost')}
         >
-            <GoldFill radius={28} />
+          <GoldFill radius={28} />
           <Text style={styles.fabIcon}>+</Text>
         </TouchableOpacity>
       </AttachStep>
@@ -1089,11 +1089,9 @@ const styles = StyleSheet.create({
     borderRadius: 9999,
     paddingHorizontal: 24,
     paddingVertical: 10,
-    shadowColor: colors.gold,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.28,
-    shadowRadius: 14,
-    elevation: 4,
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
   },
   retryText: {
     fontSize: 14,

@@ -709,6 +709,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.card,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: colors.gold,
     ...goldButton.glow,
   },
   composeIcon: {
