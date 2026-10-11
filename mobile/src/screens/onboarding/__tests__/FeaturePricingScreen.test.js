@@ -58,3 +58,29 @@ describe('FeaturePricingScreen purchase', () => {
     expect(getByText('Privacy')).toBeTruthy();
   });
 });
+
+describe('FeaturePricingScreen without prices', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('keeps the spinner only while prices are being fetched', () => {
+    useBillingStore.setState({ status: null, refresh: jest.fn(() => new Promise(() => {})) });
+    const { getByText, queryByText } = render(<FeaturePricingScreen navigation={{}} />);
+    expect(getByText('Loading prices…')).toBeTruthy();
+    expect(queryByText('Continue')).toBeNull();
+  });
+
+  it('when billing answers without plans (switched off), Continue finishes setup instead of spinning forever', async () => {
+    useBillingStore.setState({ status: statusFixture({ plans: null }), refresh: jest.fn(async () => {}) });
+    const { findByText, getByText } = render(<FeaturePricingScreen navigation={{}} />);
+    expect(await findByText("Plans aren't available yet")).toBeTruthy();
+    fireEvent.press(getByText('Continue'));
+    await waitFor(() => expect(mockCompleteSetup).toHaveBeenCalled());
+  });
+
+  it('when the price check fails outright, it still offers Continue', async () => {
+    useBillingStore.setState({ status: null, refresh: jest.fn(async () => { throw new Error('Network Error'); }) });
+    const { findByText } = render(<FeaturePricingScreen navigation={{}} />);
+    expect(await findByText('Continue')).toBeTruthy();
+  });
+});
+

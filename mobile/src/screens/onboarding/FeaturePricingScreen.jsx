@@ -45,7 +45,15 @@ export default function FeaturePricingScreen({ navigation }) {
   const [size, setSize] = useState(range.min);
   const [buying, setBuying] = useState(false);
   const [note, setNote] = useState(null);
-  useEffect(() => { useBillingStore.getState().refresh(); }, []);
+  // Whether the first price check has come back (with or without prices).
+  const [checked, setChecked] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    Promise.resolve(useBillingStore.getState().refresh())
+      .catch(() => {})
+      .finally(() => { if (alive) setChecked(true); });
+    return () => { alive = false; };
+  }, []);
   useEffect(() => { setSize((s) => Math.min(Math.max(s, range.min), range.max)); }, [range.min, range.max]);
   const p = plans ? derivePricing(plan, Math.min(size, range.max), plans) : null;
 
@@ -123,10 +131,23 @@ export default function FeaturePricingScreen({ navigation }) {
     else setNote('The purchase was not completed.');
   };
 
-  if (!p) {
+  if (!p && !checked) {
     return (
       <FeatureTourShell step={3} navigation={navigation} contentPadding={22} ctaLabel={'Loading prices…'} onContinue={() => {}}>
         <ActivityIndicator style={{ marginTop: 80 }} color={colors.gold} />
+      </FeatureTourShell>
+    );
+  }
+
+  // No prices came back (billing switched off, or the server couldn't reach the store).
+  // Same exit as "Not now": an unpaid household still meets the paywall after this, and
+  // the server refuses its requests, so nothing is unlocked here.
+  if (!p) {
+    return (
+      <FeatureTourShell step={3} navigation={navigation} contentPadding={22} ctaLabel={'Continue'} onContinue={finish}>
+        <Eyebrow style={styles.topEyebrow}>{pricing.eyebrow}</Eyebrow>
+        <Text style={styles.title}>Plans aren't available yet</Text>
+        <Text style={styles.headSub}>You can subscribe later from More → Subscription.</Text>
       </FeatureTourShell>
     );
   }

@@ -164,6 +164,23 @@ describe('Auth Service — Update Profile', () => {
       expect(user.save).toHaveBeenCalled();
     });
 
+    it('accepts a real-length CloudFront link (over 500 characters) and stores only the short key', async () => {
+      const user = fakeUser({ avatarUrl: null }) as any;
+      (models.User.findByPk as jest.Mock).mockResolvedValue(user);
+      const signed = `https://d123.cloudfront.net/avatars/${user.id}/new.jpg?Expires=1791700000&Signature=${'A'.repeat(600)}&Key-Pair-Id=K2JCJMDEHXQW5F`;
+      expect(signed.length).toBeGreaterThan(500);
+      await updateProfile(user.id, { avatarUrl: signed });
+      expect(user.avatarUrl).toBe(`avatars/${user.id}/new.jpg`);
+    });
+
+    it('rejects an outside photo link too long for the database column, before saving anything', async () => {
+      const user = fakeUser({ avatarUrl: null }) as any;
+      (models.User.findByPk as jest.Mock).mockResolvedValue(user);
+      const longGoogle = `https://lh3.googleusercontent.com/a/${'x'.repeat(520)}`;
+      await expect(updateProfile(user.id, { avatarUrl: longGoogle })).rejects.toThrow('This photo link is too long');
+      expect(user.save).not.toHaveBeenCalled();
+    });
+
     it("refuses a signed link to someone else's file, and outside sites other than Google", async () => {
       const user = fakeUser({ avatarUrl: null }) as any;
       (models.User.findByPk as jest.Mock).mockResolvedValue(user);

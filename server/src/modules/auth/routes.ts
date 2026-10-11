@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { authenticate } from '../../shared/middleware/auth';
 import { validate } from '../../shared/middleware/validate';
 import { uploadAvatar } from '../../shared/middleware/upload';
-import { registerSchema, loginSchema, refreshSchema, updateProfileSchema, googleAuthSchema, appleAuthSchema, verifyEmailSchema, forgotPasswordSchema, resetPasswordSchema, checkResetCodeSchema, logoutSchema, scheduleDeletionSchema, sendPhoneOtpSchema, verifyPhoneOtpSchema, registerPhoneSchema } from './validation';
+import { registerSchema, loginSchema, refreshSchema, updateProfileSchema, googleAuthSchema, appleAuthSchema, verifyEmailSchema, forgotPasswordSchema, resetPasswordSchema, checkResetCodeSchema, logoutSchema, scheduleDeletionSchema, sendPhoneOtpSchema, verifyPhoneOtpSchema, registerPhoneSchema, acceptLegalSchema } from './validation';
 import * as ctrl from './controller';
 
 const router = Router();
@@ -172,6 +172,30 @@ router.post('/check-reset-code', validate(checkResetCodeSchema), ctrl.checkReset
 // ── Protected Endpoints ──
 
 router.get('/me', authenticate, ctrl.me);
+
+/**
+ * @openapi
+ * /auth/legal/accept:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Log that the user accepted the current Terms of Service and Privacy Policy
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [method, agreedAt]
+ *             properties:
+ *               method: { type: string, enum: [signup_checkbox, signin_notice] }
+ *               agreedAt: { type: string, format: date-time, description: When the box was ticked or the button tapped, from the phone }
+ *     responses:
+ *       201:
+ *         description: Recorded, with the versions accepted and the server time
+ */
+router.post('/legal/accept', authenticate, validate(acceptLegalSchema), ctrl.acceptLegal);
 
 /**
  * @openapi

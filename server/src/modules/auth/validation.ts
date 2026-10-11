@@ -36,7 +36,9 @@ export const refreshSchema: ValidationSchemas = {
 export const updateProfileSchema: ValidationSchemas = {
   body: z.object({
     displayName: z.string().min(1).max(100).optional(),
-    avatarUrl: z.string().max(500).nullable().optional(),
+    // Our own photo links come back signed (CloudFront, 600+ characters); the service stores only
+    // the short key inside them, and checks the stored value against the 500-character column.
+    avatarUrl: z.string().max(2048).nullable().optional(),
     avatarEmoji: z.string().max(10).nullable().optional(),
     avatarPresetId: z.string().max(50).nullable().optional(),
     dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD').nullable().optional(),
@@ -120,8 +122,17 @@ export const registerPhoneSchema: ValidationSchemas = {
     homeAddress: z.string().max(500).optional(),
     addToCalendar: z.boolean().optional(),
     notifyHousehold: z.boolean().optional(),
-    avatarUrl: z.string().max(500).nullable().optional(),
+    // Our own photo links come back signed (CloudFront, 600+ characters); the service stores only
+    // the short key inside them, and checks the stored value against the 500-character column.
+    avatarUrl: z.string().max(2048).nullable().optional(),
     avatarPresetId: z.string().max(50).nullable().optional(),
     avatarEmoji: z.string().max(10).nullable().optional(),
+  }),
+};
+
+export const acceptLegalSchema: ValidationSchemas = {
+  body: z.object({
+    method: z.enum(['signup_checkbox', 'signin_notice']),
+    agreedAt: z.string().datetime({ offset: true, message: 'agreedAt must be an ISO time' }),
   }),
 };

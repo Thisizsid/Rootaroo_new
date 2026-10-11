@@ -12,7 +12,7 @@ import logger from '../../shared/utils/logger';
 import { onPurchaserDeleted, reportPurchaserDeletionFailure } from '../billing/deletion';
 import { jwtVerify, createRemoteJWKSet } from 'jose';
 import { hashOtpCode, MAX_OTP_ATTEMPTS } from '../../shared/utils/otp';
-import { UnauthorizedError, ConflictError, NotFoundError, AppError } from '../../shared/utils/errors';
+import { UnauthorizedError, ConflictError, NotFoundError, AppError, ValidationError } from '../../shared/utils/errors';
 import { assertOwnUploadKey, storageKeyFromOwnUrl } from '../../shared/utils/uploadKeys';
 import { getEmail, getSms } from '../../services';
 import { upsertDevice, touchDevice } from '../device/service';
@@ -27,6 +27,16 @@ import type {
 // ── Helpers ──
 
 const NO_DEVICE: DeviceInfo = { deviceKey: null, name: null, platform: null, appVersion: null };
+
+/** The `users.avatar_url` column. */
+const AVATAR_URL_MAX = 500;
+
+/** What gets stored for a photo: the key inside one of our own (signed) links, or the outside link itself. */
+function storedAvatar(value: string): string {
+  const stored = storageKeyFromOwnUrl(value) ?? value;
+  if (stored.length > AVATAR_URL_MAX) throw new ValidationError('This photo link is too long');
+  return stored;
+}
 
 async function toUserResponse(user: User): Promise<UserResponse> {
   return {
@@ -207,7 +217,7 @@ export async function updateProfile(
   // own signed links is stored as the key inside it, never as an expiring URL.
   let avatarUrl = body.avatarUrl;
   if (avatarUrl) {
-    const key = storageKeyFromOwnUrl(avatarUrl) ?? avatarUrl;
+    const key = storedAvatar(avatarUrl);
     const currentKey = user.avatarUrl ? (storageKeyFromOwnUrl(user.avatarUrl) ?? user.avatarUrl) : null;
     // The app often sends back the photo it was shown: that is the current one, already accepted.
     if (key !== currentKey) assertOwnUploadKey(key, userId, ['avatars'], { allowExternalUrl: true });
@@ -765,7 +775,7 @@ export async function registerPhone(body: RegisterPhoneBody, device?: DeviceInfo
     const id = uuidv4();
     // The account doesn't exist yet, so nothing can have been uploaded under
     // it: only an outside photo link is acceptable here.
-    const avatarUrl = body.avatarUrl ? (storageKeyFromOwnUrl(body.avatarUrl) ?? body.avatarUrl) : null;
+    const avatarUrl = body.avatarUrl ? storedAvatar(body.avatarUrl) : null;
     if (avatarUrl) assertOwnUploadKey(avatarUrl, id, ['avatars'], { allowExternalUrl: true });
     user = await User.create({
       id,
