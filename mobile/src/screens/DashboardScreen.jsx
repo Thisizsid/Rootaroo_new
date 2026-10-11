@@ -39,6 +39,7 @@ import { useFeedStore } from "../shared/store/feedStore";
 import { useEngagementStore } from "../shared/store/engagementStore";
 import { useFeedPhotos } from "../shared/hooks/useFeedPhotos";
 import { taskApi } from "../shared/api/task";
+import { loadFocusTasks } from "../shared/home/focusTasks";
 import { expenseApi } from "../shared/api/expense";
 import { vaultApi } from "../shared/api/vault";
 import { eventApi } from "../shared/api/event";
@@ -506,14 +507,10 @@ export default function DashboardScreen() {
 
   // Today's Focus — top 3 pending tasks
   useEffect(() => {
-    taskApi
-      .list({
-        group: "pending",
-      })
-      .then((res) => {
-        const arr = Array.isArray(res) ? res : res?.pending || [];
-        setPendingTasks(arr.slice(0, 3));
-        writeCache("home:pendingTasks", arr.slice(0, 3));
+    loadFocusTasks(taskApi)
+      .then((focus) => {
+        setPendingTasks(focus);
+        writeCache("home:pendingTasks", focus);
       })
       .catch(() => {});
   }, []);
