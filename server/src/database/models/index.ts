@@ -49,6 +49,7 @@ import ConversationParticipant from './ConversationParticipant';
 import JournalEntry from './JournalEntry';
 import JournalMedia from './JournalMedia';
 import JournalUpload from './JournalUpload';
+import LegalAcceptance from './LegalAcceptance';
 import BillingCustomer from './BillingCustomer';
 import BillingSubscription from './BillingSubscription';
 import BillingCheckoutSession from './BillingCheckoutSession';
@@ -109,6 +110,7 @@ const models = {
   JournalEntry,
   JournalMedia,
   JournalUpload,
+  LegalAcceptance,
   BillingCustomer,
   BillingSubscription,
   BillingCheckoutSession,
@@ -381,6 +383,7 @@ export {
   JournalEntry,
   JournalMedia,
   JournalUpload,
+  LegalAcceptance,
   BillingCustomer,
   BillingSubscription,
   BillingCheckoutSession,

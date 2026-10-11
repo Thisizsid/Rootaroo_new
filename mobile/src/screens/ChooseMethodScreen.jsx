@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { View, Text, StyleSheet, StatusBar, TouchableOpacity, Image, Platform } from 'react-native';
 import Svg, { Path, Rect } from 'react-native-svg';
 import { colors, fonts, radius } from '../shared/theme';
@@ -13,6 +13,7 @@ import SpinningIcon from '../components/SpinningIcon';
 import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 import { TERMS_URL, PRIVACY_URL } from '../shared/billing/legalLinks';
+import { savePendingAgreement, METHODS } from '../shared/legal/pendingAgreement';
 /* Small inline icons (stroke = ink, like the mockup) */
 function PhoneIcon() {
   return (
@@ -60,15 +61,19 @@ export default function ChooseMethodScreen({ navigation }) {
   });
   const [agreed, setAgreed] = useState(false);
   const [showAgreeError, setShowAgreeError] = useState(false);
+  // When the box was ticked: logged with the account as proof of acceptance (issue #15).
+  const agreedAtRef = useRef(null);
   // Every way of creating an account needs the Terms accepted first.
-  const requireAgreement = (fn) => () => {
+  const requireAgreement = (fn) => async () => {
     if (!agreed) {
       setShowAgreeError(true);
       return;
     }
+    await savePendingAgreement(METHODS.SIGNUP_CHECKBOX, agreedAtRef.current ?? new Date()).catch(() => {});
     fn();
   };
   const toggleAgreed = () => {
+    agreedAtRef.current = agreed ? null : new Date();
     setAgreed((v) => !v);
     setShowAgreeError(false);
   };

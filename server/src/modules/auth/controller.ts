@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../../shared/middleware/auth';
 import * as authService from './service';
+import * as legalService from './legalService';
 import { readDeviceInfo } from '../../shared/middleware/deviceContext';
 import { uploadBuffer } from '../../shared/utils/s3';
 import { userUploadFolder } from '../../shared/utils/uploadKeys';
@@ -40,6 +41,18 @@ export async function me(req: Request, res: Response, next: NextFunction) {
     const auth = req as AuthenticatedRequest;
     const user = await authService.getProfile(auth.user!.userId);
     res.status(200).json({ success: true, data: user });
+  } catch (e) { next(e); }
+}
+
+/** Logs that the user accepted the Terms of Service and Privacy Policy (issue #15). */
+export async function acceptLegal(req: Request, res: Response, next: NextFunction) {
+  try {
+    const auth = req as AuthenticatedRequest;
+    const result = await legalService.acceptLegal(auth.user!.userId, req.body, {
+      ip: req.ip ?? null,
+      device: readDeviceInfo(req),
+    });
+    res.status(201).json({ success: true, data: result });
   } catch (e) { next(e); }
 }
 

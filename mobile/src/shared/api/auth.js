@@ -41,6 +41,10 @@ export const authApi = {
   getMe: () =>
     apiClient.get('/auth/me').then((r) => r.data.data),
 
+  /** Logs that the user accepted the Terms and Privacy Policy: { method, agreedAt }. */
+  acceptLegal: (body) =>
+    apiClient.post('/auth/legal/accept', body).then((r) => r.data.data),
+
   googleAuth: (data) =>
     apiClient.post('/auth/google', data).then((r) => r.data.data),
 

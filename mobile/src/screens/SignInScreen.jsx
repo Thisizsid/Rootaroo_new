@@ -28,6 +28,7 @@ import SpinningIcon from '../components/SpinningIcon';
 import { KEYBOARD_BEHAVIOR } from '../shared/components/KeyboardAware';
 import * as WebBrowser from 'expo-web-browser';
 import { TERMS_URL, PRIVACY_URL } from '../shared/billing/legalLinks';
+import { savePendingAgreement, METHODS } from '../shared/legal/pendingAgreement';
 function SvgApple() {
   return (
     <Svg width="19" height="19" viewBox="0 0 24 24" fill={colors.onAccent}>
@@ -50,6 +51,12 @@ export default function SignInScreen({ navigation }) {
     const progress = await loadSignupProgress();
     await resolvePostAuthNavigation(resp, 'apple', navigation, progress);
   });
+  // Google, Apple and phone can create a new account here, under the Terms notice below:
+  // the tap is logged as the acceptance once signed in (issue #15).
+  const withNoticeAccepted = (fn) => async () => {
+    await savePendingAgreement(METHODS.SIGNIN_NOTICE).catch(() => {});
+    fn();
+  };
   const handleSignIn = async () => {
     if (!email.trim()) {
       showAlert('Error', 'Please enter your email.');
@@ -106,7 +113,7 @@ export default function SignInScreen({ navigation }) {
           <TouchableOpacity
             style={styles.socialBtn}
             activeOpacity={0.75}
-            onPress={googleSignIn}
+            onPress={withNoticeAccepted(googleSignIn)}
             disabled={googleLoading}
           >
             {googleLoading ? (
@@ -128,7 +135,7 @@ export default function SignInScreen({ navigation }) {
             <TouchableOpacity
               style={[styles.socialBtn, styles.socialBtnApple]}
               activeOpacity={0.75}
-              onPress={appleSignIn}
+              onPress={withNoticeAccepted(appleSignIn)}
               disabled={appleLoading}
             >
               {appleLoading ? (
@@ -148,7 +155,7 @@ export default function SignInScreen({ navigation }) {
           <TouchableOpacity
             style={[styles.socialBtn, styles.socialBtnPhone]}
             activeOpacity={0.75}
-            onPress={() => navigation.navigate('PhoneSignUp')}
+            onPress={withNoticeAccepted(() => navigation.navigate('PhoneSignUp'))}
           >
             <Text style={styles.socialBtnIcon}>📱</Text>
             <Text style={styles.socialBtnText}>Continue with phone number</Text>

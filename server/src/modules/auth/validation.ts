@@ -125,3 +125,10 @@ export const registerPhoneSchema: ValidationSchemas = {
     avatarEmoji: z.string().max(10).nullable().optional(),
   }),
 };
+
+export const acceptLegalSchema: ValidationSchemas = {
+  body: z.object({
+    method: z.enum(['signup_checkbox', 'signin_notice']),
+    agreedAt: z.string().datetime({ offset: true, message: 'agreedAt must be an ISO time' }),
+  }),
+};

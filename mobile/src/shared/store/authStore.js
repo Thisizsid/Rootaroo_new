@@ -46,6 +46,11 @@ function checkPrivateSpace() {
   } catch { /* not loaded yet */ }
 }
 
+// Lazy require: pendingAgreement → api → client → authStore would be a cycle at import time.
+function sendLegalAgreement() {
+  try { require('../legal/pendingAgreement').sendPendingAgreement().catch(() => {}); } catch { /* not loaded yet */ }
+}
+
 export const useAuthStore = create((set, get) => ({
   user: null,
   accessToken: null,
@@ -63,6 +68,7 @@ export const useAuthStore = create((set, get) => ({
 
   setAuth: (user, accessToken, refreshToken) => {
     set({ user, accessToken, refreshToken, isAuthenticated: true, isLoading: false });
+    sendLegalAgreement();
     cancelNudges();
     checkPrivateSpace();
     warmScreenCache(user?.id);
@@ -71,6 +77,8 @@ export const useAuthStore = create((set, get) => ({
 
   setAuthPending: (user, accessToken, refreshToken) => {
     set({ user, accessToken, refreshToken, isAuthenticated: false, isLoading: false });
+    // The account exists now: log the Terms acceptance made before it did.
+    sendLegalAgreement();
     // Persist so kill-app mid-setup can resume
     saveTokens(accessToken, refreshToken, user).catch(() => {});
   },
@@ -117,6 +125,7 @@ export const useAuthStore = create((set, get) => ({
     try { require('./journalLockStore').useJournalLockStore.getState().reset(); } catch { /* not loaded yet */ }
     try { require('../journal/journalRepo').clearJournalSecrets(); } catch { /* not loaded yet */ }
     try { require('../notificationRouting').clearPendingNotification(); } catch { /* not loaded yet */ }
+    try { require('../legal/pendingAgreement').clearPendingAgreement(); } catch { /* not loaded yet */ }
     useFeedStore.setState({ posts: [], cursor: null, hasMore: true, lastFetchedAt: null });
   },
 
@@ -213,6 +222,8 @@ export const useAuthStore = create((set, get) => ({
         cancelNudges();
         checkPrivateSpace();
         prefetchHome(householdId);
+        // A Terms acceptance that failed to send last time goes now.
+        sendLegalAgreement();
 
         apiClient
           .get('/households')
